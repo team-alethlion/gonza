@@ -253,6 +253,11 @@ export const useNewSaleActions = (
     setNewCustomerDialogOpen(true);
   }, []);
 
+  const handlePreviewReceipt = useCallback((sale: Sale) => {
+    setCompletedSale(sale);
+    setIsReceiptOpen(true);
+  }, []);
+
   return {
     isReceiptOpen,
     completedSale,
@@ -264,5 +269,8 @@ export const useNewSaleActions = (
     handleAddCustomer,
     handleOpenNewCustomerDialog,
     setNewCustomerDialogOpen,
+    handlePreviewReceipt,
+    setCompletedSale,
+    setIsReceiptOpen
   };
 };

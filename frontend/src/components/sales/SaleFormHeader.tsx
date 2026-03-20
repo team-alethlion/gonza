@@ -3,7 +3,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Eye } from 'lucide-react';
 import SaleDatePicker from '@/components/sales/SaleDatePicker';
 import CustomerInformation from '@/components/sales/CustomerInformation';
 import { Customer, FormErrors } from '@/types';
@@ -24,6 +24,7 @@ interface SaleFormHeaderProps {
   selectedCategoryId: string;
   onCategoryChange: (categoryId: string) => void;
   onClearForm?: () => void;
+  onPreview?: () => void;
 }
 
 const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
@@ -42,6 +43,7 @@ const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
   selectedCategoryId,
   onCategoryChange,
   onClearForm,
+  onPreview,
 }) => {
   const router = useRouter();
 
@@ -69,16 +71,16 @@ const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
               <CardDescription>Enter the sale details below</CardDescription>
             </div>
           </div>
-          {!isEditing && onClearForm && (
+          {onPreview && (
             <Button
               variant="outline"
               size="sm"
-              onClick={onClearForm}
+              onClick={onPreview}
               type="button"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
             >
-              <RotateCcw className="h-4 w-4" />
-              Clear Form
+              <Eye className="h-4 w-4" />
+              Preview Receipt
             </Button>
           )}
         </div>

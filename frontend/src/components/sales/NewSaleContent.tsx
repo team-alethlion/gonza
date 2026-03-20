@@ -1,9 +1,10 @@
-import React from 'react';
-import SalesForm from '@/components/SalesForm';
-import ReceiptDialog from '@/components/sales/ReceiptDialog';
-import NewCustomerDialog from '@/components/customers/NewCustomerDialog';
-import DraftNotification from '@/components/sales/DraftNotification';
-import { Sale } from '@/types';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React from "react";
+import SalesForm from "@/components/SalesForm";
+import ReceiptDialog from "@/components/sales/ReceiptDialog";
+import NewCustomerDialog from "@/components/customers/NewCustomerDialog";
+import DraftNotification from "@/components/sales/DraftNotification";
+import { Sale } from "@/types";
 
 interface NewSaleContentProps {
   editSale?: Sale;
@@ -12,7 +13,16 @@ interface NewSaleContentProps {
   draftData: any;
   onLoadDraft: () => void;
   onDismissDraft: () => void;
-  onSaleComplete: (sale: Sale, showReceipt?: boolean, includePaymentInfo?: boolean, selectedCategoryId?: string, onClearDraft?: () => void, saleDate?: Date, thermalPrintAfterSave?: boolean) => void;
+  onSaleComplete: (
+    sale: Sale,
+    showReceipt?: boolean,
+    includePaymentInfo?: boolean,
+    selectedCategoryId?: string,
+    onClearDraft?: () => void,
+    saleDate?: Date,
+    thermalPrintAfterSave?: boolean,
+  ) => void;
+  onPreviewReceipt: (sale: Sale) => void;
   onClearDraft: () => void;
   customers: any[];
   onAddNewCustomer: () => void;
@@ -33,6 +43,7 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
   onLoadDraft,
   onDismissDraft,
   onSaleComplete,
+  onPreviewReceipt,
   onClearDraft,
   customers,
   onAddNewCustomer,
@@ -42,7 +53,7 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
   onReceiptClose,
   newCustomerDialogOpen,
   onCloseNewCustomerDialog,
-  onAddCustomer
+  onAddCustomer,
 }) => {
   return (
     <>
@@ -57,6 +68,7 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
       <SalesForm
         initialData={editSale}
         onSaleComplete={onSaleComplete}
+        onPreviewReceipt={onPreviewReceipt}
         currency={currency}
         customers={customers}
         onAddNewCustomer={onAddNewCustomer}

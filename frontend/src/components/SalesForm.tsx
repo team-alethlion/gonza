@@ -54,6 +54,7 @@ interface SalesFormProps {
     saleDate?: Date,
     thermalPrintAfterSave?: boolean,
   ) => void;
+  onPreviewReceipt?: (sale: Sale) => void;
   currency?: string;
   customers?: Customer[];
   onAddNewCustomer?: () => void;
@@ -64,6 +65,7 @@ interface SalesFormProps {
 const SalesForm: React.FC<SalesFormProps> = ({
   initialData,
   onSaleComplete,
+  onPreviewReceipt,
   currency = "USD",
   customers = [],
   onAddNewCustomer,
@@ -168,6 +170,47 @@ const SalesForm: React.FC<SalesFormProps> = ({
     defaultPaymentStatus,
     cashAccounts,
   });
+
+  const handlePreview = () => {
+    if (!onPreviewReceipt) return;
+
+    if (formData.items.length === 0 || !formData.items[0].description.trim()) {
+      toast.error("Add at least one item to preview the receipt");
+      return;
+    }
+
+    const subtotal = calculateTotalAmount(formData.items);
+    const taxAmt = calculateTaxAmount(subtotal);
+    const total = subtotal + taxAmt;
+
+    const previewSale: Sale = {
+      id: initialData?.id || "preview",
+      receiptNumber: initialData?.receiptNumber || "PREVIEW",
+      customerName: formData.customerName || "Valued Customer",
+      customerAddress: formData.customerAddress,
+      customerContact: formData.customerContact,
+      items: formData.items.map((item) => ({
+        ...item,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+      })) as any,
+      paymentStatus: formData.paymentStatus,
+      profit: 0,
+      total: total,
+      totalCost: 0,
+      subtotal: subtotal,
+      discount: 0,
+      taxAmount: taxAmt,
+      date: new Date(),
+      taxRate: formData.taxRate || 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      amountPaid: formData.amountPaid,
+      amountDue: total - (formData.amountPaid || 0),
+    };
+
+    onPreviewReceipt(previewSale);
+  };
 
   const {
     createCashTransactionForSale,
@@ -737,6 +780,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         selectedCategoryId={selectedCustomerCategoryId}
         onCategoryChange={handleCategoryChange}
         onClearForm={!initialData ? handleClearForm : undefined}
+        onPreview={handlePreview}
       />
 
       <SaleItemsManager
@@ -797,6 +841,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
       <SalesFormActions
         loading={loading}
         onSubmit={handleSubmit}
+        onPreview={handlePreview}
         isEditing={!!initialData}
         onCancel={() => router.push("/agency/sales")}
         onClearForm={!initialData ? handleClearForm : undefined}

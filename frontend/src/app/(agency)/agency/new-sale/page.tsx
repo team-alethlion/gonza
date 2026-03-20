@@ -62,6 +62,8 @@ const NewSale = () => {
     handleAddCustomer,
     handleOpenNewCustomerDialog,
     setNewCustomerDialogOpen,
+    handlePreviewReceipt,
+    setIsReceiptOpen
   } = useNewSaleActions(editSale, handleResetForm);
 
   // Show loading while business context or profiles is loading
@@ -132,6 +134,7 @@ const NewSale = () => {
         onLoadDraft={handleLoadDraft}
         onDismissDraft={handleDismissDraft}
         onSaleComplete={wrappedHandleSaleComplete}
+        onPreviewReceipt={handlePreviewReceipt}
         onClearDraft={clearDraft}
         customers={customers || []}
         onAddNewCustomer={handleOpenNewCustomerDialog}

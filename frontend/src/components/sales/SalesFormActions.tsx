@@ -26,6 +26,7 @@ interface SalesFormActionsProps {
   isEditing?: boolean;
   onCancel: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  onPreview?: () => void;
   onClearForm?: () => void;
   printAfterSave: boolean;
   onPrintAfterSaveChange: (checked: boolean) => void;
