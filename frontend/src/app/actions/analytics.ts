@@ -2,6 +2,7 @@
 "use server";
 
 import { djangoFetch } from '@/lib/django-client';
+import { mapDbSaleToSale } from '@/types';
 
 export interface InventoryStats {
     totalCostValue: number;
@@ -48,7 +49,7 @@ export async function getAnalyticsSummaryAction(branchId: string, startDate?: st
                 paidSalesCount: Number(result.paidSalesCount || 0),
                 pendingSalesCount: Number(result.pendingSalesCount || 0),
                 totalExpenses: Number(result.totalExpenses || 0),
-                recentSales: result.recentSales || []
+                recentSales: (result.recentSales || []).map((s: any) => mapDbSaleToSale(s))
             }
         };
     } catch (error: any) {

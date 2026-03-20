@@ -89,10 +89,12 @@ export async function getInitialAppDataAction() {
             }
         }
 
-        // 1. Fetch Locations & Account Status SEQUENTIALLY
-        // This prevents the Django server from being flooded with concurrent requests
-        const locationsData = await getBusinessLocationsAction(userId);
-        const accountStatusData = await getAccountStatusAction(userId);
+        // 1. Fetch Locations & Account Status in parallel (Safe batch)
+        // These are relatively lightweight metadata requests
+        const [locationsData, accountStatusData] = await Promise.all([
+            getBusinessLocationsAction(userId),
+            getAccountStatusAction(userId)
+        ]);
 
         const locations = locationsData || [];
 
@@ -101,18 +103,24 @@ export async function getInitialAppDataAction() {
             targetBranchId = locations.find((l: any) => l.is_default)?.id || locations[0].id;
         }
 
-        // 2. Fetch Profiles, Settings, and Analytics in a small batch only if we have a branch
+        // 2. Fetch Profiles, Settings, and Analytics
         let profiles: any[] = [];
         let businessSettings = null;
         let analyticsSummary = null;
 
         if (targetBranchId) {
-            // First get profiles (small request)
-            profiles = await getProfilesAction(targetBranchId);
+            // Fetch Profiles and Settings in parallel (Group A)
+            const [profilesData, settingsData] = await Promise.all([
+                getProfilesAction(targetBranchId),
+                getBusinessSettingsAction(targetBranchId)
+            ]);
             
-            // Then get settings and analytics (larger/calculation-heavy requests)
-            // We still keep these separate to be safe
-            businessSettings = await getBusinessSettingsAction(targetBranchId);
+            profiles = profilesData;
+            businessSettings = settingsData;
+
+            // Fetch Analytics separately (Group B - heaviest request)
+            // Keeping this separate prevents the "database connection closed" error
+            // by ensuring it doesn't fight for connections with the metadata requests.
             const analyticsData = await getAnalyticsSummaryAction(targetBranchId);
             analyticsSummary = analyticsData?.success ? analyticsData.data : null;
         }

@@ -287,12 +287,31 @@ export async function updateSaleCustomerAction(saleId: string, customerId: strin
     }
 }
 
-export async function getSalesGoalAction(userId: string, branchId: string, month: number, year: number) {
+export async function getSalesGoalAction(
+    userId: string, 
+    branchId: string, 
+    periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    startDate: Date,
+    endDate: Date
+) {
     try {
         await verifyUserAccess(userId);
         await verifyBranchAccess(branchId);
-        const period = `${year}-${String(month).padStart(2, '0')}`;
-        const data = await djangoFetch(`sales/goals/?branchId=${branchId}&period=${period}`);
+        
+        // Construct a unique period identifier based on type and dates
+        let periodId = '';
+        const dateStr = startDate.toISOString().split('T')[0];
+        
+        if (periodType === 'DAILY') {
+            periodId = `DAILY-${dateStr}`;
+        } else if (periodType === 'WEEKLY') {
+            // Get week number or just start date
+            periodId = `WEEKLY-${dateStr}`;
+        } else {
+            periodId = `MONTHLY-${dateStr.substring(0, 7)}`;
+        }
+
+        const data = await djangoFetch(`sales/goals/?branchId=${branchId}&period_name=${periodId}`);
         const results = Array.isArray(data) ? data : (data.results || []);
         
         if (results.length > 0) {
@@ -318,15 +337,26 @@ export async function getSalesGoalAction(userId: string, branchId: string, month
 export async function upsertSalesGoalAction(
     userId: string,
     branchId: string,
-    month: number,
-    year: number,
+    periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    startDate: Date,
+    endDate: Date,
     amount: number,
     existingGoalId?: string | null
 ) {
     try {
         await verifyUserAccess(userId);
         await verifyBranchAccess(branchId);
-        const period = `${year}-${String(month).padStart(2, '0')}`;
+        
+        let periodId = '';
+        const dateStr = startDate.toISOString().split('T')[0];
+        
+        if (periodType === 'DAILY') {
+            periodId = `DAILY-${dateStr}`;
+        } else if (periodType === 'WEEKLY') {
+            periodId = `WEEKLY-${dateStr}`;
+        } else {
+            periodId = `MONTHLY-${dateStr.substring(0, 7)}`;
+        }
 
         let result;
         if (existingGoalId) {
@@ -341,9 +371,10 @@ export async function upsertSalesGoalAction(
                     user: userId,
                     branch: branchId,
                     amount_target: amount,
-                    period: period,
-                    start_date: new Date(year, month - 1, 1).toISOString(),
-                    end_date: new Date(year, month, 0).toISOString()
+                    period: periodType,
+                    period_name: periodId,
+                    start_date: startDate.toISOString(),
+                    end_date: endDate.toISOString()
                 })
             });
         }

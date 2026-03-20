@@ -108,6 +108,8 @@ const nextAuth = NextAuth({
         token.status = (user as any).status;
         token.accessToken = (user as any).accessToken;
         token.refreshToken = (user as any).refreshToken;
+        // Set expiry time (default to 24h if not provided by backend)
+        token.accessTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
         console.log("[Auth] JWT Initial Token set for:", token.id);
       } 
 
@@ -151,7 +153,38 @@ const nextAuth = NextAuth({
         }
       }
 
-      return token;
+      // 🔄 AUTOMATIC TOKEN REFRESH
+      // If the token has not expired yet, return it
+      if (Date.now() < (token.accessTokenExpires as number)) {
+        return token;
+      }
+
+      // If the access token has expired, try to refresh it
+      console.log("[Auth] Access Token expired, attempting refresh...");
+      try {
+        const response = await fetch(`${DJANGO_API_URL}/auth/token/refresh/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh: token.refreshToken }),
+        });
+
+        const refreshedTokens = await response.json();
+
+        if (!response.ok) throw refreshedTokens;
+
+        console.log("[Auth] Access Token refreshed successfully");
+        return {
+          ...token,
+          accessToken: refreshedTokens.access,
+          // Update expiry (assuming another 24h)
+          accessTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
+          // Use the new refresh token if provided, else fall back to old one
+          refreshToken: refreshedTokens.refresh ?? token.refreshToken,
+        };
+      } catch (error) {
+        console.error("[Auth] Error refreshing access token", error);
+        return { ...token, error: "RefreshAccessTokenError" };
+      }
     },
     async session({ session, token }) {
       if (token && session.user) {

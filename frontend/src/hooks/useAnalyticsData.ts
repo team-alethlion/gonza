@@ -145,14 +145,17 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     { name: 'Total Profit', amount: summary?.totalProfit || 0 },
   ], [summary]);
 
-  // Memoize recent sales (already filtered/limited by the caller usually)
+  // Prioritize initialSales (formatted data) over summary.recentSales (raw data)
   const recentSales = useMemo(() => {
-    if (summary?.recentSales && summary.recentSales.length > 0) {
-        return summary.recentSales;
+    // If we have local sales data, use it as it is already formatted/mapped
+    if (initialSales && initialSales.length > 0) {
+        return [...initialSales]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 20);
     }
-    return [...initialSales]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 20);
+    
+    // Fallback to summary data only if main list is empty
+    return summary?.recentSales || [];
   }, [initialSales, summary?.recentSales]);
 
   // Non-quote count (from summary if available, else from list)

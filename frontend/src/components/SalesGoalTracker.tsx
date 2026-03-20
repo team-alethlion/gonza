@@ -152,6 +152,26 @@ const SalesGoalTracker = () => {
   const [goalInput, setGoalInput] = useState("");
   const [selectedGoalType, setSelectedGoalType] = useState<GoalType>("monthly");
 
+  const currentPeriod = useMemo(() => {
+    let startDate: Date, endDate: Date;
+    switch (selectedGoalType) {
+      case "daily":
+        startDate = startOfDay(currentDate);
+        endDate = endOfDay(currentDate);
+        break;
+      case "weekly":
+        startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+        endDate = endOfWeek(currentDate, { weekStartsOn: 1 });
+        break;
+      case "monthly":
+      default:
+        startDate = startOfMonth(currentDate);
+        endDate = endOfMonth(currentDate);
+        break;
+    }
+    return { startDate, endDate };
+  }, [selectedGoalType, currentDate]);
+
   useEffect(() => {
     // Reset goal input when business changes
     if (currentBusiness?.id) {
@@ -165,16 +185,17 @@ const SalesGoalTracker = () => {
       "sales-goal",
       user?.id,
       currentBusiness?.id,
-      currentMonth,
-      currentYear,
+      selectedGoalType,
+      currentPeriod.startDate.toISOString(),
     ],
     queryFn: async () => {
       if (!user?.id || !currentBusiness?.id) return null;
       const result = await getSalesGoalAction(
         user.id,
         currentBusiness.id,
-        currentMonth,
-        currentYear,
+        selectedGoalType.toUpperCase() as any,
+        currentPeriod.startDate,
+        currentPeriod.endDate
       );
       if (!result.success) throw new Error(result.error);
       return result.data;
@@ -189,33 +210,15 @@ const SalesGoalTracker = () => {
       "current-period-sales",
       currentBusiness?.id,
       selectedGoalType,
-      currentMonth,
-      currentYear,
+      currentPeriod.startDate.toISOString(),
     ],
     queryFn: async () => {
       if (!currentBusiness?.id) return 0;
 
-      let startDate: Date, endDate: Date;
-      switch (selectedGoalType) {
-        case "daily":
-          startDate = startOfDay(currentDate);
-          endDate = endOfDay(currentDate);
-          break;
-        case "weekly":
-          startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
-          endDate = endOfWeek(currentDate, { weekStartsOn: 1 });
-          break;
-        case "monthly":
-        default:
-          startDate = startOfMonth(currentDate);
-          endDate = endOfMonth(currentDate);
-          break;
-      }
-
       const result = await getPeriodSalesAction(
         currentBusiness.id,
-        startDate,
-        endDate,
+        currentPeriod.startDate,
+        currentPeriod.endDate,
       );
       if (!result.success) throw new Error(result.error);
       return result.data ?? 0;
@@ -232,8 +235,9 @@ const SalesGoalTracker = () => {
       const result = await upsertSalesGoalAction(
         user.id,
         currentBusiness.id,
-        currentMonth,
-        currentYear,
+        selectedGoalType.toUpperCase() as any,
+        currentPeriod.startDate,
+        currentPeriod.endDate,
         amount,
         salesGoal?.id ?? null,
       );
@@ -251,8 +255,8 @@ const SalesGoalTracker = () => {
           "sales-goal",
           user?.id,
           currentBusiness?.id,
-          currentMonth,
-          currentYear,
+          selectedGoalType,
+          currentPeriod.startDate.toISOString(),
         ],
       });
       queryClient.invalidateQueries({
@@ -260,8 +264,7 @@ const SalesGoalTracker = () => {
           "current-period-sales",
           currentBusiness?.id,
           selectedGoalType,
-          currentMonth,
-          currentYear,
+          currentPeriod.startDate.toISOString(),
         ],
       });
       setGoalInput("");
