@@ -50,7 +50,7 @@ export const useNewSaleActions = (
       }
 
       // Only save customer to customers database if they don't exist already
-      if (user?.id && sale.customerName.trim()) {
+      if (user?.id && sale.customerName && typeof sale.customerName === 'string' && sale.customerName.trim()) {
         let customerId = sale.customerId;
 
         // If no customerId provided, check if customer already exists by name

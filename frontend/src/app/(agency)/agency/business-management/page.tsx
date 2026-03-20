@@ -321,7 +321,7 @@ const BusinessManagement = () => {
                   <h3 className="font-semibold text-lg md:text-xl text-blue-900">
                     {currentBusiness.name}
                   </h3>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-sm text-blue-600" suppressHydrationWarning>
                     Created:{" "}
                     {new Date(currentBusiness.created_at).toLocaleDateString()}
                   </p>

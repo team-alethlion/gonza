@@ -73,14 +73,6 @@ const UserMenu = () => {
                 <span>Settings</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={triggerUpdate}
-              disabled={isUpdating}
-              className="flex items-center bg-orange-50 text-orange-700 font-medium hover:bg-orange-100"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isUpdating ? 'animate-spin' : ''}`} />
-              <span>{isUpdating ? 'UPDATING...' : 'UPDATE APP'}</span>
-            </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut}>

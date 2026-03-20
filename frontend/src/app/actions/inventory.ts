@@ -243,7 +243,8 @@ export async function deleteMultipleStockHistoryEntriesAction(ids: string[], bra
 export async function getNextReceiptNumberAction(locationId: string) {
     try {
         await verifyBranchAccess(locationId);
-        return { success: true, data: "000001" }; // Will be properly implemented in core_app later
+        const data = await djangoFetch<any>(`sales/sales/next_receipt_number/?branchId=${locationId}`);
+        return { success: true, data: data.next_number || "000001" };
     } catch (error: any) {
         return { success: false, error: error.message };
     }

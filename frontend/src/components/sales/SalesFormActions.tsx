@@ -18,19 +18,22 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import Link from "next/link";
 
-interface SaleFormActionsProps {
+interface SalesFormActionsProps {
   loading: boolean;
-  isEditing: boolean;
+  isUpdate?: boolean;
+  isEditing?: boolean;
   onCancel: () => void;
+  onSubmit: (e: React.FormEvent) => void;
   onClearForm?: () => void;
   printAfterSave: boolean;
   onPrintAfterSaveChange: (checked: boolean) => void;
   thermalPrintAfterSave?: boolean;
   onThermalPrintAfterSaveChange?: (checked: boolean) => void;
-  paymentStatus: string;
-  includePaymentInfo: boolean;
-  onIncludePaymentInfoChange: (checked: boolean) => void;
+  paymentStatus?: string;
+  includePaymentInfo?: boolean;
+  onIncludePaymentInfoChange?: (checked: boolean) => void;
   hasPendingPaymentChanges?: boolean;
 
   sendSMS?: boolean;
@@ -42,17 +45,19 @@ interface SaleFormActionsProps {
   disabled?: boolean;
 }
 
-const SaleFormActions: React.FC<SaleFormActionsProps> = ({
+export const SalesFormActions: React.FC<SalesFormActionsProps> = ({
   loading,
+  isUpdate,
   isEditing,
   onCancel,
+  onSubmit,
   onClearForm,
   printAfterSave,
   onPrintAfterSaveChange,
   thermalPrintAfterSave = false,
   onThermalPrintAfterSaveChange,
   paymentStatus,
-  includePaymentInfo,
+  includePaymentInfo = true,
   onIncludePaymentInfoChange,
   hasPendingPaymentChanges = false,
   sendSMS = false,
@@ -81,14 +86,9 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
     checkBridge();
   }, []);
 
-  const FALLBACK_PLACEHOLDER =
-    "Thank you for your purchase, {customer_name}! We appreciate your business.";
-
-  // Comprehensive default template
   // Comprehensive default template
   const DEFAULT_TEMPLATE = "Thank you for your purchase from {business_name} We truly appreciate your support and trust in our Business. If you need any assistance or have any questions about your order, please feel free to reach out, on {business_number} We look forward to serving you again!";
 
-  // --- Utility function moved up ---
   const fillTemplate = (template: string, name: string) => {
     let result = template;
     if (name) {
@@ -97,28 +97,24 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
         .replace(/\{first_name\}/gi, name.split(" ")[0] || "")
         .replace(/\{last_name\}/gi, name.split(" ").slice(1).join(" ") || "");
     }
-    // Replace business placeholders
     result = result
       .replace(/\{business_name\}/gi, currentBusiness?.name || "[Business Name]")
       .replace(/\{business_number\}/gi, settings.businessPhone || "[Business Number]");
     return result;
   };
 
-  // Filter ThankYou templates
   const thankYouTemplates = useMemo(() => {
     return templates.filter(
       (t) => t.category && String(t.category).trim() === "ThankYou"
     );
   }, [templates]);
 
-  // --- Unified effect for template auto-fill ---
   useEffect(() => {
     const syncTemplate = () => {
       if (!sendSMS || !onSMSMessageChange) return;
 
       let templateToUse = DEFAULT_TEMPLATE;
 
-      // Handle template selection
       if (selectedTemplateId === 'default') {
         templateToUse = DEFAULT_TEMPLATE;
       } else if (selectedTemplateId && thankYouTemplates.length > 0) {
@@ -127,7 +123,6 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
           templateToUse = tpl.content;
         }
       } else if (!selectedTemplateId) {
-        // Auto-set to default
         setSelectedTemplateId('default');
         return;
       }
@@ -168,11 +163,11 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
 
   const messageLength = smsMessage.length;
   const smsCredits = Math.ceil(messageLength / 160) || 1;
+  const isEditingActual = isEditing || isUpdate;
 
   return (
     <div className="space-y-4">
-      {/* Print & Payment Options */}
-      <Card className="border-gray-200">
+      <Card className="border-gray-200 shadow-sm">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -180,8 +175,8 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
               checked={printAfterSave}
               onCheckedChange={onPrintAfterSaveChange}
             />
-            <Label className="text-sm">
-              Show receipt after {isEditing ? "updating" : "creating"} sale
+            <Label htmlFor="printAfterSave" className="text-sm cursor-pointer">
+              Show receipt after {isEditingActual ? "updating" : "creating"} sale
             </Label>
           </div>
 
@@ -192,21 +187,21 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
                 checked={thermalPrintAfterSave}
                 onCheckedChange={onThermalPrintAfterSaveChange}
               />
-              <Label className="text-sm flex items-center gap-1.5 text-green-700 font-medium">
+              <Label htmlFor="thermalPrintAfterSave" className="text-sm flex items-center gap-1.5 text-green-700 font-medium cursor-pointer">
                 <Printer className="w-3.5 h-3.5" />
                 Auto-print (Thermal Bridge)
               </Label>
             </div>
           )}
 
-          {(paymentStatus === "Paid" || paymentStatus === "Installment Sale") && (
+          {(paymentStatus === "Paid" || paymentStatus === "Installment Sale") && onIncludePaymentInfoChange && (
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="includePaymentInfo"
                 checked={includePaymentInfo}
                 onCheckedChange={onIncludePaymentInfoChange}
               />
-              <Label className="text-sm">
+              <Label htmlFor="includePaymentInfo" className="text-sm cursor-pointer">
                 Include payment information in receipt
               </Label>
             </div>
@@ -214,10 +209,9 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
         </CardContent>
       </Card>
 
-      {/* SMS Section */}
       {onSendSMSChange && onSMSMessageChange && (
         <Card
-          className={`border-blue-200 ${sendSMS ? "bg-blue-50/50" : "bg-gray-50"
+          className={`border-blue-200 shadow-sm ${sendSMS ? "bg-blue-50/50" : "bg-gray-50"
             }`}
         >
           <CardContent className="pt-6 space-y-4">
@@ -229,7 +223,7 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
                 disabled={!customerHasPhone}
               />
               <div className="flex-1">
-                <Label className="text-base font-medium flex items-center gap-2">
+                <Label htmlFor="sendSMS" className="text-base font-medium flex items-center gap-2 cursor-pointer">
                   <MessageSquare className="w-5 h-5 text-blue-600" />
                   Send Thank You SMS
                 </Label>
@@ -242,8 +236,7 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
             </div>
 
             {sendSMS && customerHasPhone && (
-              <div className="space-y-4 pl-8 border-l-4 border-blue-300 bg-blue-50/30 -m-4 p-4 rounded-r-lg">
-                {/* Template Selector */}
+              <div className="space-y-4 pl-8 border-l-4 border-blue-300 bg-blue-50/30 -m-4 p-4 rounded-r-lg mt-4">
                 <div>
                   <Label className="text-sm font-medium">Template</Label>
                   {templatesLoading ? (
@@ -256,7 +249,7 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
                       value={selectedTemplateId || "default"}
                       onValueChange={handleTemplateChange}
                     >
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 bg-white">
                         <SelectValue placeholder="Choose a thank you template..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -273,7 +266,6 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
                   )}
                 </div>
 
-                {/* Message */}
                 <div>
                   <Label className="text-sm font-medium">Message</Label>
                   <Textarea
@@ -281,7 +273,7 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
                     onChange={(e) => onSMSMessageChange?.(e.target.value)}
                     placeholder="Your message will appear here..."
                     rows={4}
-                    className="mt-1 resize-none text-sm font-medium"
+                    className="mt-1 resize-none text-sm font-medium bg-white"
                   />
                   <div className="flex justify-between items-center mt-2 text-xs text-gray-600">
                     <span>{messageLength} characters</span>
@@ -297,9 +289,8 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
         </Card>
       )}
 
-      {/* Rest of your buttons */}
       {hasPendingPaymentChanges && (
-        <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200">
+        <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200 shadow-sm">
           Pending payment changes will be applied when updating.
         </div>
       )}
@@ -310,32 +301,33 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
           variant="outline"
           onClick={onCancel}
           disabled={loading}
-          className="flex-1"
+          className="flex-1 h-12"
         >
           Cancel
         </Button>
-        {!isEditing && onClearForm && (
+        {!isEditingActual && onClearForm && (
           <Button
             type="button"
             variant="outline"
             onClick={onClearForm}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 h-12"
           >
             Clear Form
           </Button>
         )}
         <Button
-          type="submit"
+          type="button"
+          onClick={onSubmit}
           disabled={loading || disabled}
-          className="flex-1 bg-blue-600 hover:bg-blue-700"
+          className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 shadow-sm"
         >
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isEditing ? "Updating..." : "Creating..."}
+              {isEditingActual ? "Updating..." : "Creating..."}
             </>
-          ) : isEditing ? (
+          ) : isEditingActual ? (
             "Update Sale"
           ) : (
             "Create Sale"
@@ -346,4 +338,4 @@ const SaleFormActions: React.FC<SaleFormActionsProps> = ({
   );
 };
 
-export default SaleFormActions;
+export default SalesFormActions;

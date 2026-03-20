@@ -79,7 +79,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
     if (end) end.setHours(23, 59, 59, 999);
     const isWithinRange = (!start || saleDate >= start) &&
       (!end || saleDate <= end);
-    return sale.customerName.toLowerCase() === customer.fullName.toLowerCase() && status !== 'QUOTE' && isWithinRange;
+    return (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() && status !== 'QUOTE' && isWithinRange;
   });
 
   // Helper to get paid amount for a sale
@@ -104,7 +104,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   // Export CSV handler
   const handleExportStatementCSV = () => {
     const allCustomerSales = sales.filter(sale =>
-      sale.customerName.toLowerCase() === customer.fullName.toLowerCase() &&
+      (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
       (sale.paymentStatus || '').toString().toUpperCase() !== 'QUOTE'
     );
 
@@ -206,7 +206,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   // Export PDF handler (uses new jsPDF-based layout utility)
   const handleExportStatementPDF = async () => {
     const allCustomerSales = sales.filter(sale =>
-      sale.customerName.toLowerCase() === customer.fullName.toLowerCase() &&
+      (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
       (sale.paymentStatus || '').toString().toUpperCase() !== 'QUOTE'
     );
 
@@ -332,7 +332,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
           // Note: If customer has > 50 sales, this might be incomplete. 
           // Ideally we need a server-side action for total credit balance too.
           const customerSales = sales.filter(sale =>
-            sale.customerName.toLowerCase() === customer.fullName.toLowerCase()
+            (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase()
           );
 
           const unpaidSales = customerSales.filter(sale =>
@@ -472,7 +472,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         <PaymentReminderNotice
           customer={customer}
           unpaidSales={sales.filter(sale =>
-            sale.customerName.toLowerCase() === customer.fullName.toLowerCase() &&
+            (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
             sale.paymentStatus === "NOT PAID"
           )}
           totalAmountDue={creditSales.total}
@@ -755,7 +755,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                 <tbody className="divide-y divide-gray-200">
                   {(() => {
                     const allCustomerSales = sales.filter(sale =>
-                      sale.customerName.toLowerCase() === customer.fullName.toLowerCase() &&
+                      (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
                       (sale.paymentStatus || '').toString().toUpperCase() !== 'QUOTE'
                     );
 

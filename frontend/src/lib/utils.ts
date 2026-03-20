@@ -24,8 +24,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatNumber(value: number): string {
-  return value.toLocaleString(undefined, {
+export function formatNumber(value: number | undefined | null): string {
+  const num = value ?? 0;
+  return num.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   });

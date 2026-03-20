@@ -7,6 +7,7 @@ import { djangoFetch } from '@/lib/django-client';
 import { Sale, DbSale, mapDbSaleToSale } from '@/types';
 
 const toValidNum = (val: unknown) => {
+    if (val === null || val === undefined || val === '' || String(val).toLowerCase() === 'none') return 0;
     const num = Number(val);
     return isNaN(num) ? 0 : num;
 };
@@ -47,7 +48,14 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
             customer_address: item.customer_address,
             customer_contact: item.customer_phone,
             customer_id: item.customer,
-            items: item.items,
+            items: (item.items || []).map((si: any) => ({
+                ...si,
+                price: toValidNum(si.unit_price || si.price),
+                cost: toValidNum(si.cost_price || si.cost),
+                quantity: toValidNum(si.quantity),
+                total: toValidNum(si.total || (toValidNum(si.unit_price || si.price) * toValidNum(si.quantity))),
+                description: si.product_name || si.description || 'Product'
+            })),
             payment_status: item.status,
             profit: toValidNum(item.profit),
             date: item.date,

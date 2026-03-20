@@ -20,10 +20,14 @@ from django.db.models.functions import Cast
 from django.db.models import Count, F, DecimalField
 import io
 
+from decimal import Decimal, InvalidOperation
+
 def to_decimal(val):
     try:
+        if val is None or str(val).lower() == 'none' or str(val).strip() == '':
+            return Decimal('0.0')
         return Decimal(str(val))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, InvalidOperation):
         return Decimal('0.0')
 
 class SalesGoalViewSet(viewsets.ModelViewSet):
@@ -103,6 +107,9 @@ class SaleViewSet(viewsets.ModelViewSet):
         }
 
     def _process_inventory(self, items, branch_id, user_id, receipt_number, date_obj):
+        if not date_obj:
+            date_obj = datetime.now()
+            
         for item in items:
             product_id = item.get('productId')
             if not product_id:
@@ -143,12 +150,18 @@ class SaleViewSet(viewsets.ModelViewSet):
         financials = self.calculate_financials(raw_items, tax_rate)
         
         import uuid
+        receipt_number = data.get('receiptNumber')
+        
+        # Check for receipt number collision and handle it gracefully
+        if receipt_number and Sale.objects.filter(receipt_number=receipt_number).exists():
+            receipt_number = f"{receipt_number}-{uuid.uuid4().hex[:4].upper()}"
+
         sale = Sale.objects.create(
             id=f"sl_{uuid.uuid4().hex[:12]}",
             user_id=user_id,
             branch_id=branch_id,
             agency_id=data.get('agencyId'),
-            receipt_number=data.get('receiptNumber'),
+            receipt_number=receipt_number,
             customer_name=data.get('customerName', 'Valued Customer'),
             customer_id=data.get('customerId'),
             category_id=data.get('categoryId'),
@@ -171,8 +184,10 @@ class SaleViewSet(viewsets.ModelViewSet):
             SaleItem.objects.create(
                 id=f"si_{uuid.uuid4().hex[:12]}",
                 sale=sale,
+                agency_id=sale.agency_id,
+                branch_id=sale.branch_id,
                 product_id=item.get('productId'),
-                product_name=item.get('productName'),
+                product_name=item.get('productName') or item.get('description') or 'Unknown Product',
                 quantity=qty,
                 unit_price=price,
                 subtotal=item_sub,
@@ -181,7 +196,9 @@ class SaleViewSet(viewsets.ModelViewSet):
             )
             
         if status_val != 'QUOTE':
-            self._process_inventory(raw_items, branch_id, user_id, sale.receipt_number, sale.created_at)
+            # Ensure we have a valid date even before commit
+            processed_date = getattr(sale, 'date', None) or datetime.now()
+            self._process_inventory(raw_items, branch_id, user_id, sale.receipt_number, processed_date)
             
         return sale
 
@@ -251,9 +268,12 @@ class SaleViewSet(viewsets.ModelViewSet):
             price = to_decimal(item.get('price', 0))
             item_sub = price * qty
             SaleItem.objects.create(
+                id=f"si_{uuid.uuid4().hex[:12]}",
                 sale=sale,
+                agency_id=sale.agency_id,
+                branch_id=sale.branch_id,
                 product_id=item.get('productId'),
-                product_name=item.get('productName'),
+                product_name=item.get('productName') or item.get('description') or 'Unknown Product',
                 quantity=qty,
                 unit_price=price,
                 subtotal=item_sub,
@@ -380,6 +400,31 @@ class SaleViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'])
+    def next_receipt_number(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        last_sale = Sale.objects.filter(branch_id=branch_id).order_by('-receipt_number').first()
+        
+        if last_sale and last_sale.receipt_number:
+            try:
+                # Try to extract the number from strings like "PAY-000001" or just "000001"
+                import re
+                nums = re.findall(r'\d+', last_sale.receipt_number)
+                if nums:
+                    last_num = int(nums[-1])
+                    next_num = str(last_num + 1).zfill(6)
+                else:
+                    next_num = "000001"
+            except (ValueError, TypeError):
+                next_num = "000001"
+        else:
+            next_num = "000001"
+            
+        return Response({"next_number": next_num})
+
+    @action(detail=False, methods=['get'])
     def period_aggregate(self, request):
         branch_id = request.query_params.get('branchId')
         start = request.query_params.get('startDate')
@@ -437,7 +482,7 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
         branch_id = self.request.query_params.get('branchId')
         if sale_id: qs = qs.filter(sale_id=sale_id)
         if branch_id: qs = qs.filter(branch_id=branch_id)
-        return qs.order_by('-payment_date')
+        return qs.order_by('-date')
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -446,15 +491,37 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
         branch_id = data.get('locationId')
         account_id = data.get('accountId')
         amount = to_decimal(data.get('amount', 0))
-        date_val = data.get('paymentDate') or datetime.now()
+        date_val = data.get('paymentDate') or data.get('date') or datetime.now()
         
+        if not sale_id:
+            return Response({"error": "saleId is required"}, status=400)
+            
+        try:
+            sale = Sale.objects.select_for_update().get(id=sale_id)
+        except Sale.DoesNotExist:
+            return Response({"error": "Sale not found"}, status=404)
+
+        if amount <= 0:
+            return Response({"error": "Payment amount must be greater than zero"}, status=400)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        payment = serializer.save(branch_id=branch_id, amount=amount, payment_date=date_val)
+        payment = serializer.save(
+            branch_id=branch_id, 
+            agency_id=sale.agency_id,
+            amount=amount, 
+            date=date_val
+        )
+        
+        # Update sale totals
+        sale.amount_paid += amount
+        sale.balance_due = max(0, sale.total_amount - sale.amount_paid)
+        if sale.balance_due == 0:
+            sale.status = 'COMPLETED'
+        sale.save(update_fields=['amount_paid', 'balance_due', 'status'])
         
         if account_id and branch_id and not payment.cash_transaction_id:
             from finance.models import CashTransaction
-            sale = payment.sale
             desc = f"Installment payment for {sale.customer.name if sale.customer else sale.customer_name} - Receipt #{sale.receipt_number}"
             cash_tx = CashTransaction.objects.create(
                 user_id=payment.received_by_id or request.user.id,
@@ -480,8 +547,8 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
         
         if payment.cash_transaction_id:
             payment.cash_transaction.amount = payment.amount
-            if 'paymentDate' in request.data:
-                payment.cash_transaction.date = payment.payment_date
+            if 'paymentDate' in request.data or 'date' in request.data:
+                payment.cash_transaction.date = payment.date
             payment.cash_transaction.save(update_fields=['amount', 'date'])
             
         return Response(self.get_serializer(payment).data)
@@ -514,7 +581,7 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
             transaction_type='cash_in',
             category='Installment payment',
             description=desc,
-            date=payment.payment_date
+            date=payment.date
         )
         payment.cash_transaction = cash_tx
         payment.save(update_fields=['cash_transaction'])

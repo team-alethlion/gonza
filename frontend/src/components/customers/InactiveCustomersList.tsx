@@ -66,11 +66,10 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
     
     // For each customer, find their most recent purchase
     return filteredCustomers.filter(customer => {
-      const customerSales = sales.filter(sale => 
-        sale.customerName.toLowerCase() === customer.fullName.toLowerCase() &&
+      const customerSales = sales.filter(sale =>
+        (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
         sale.paymentStatus !== 'Quote'
-      );
-      
+      );      
       // If no sales records, they're inactive
       if (customerSales.length === 0) {
         return true;
@@ -86,11 +85,10 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
 
   // Format days since last purchase
   const getDaysSinceLastPurchase = (customerName: string): string => {
-    const customerSales = sales.filter(sale => 
-      sale.customerName.toLowerCase() === customerName.toLowerCase() &&
+    const customerSales = sales.filter(sale =>
+      (sale.customerName || '').toLowerCase() === customerName.toLowerCase() &&
       sale.paymentStatus !== 'Quote'
-    );
-    
+    );    
     if (customerSales.length === 0) {
       return "No purchases";
     }

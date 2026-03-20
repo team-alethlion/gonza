@@ -174,7 +174,7 @@ const CustomerInformation: React.FC<CustomerInformationProps> = ({
   };
 
   // Check if this is an existing customer (has a match in customers list)
-  const isExistingCustomer = customerName.trim() && customers.some(c => c.fullName === customerName);
+  const isExistingCustomer = (customerName || '').trim() && customers.some(c => c.fullName === customerName);
 
   return (
     <div className="space-y-4">

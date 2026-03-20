@@ -21,7 +21,7 @@ export const useFormValidation = ({
   const validateForm = useCallback((grandTotal: number, saleDate?: Date): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.customerName.trim()) {
+    if (!(formData.customerName || '').trim()) {
       newErrors.customerName = 'Customer name is required';
     }
 
@@ -31,11 +31,11 @@ export const useFormValidation = ({
 
     // Filter out completely empty items (placeholder items)
     const nonEmptyItems = formData.items.filter(item =>
-      item.description.trim() !== '' || item.quantity > 0 || item.price > 0
+      (item.description || '').trim() !== '' || item.quantity > 0 || item.price > 0
     );
 
     const hasInvalidItems = nonEmptyItems.some(item =>
-      !item.description.trim() ||
+      !(item.description || '').trim() ||
       item.quantity <= 0 ||
       item.price < 0 ||
       item.cost < 0

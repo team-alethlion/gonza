@@ -69,7 +69,7 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
 
         // Fallback for older sales without ID
         const matchesCustomer =
-          sale.customerName?.toLowerCase().trim() ===
+          (sale.customerName || '').toLowerCase().trim() ===
           customerName.toLowerCase().trim();
 
         // Filter out manual statement entries (Adjustments and Manual Payments)

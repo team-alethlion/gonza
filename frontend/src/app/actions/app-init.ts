@@ -89,12 +89,10 @@ export async function getInitialAppDataAction() {
             }
         }
 
-        // 1. Fetch Locations & Account Status
-        // Using getBusinessLocationsAction since we can just hit django endpoints now
-        const [locationsData, accountStatusData] = await Promise.all([
-            getBusinessLocationsAction(userId),
-            getAccountStatusAction(userId)
-        ]);
+        // 1. Fetch Locations & Account Status SEQUENTIALLY
+        // This prevents the Django server from being flooded with concurrent requests
+        const locationsData = await getBusinessLocationsAction(userId);
+        const accountStatusData = await getAccountStatusAction(userId);
 
         const locations = locationsData || [];
 
@@ -103,20 +101,19 @@ export async function getInitialAppDataAction() {
             targetBranchId = locations.find((l: any) => l.is_default)?.id || locations[0].id;
         }
 
-        // 2. Fetch Profiles, Settings, and Analytics only if we have a branch
+        // 2. Fetch Profiles, Settings, and Analytics in a small batch only if we have a branch
         let profiles: any[] = [];
         let businessSettings = null;
         let analyticsSummary = null;
 
         if (targetBranchId) {
-            const [profilesData, settingsData, analyticsData] = await Promise.all([
-                getProfilesAction(targetBranchId),
-                getBusinessSettingsAction(targetBranchId),
-                getAnalyticsSummaryAction(targetBranchId)
-            ]);
+            // First get profiles (small request)
+            profiles = await getProfilesAction(targetBranchId);
             
-            profiles = profilesData;
-            businessSettings = settingsData;
+            // Then get settings and analytics (larger/calculation-heavy requests)
+            // We still keep these separate to be safe
+            businessSettings = await getBusinessSettingsAction(targetBranchId);
+            const analyticsData = await getAnalyticsSummaryAction(targetBranchId);
             analyticsSummary = analyticsData?.success ? analyticsData.data : null;
         }
 

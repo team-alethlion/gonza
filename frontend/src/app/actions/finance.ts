@@ -143,7 +143,7 @@ export async function getInstallmentPaymentsAction(saleId: string, branchId: str
                 saleId: p.sale,
                 userId: p.received_by,
                 amount: toSafeNumber(p.amount),
-                paymentDate: p.payment_date,
+                paymentDate: p.date || p.created_at, // Use 'date' which is the model field
                 notes: p.notes,
                 cashTransactionId: p.cash_transaction,
                 createdAt: p.created_at,

@@ -77,6 +77,7 @@ export interface DbSale {
   total_cost: number;
   subtotal: number;
   discount: number;
+  discount_amount?: number;
   tax_amount: number;
   date: string;
   tax_rate?: number | null;
@@ -85,6 +86,8 @@ export interface DbSale {
   cash_transaction_id?: string | null;
   amount_paid?: number | null;
   amount_due?: number | null;
+  balance_due?: number | null;
+  total_amount?: number;
   notes?: string | null;
   category_id?: string | null;
 }
@@ -384,15 +387,15 @@ export const mapDbSaleToSale = (dbSale: DbSale): Sale => {
     }
 
     return {
-      description: item.description || '',
+      description: item.description || item.product_name || 'Item',
       quantity: Number(item.quantity) || 0,
-      price: Number(item.price) || 0,
-      cost: Number(item.cost) || 0,
-      productId: item.productId || undefined,
+      price: Number(item.unit_price || item.price || 0),
+      cost: Number(item.cost_price || item.cost || 0),
+      productId: item.productId || item.product || undefined,
       discountType,
       discountPercentage,
       discountAmount,
-      createdAt: item.createdAt || undefined,
+      createdAt: item.createdAt || item.created_at || undefined,
     };
   }) as SaleItem[];
 
@@ -405,17 +408,17 @@ export const mapDbSaleToSale = (dbSale: DbSale): Sale => {
     customerId: dbSale.customer_id || undefined,
     items,
     paymentStatus: dbSale.payment_status as 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale',
-    profit: Number(dbSale.profit),
-    total: Number(dbSale.total || 0),
+    profit: Number(dbSale.profit) || 0,
+    total: Number(dbSale.total || dbSale.total_amount || 0),
     totalCost: Number(dbSale.total_cost || 0),
     subtotal: Number(dbSale.subtotal || 0),
-    discount: Number(dbSale.discount || 0),
+    discount: Number(dbSale.discount || dbSale.discount_amount || 0),
     taxAmount: Number(dbSale.tax_amount || 0),
     date: new Date(dbSale.date),
-    taxRate: dbSale.tax_rate ? Number(dbSale.tax_rate) : 0,
+    taxRate: Number(dbSale.tax_rate) || 0,
     cashTransactionId: dbSale.cash_transaction_id || undefined,
-    amountPaid: dbSale.amount_paid ? Number(dbSale.amount_paid) : undefined,
-    amountDue: dbSale.amount_due ? Number(dbSale.amount_due) : undefined,
+    amountPaid: Number(dbSale.amount_paid) || 0,
+    amountDue: Number(dbSale.amount_due || dbSale.balance_due || 0),
     notes: dbSale.notes || '',
     categoryId: dbSale.category_id || undefined,
     createdAt: new Date(dbSale.created_at),

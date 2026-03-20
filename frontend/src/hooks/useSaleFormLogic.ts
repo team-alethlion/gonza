@@ -1,11 +1,12 @@
-import { useCallback } from 'react';
-import { useFormState } from './sale-form/useFormState';
-import { useFormHandlers } from './sale-form/useFormHandlers';
-import { useItemManagement } from './sale-form/useItemManagement';
-import { useCustomerSelection } from './sale-form/useCustomerSelection';
-import { useFormValidation } from './sale-form/useFormValidation';
-import { useFormCalculations } from './sale-form/useFormCalculations';
-import { usePaymentOperations } from './sale-form/usePaymentOperations';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback } from "react";
+import { useFormState } from "./sale-form/useFormState";
+import { useFormHandlers } from "./sale-form/useFormHandlers";
+import { useItemManagement } from "./sale-form/useItemManagement";
+import { useCustomerSelection } from "./sale-form/useCustomerSelection";
+import { useFormValidation } from "./sale-form/useFormValidation";
+import { useFormCalculations } from "./sale-form/useFormCalculations";
+import { usePaymentOperations } from "./sale-form/usePaymentOperations";
 
 interface UseSaleFormLogicProps {
   initialData?: any;
@@ -16,7 +17,7 @@ interface UseSaleFormLogicProps {
 export const useSaleFormLogic = ({
   initialData,
   defaultPaymentStatus,
-  cashAccounts
+  cashAccounts: _cashAccounts, // Prefix with underscore to mark as intentionally unused for now
 }: UseSaleFormLogicProps) => {
   // Form state management
   const {
@@ -27,6 +28,7 @@ export const useSaleFormLogic = ({
     thermalPrintAfterSave,
     includePaymentInfo,
     selectedCustomerCategoryId,
+    selectedDate, // Now correctly destructured
     paymentDate,
     linkToCash,
     selectedCashAccountId,
@@ -40,6 +42,7 @@ export const useSaleFormLogic = ({
     setThermalPrintAfterSave,
     setIncludePaymentInfo,
     setSelectedCustomerCategoryId,
+    setSelectedDate, // Now correctly destructured
     setPaymentDate,
     setLinkToCash,
     setSelectedCashAccountId,
@@ -54,7 +57,7 @@ export const useSaleFormLogic = ({
     handleChange,
     handleSelectChange,
     handleAmountPaidChange,
-    handlePaymentDateChange,
+    handlePaymentDateChange: _handlePaymentDateChange, // Mark as unused to fix ESLint
   } = useFormHandlers({
     formData,
     setFormData,
@@ -73,10 +76,7 @@ export const useSaleFormLogic = ({
   } = useItemManagement({ formData, setFormData });
 
   // Customer selection
-  const {
-    handleSelectCustomer,
-    handleCategoryChange,
-  } = useCustomerSelection({
+  const { handleSelectCustomer, handleCategoryChange } = useCustomerSelection({
     setFormData,
     setSelectedCustomerCategoryId,
   });
@@ -92,10 +92,9 @@ export const useSaleFormLogic = ({
   });
 
   // Calculations
-  const {
-    calculateTotalAmount,
-    calculateTaxAmount,
-  } = useFormCalculations({ taxRate: formData.taxRate || 0 });
+  const { calculateTotalAmount, calculateTaxAmount } = useFormCalculations({
+    taxRate: formData.taxRate || 0,
+  });
 
   // Payment operations
   const {
@@ -112,87 +111,127 @@ export const useSaleFormLogic = ({
   } = usePaymentOperations({ initialDataId: initialData?.id });
 
   // Enhanced payment date change handler
-  const handlePaymentDateChangeEnhanced = useCallback((date: Date) => {
-    setPaymentDate(date);
-  }, [setPaymentDate]);
+  const handlePaymentDateChangeEnhanced = useCallback(
+    (date: Date) => {
+      setPaymentDate(date);
+    },
+    [setPaymentDate],
+  );
 
   // Enhanced clear form that can reset date and draft
-  const clearForm = useCallback((onDateReset?: () => void, onDraftClear?: () => void) => {
-    clearFormState(onDateReset);
-    clearChanges();
-    if (onDraftClear) {
-      onDraftClear();
-    }
-  }, [clearFormState, clearChanges]);
+  const clearForm = useCallback(
+    (onDateReset?: () => void, onDraftClear?: () => void) => {
+      clearFormState(onDateReset);
+      clearChanges();
+      if (onDraftClear) {
+        onDraftClear();
+      }
+    },
+    [clearFormState, clearChanges],
+  );
 
   // Enhanced handlers that reset the formRecentlyCleared flag
-  const handleChangeEnhanced = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleChange(e);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleChange]);
+  const handleChangeEnhanced = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleChange(e);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleChange],
+  );
 
-  const handleSelectChangeEnhanced = useCallback((value: string) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleSelectChange(value);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleSelectChange]);
+  const handleSelectChangeEnhanced = useCallback(
+    (value: string) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleSelectChange(value);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleSelectChange],
+  );
 
   // Enhanced item handlers that reset the formRecentlyCleared flag
-  const handleAddItemEnhanced = useCallback((product?: any) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
+  const handleAddItemEnhanced = useCallback(
+    (product?: any) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
 
-    // Check if product is actually an event (from onClick) or a valid product object
-    // Events have 'type' or 'target' properties, products have 'id' or 'name'
-    const isEvent = product && (product.nativeEvent || product.preventDefault || product.stopPropagation || (product.type && product.target));
+      // Check if product is actually an event (from onClick) or a valid product object
+      // Events have 'type' or 'target' properties, products have 'id' or 'name'
+      const isEvent =
+        product &&
+        (product.nativeEvent ||
+          product.preventDefault ||
+          product.stopPropagation ||
+          (product.type && product.target));
 
-    if (product && !isEvent) {
-      handleAddItemWithProduct(product);
-    } else {
-      handleAddItem();
-    }
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleAddItem, handleAddItemWithProduct]);
+      if (product && !isEvent) {
+        handleAddItemWithProduct(product);
+      } else {
+        handleAddItem();
+      }
+    },
+    [
+      formRecentlyCleared,
+      setFormRecentlyCleared,
+      handleAddItem,
+      handleAddItemWithProduct,
+    ],
+  );
 
-  const handleUpdateItemEnhanced = useCallback((index: number, updatedItem: any) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleUpdateItem(index, updatedItem);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleUpdateItem]);
+  const handleUpdateItemEnhanced = useCallback(
+    (index: number, updatedItem: any) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleUpdateItem(index, updatedItem);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleUpdateItem],
+  );
 
-  const handleRemoveItemEnhanced = useCallback((index: number) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleRemoveItem(index);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleRemoveItem]);
+  const handleRemoveItemEnhanced = useCallback(
+    (index: number) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleRemoveItem(index);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleRemoveItem],
+  );
 
   // Enhanced customer handlers that reset the formRecentlyCleared flag
-  const handleSelectCustomerEnhanced = useCallback((customer: any) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleSelectCustomer(customer);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleSelectCustomer]);
+  const handleSelectCustomerEnhanced = useCallback(
+    (customer: any) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleSelectCustomer(customer);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleSelectCustomer],
+  );
 
-  const handleCategoryChangeEnhanced = useCallback((categoryId: string) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    handleCategoryChange(categoryId);
-  }, [formRecentlyCleared, setFormRecentlyCleared, handleCategoryChange]);
+  const handleCategoryChangeEnhanced = useCallback(
+    (categoryId: string) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      handleCategoryChange(categoryId);
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, handleCategoryChange],
+  );
 
   // Sales category change handler
-  const handleSalesCategoryChange = useCallback((categoryId: string) => {
-    if (formRecentlyCleared) {
-      setFormRecentlyCleared(false);
-    }
-    setFormData(prev => ({ ...prev, categoryId }));
-  }, [formRecentlyCleared, setFormRecentlyCleared, setFormData]);
+  const handleSalesCategoryChange = useCallback(
+    (categoryId: string) => {
+      if (formRecentlyCleared) {
+        setFormRecentlyCleared(false);
+      }
+      setFormData((prev) => ({ ...prev, categoryId }));
+    },
+    [formRecentlyCleared, setFormRecentlyCleared, setFormData],
+  );
 
   return {
     // State
@@ -203,6 +242,7 @@ export const useSaleFormLogic = ({
     thermalPrintAfterSave,
     includePaymentInfo,
     selectedCustomerCategoryId,
+    selectedDate,
     paymentDate,
     linkToCash,
     selectedCashAccountId,
@@ -219,6 +259,7 @@ export const useSaleFormLogic = ({
     setPrintAfterSave,
     setThermalPrintAfterSave,
     setIncludePaymentInfo,
+    setSelectedDate,
     setLinkToCash,
     setSelectedCashAccountId,
     setCashTransactionId,

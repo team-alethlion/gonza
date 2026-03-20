@@ -28,20 +28,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {pageTitle}
       </h1>
       <div className="flex gap-2">
-        <div className="flex flex-col items-center">
-          <Button 
-            onClick={onRefresh} 
-            variant="outline" 
-            size={isMobile ? "sm" : "icon"}
-            disabled={isRefreshing || isLoading}
-            className="relative"
-            title="Update app for latest features and data"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Update app</span>
-          </Button>
-          <span className="text-xs text-gray-500 mt-1 hidden md:block">Update App</span>
-        </div>
         <Button onClick={() => router.push('/agency/new-sale')} className="gap-2" size={isMobile ? "sm" : "default"}>
           <Plus size={16} />
           {!isMobile && "New Sale"}

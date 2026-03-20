@@ -1,40 +1,59 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 // SalesForm.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'sonner';
-import { Sale, SaleFormData, SaleItem, mapSaleToDbSale, Customer, Product } from '@/types';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { calculateProfit } from '@/utils/calculateProfit';
-import { generateReceiptNumber } from '@/utils/generateReceiptNumber';
-import { localDb } from '@/lib/dexie';
-import { lookupProductByBarcodeAction, updateSaleCashTransactionAction } from '@/app/actions/products';
-import { useBusinessSettings } from '@/hooks/useBusinessSettings';
-import { useProducts } from '@/hooks/useProducts';
-import { useSaleProductSelection } from '@/hooks/useSaleProductSelection';
-import { useCashAccounts } from '@/hooks/useCashAccounts';
-import { useBusiness } from '@/contexts/BusinessContext';
-import { useSaleDraft } from '@/hooks/useSaleDraft';
-import { useSaleFormLogic } from '@/hooks/useSaleFormLogic';
-import { useCashTransactionOperations } from '@/hooks/useCashTransactionOperations';
-import { useInstallmentPayments } from '@/hooks/useInstallmentPayments';
-import { useStockHistory } from '@/hooks/useStockHistory';
-import { useMessages } from '@/hooks/useMessages'; // This is the key fix!
-import { useQuery } from '@tanstack/react-query';
-import { upsertSaleAction } from '@/app/actions/sales';
-import { queueOfflineSale } from '@/hooks/useOfflineSync';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import {
+  Sale,
+  SaleFormData,
+  SaleItem,
+  mapSaleToDbSale,
+  Customer,
+  Product,
+} from "@/types";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { calculateProfit } from "@/utils/calculateProfit";
+import { generateReceiptNumber } from "@/utils/generateReceiptNumber";
+import { localDb } from "@/lib/dexie";
+import {
+  lookupProductByBarcodeAction,
+  updateSaleCashTransactionAction,
+} from "@/app/actions/products";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useProducts } from "@/hooks/useProducts";
+import { useSaleProductSelection } from "@/hooks/useSaleProductSelection";
+import { useCashAccounts } from "@/hooks/useCashAccounts";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useSaleDraft } from "@/hooks/useSaleDraft";
+import { useSaleFormLogic } from "@/hooks/useSaleFormLogic";
+import { useCashTransactionOperations } from "@/hooks/useCashTransactionOperations";
+import { useInstallmentPayments } from "@/hooks/useInstallmentPayments";
+import { useStockHistory } from "@/hooks/useStockHistory";
+import { useMessages } from "@/hooks/useMessages"; // This is the key fix!
+import { useQuery } from "@tanstack/react-query";
+import { upsertSaleAction } from "@/app/actions/sales";
+import { queueOfflineSale } from "@/hooks/useOfflineSync";
 
 // Components
-import SaleFormHeader from '@/components/sales/SaleFormHeader';
-import SaleItemsManager from '@/components/sales/SaleItemsManager';
-import SalePaymentSection from '@/components/sales/SalePaymentSection';
-import SaleFormActions from '@/components/sales/SaleFormActions';
-import SaleCategorySelector from '@/components/sales/SaleCategorySelector';
-import { mapDbProductToProduct } from '@/types';
+import SaleFormHeader from "@/components/sales/SaleFormHeader";
+import SaleItemsManager from "@/components/sales/SaleItemsManager";
+import SalePaymentSection from "@/components/sales/SalePaymentSection";
+import SalesFormActions from "@/components/sales/SalesFormActions";
+import SaleCategorySelector from "@/components/sales/SaleCategorySelector";
+import { mapDbProductToProduct } from "@/types";
 
 interface SalesFormProps {
   initialData?: Sale;
-  onSaleComplete?: (sale: Sale, showReceipt?: boolean, includePaymentInfo?: boolean, selectedCustomerCategoryId?: string, onClearDraft?: () => void, saleDate?: Date, thermalPrintAfterSave?: boolean) => void;
+  onSaleComplete?: (
+    sale: Sale,
+    showReceipt?: boolean,
+    includePaymentInfo?: boolean,
+    selectedCustomerCategoryId?: string,
+    onClearDraft?: () => void,
+    saleDate?: Date,
+    thermalPrintAfterSave?: boolean,
+  ) => void;
   currency?: string;
   customers?: Customer[];
   onAddNewCustomer?: () => void;
@@ -45,7 +64,7 @@ interface SalesFormProps {
 const SalesForm: React.FC<SalesFormProps> = ({
   initialData,
   onSaleComplete,
-  currency = 'USD',
+  currency = "USD",
   customers = [],
   onAddNewCustomer,
   draftData,
@@ -54,10 +73,12 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(initialData?.date || new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    initialData?.date || new Date(),
+  );
 
   // Note: defaultPaymentStatus might need to come from props since we don't have location.state
-  const defaultPaymentStatus = initialData?.paymentStatus || 'Paid';
+  const defaultPaymentStatus = initialData?.paymentStatus || "Paid";
 
   const { settings } = useBusinessSettings();
   const { user } = useAuth();
@@ -67,9 +88,9 @@ const SalesForm: React.FC<SalesFormProps> = ({
   // DEBUG: Check if initialData has categoryId
   useEffect(() => {
     if (initialData) {
-      console.log('SalesForm initialData:', initialData);
-      console.log('SalesForm initialData.categoryId:', initialData.categoryId);
-      console.log('SalesForm initialData.notes:', initialData.notes);
+      console.log("SalesForm initialData:", initialData);
+      console.log("SalesForm initialData.categoryId:", initialData.categoryId);
+      console.log("SalesForm initialData.notes:", initialData.notes);
     }
   }, [initialData]);
 
@@ -82,12 +103,15 @@ const SalesForm: React.FC<SalesFormProps> = ({
 
   // Key: Use the proper messaging hook
   const { createMessage, templates = [] } = useMessages(user?.id);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
   const [sendSMS, setSendSMS] = useState(true);
 
   // Comprehensive default SMS template
   // Comprehensive default SMS template
-  const defaultSMSTemplate = "Thank you for your purchase from {business_name} We truly appreciate your support and trust in our Business. If you need any assistance or have any questions about your order, please feel free to reach out, on {business_number} We look forward to serving you again!";
+  const defaultSMSTemplate =
+    "Thank you for your purchase from {business_name} We truly appreciate your support and trust in our Business. If you need any assistance or have any questions about your order, please feel free to reach out, on {business_number} We look forward to serving you again!";
 
   const [smsMessage, setSMSMessage] = useState(defaultSMSTemplate);
 
@@ -142,7 +166,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
   } = useSaleFormLogic({
     initialData,
     defaultPaymentStatus,
-    cashAccounts
+    cashAccounts,
   });
 
   const {
@@ -156,10 +180,13 @@ const SalesForm: React.FC<SalesFormProps> = ({
     payments: installmentPayments,
     linkPaymentToCashAccount,
     unlinkPaymentFromCashAccount,
-    updatePayment: updatePaymentOriginal
+    updatePayment: updatePaymentOriginal,
   } = useInstallmentPayments(initialData?.id);
 
-  const updatePayment = async (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => {
+  const updatePayment = async (
+    paymentId: string,
+    updates: { amount?: number; notes?: string; paymentDate?: Date },
+  ) => {
     await updatePaymentOriginal(paymentId, updates);
   };
 
@@ -179,31 +206,48 @@ const SalesForm: React.FC<SalesFormProps> = ({
   });
 
   // Auto-save draft
-  const autoSaveDraft = React.useCallback((isPersistent = true) => {
-    // Check ref to prevent saving during clear operation
-    if (isClearingRef.current) return;
+  const autoSaveDraft = React.useCallback(
+    (isPersistent = true) => {
+      // Check ref to prevent saving during clear operation
+      if (isClearingRef.current) return;
 
-    if (!initialData && !loading && !saleCompleted && !formRecentlyCleared) {
-      const hasData = formData.customerName.trim() ||
-        formData.customerAddress.trim() ||
-        formData.customerContact.trim() ||
-        formData.items.some(item => item.description.trim() || item.quantity !== 1 || item.price !== 0);
+      if (!initialData && !loading && !saleCompleted && !formRecentlyCleared) {
+        const hasData =
+          formData.customerName.trim() ||
+          formData.customerAddress.trim() ||
+          formData.customerContact.trim() ||
+          formData.items.some(
+            (item) =>
+              item.description.trim() ||
+              item.quantity !== 1 ||
+              item.price !== 0,
+          );
 
-      if (hasData) {
-        saveDraft(formData, selectedDate, isPersistent);
+        if (hasData) {
+          saveDraft(formData, selectedDate, isPersistent);
+        }
       }
-    }
-  }, [formData, selectedDate, initialData, loading, saveDraft, saleCompleted, formRecentlyCleared]);
+    },
+    [
+      formData,
+      selectedDate,
+      initialData,
+      loading,
+      saveDraft,
+      saleCompleted,
+      formRecentlyCleared,
+    ],
+  );
 
   useEffect(() => {
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-    
+
     // ⚡️ SPEED: Immediate session save (no timeout) for critical data loss prevention
-    autoSaveDraft(false); 
+    autoSaveDraft(false);
 
     // ⚡️ PERSISTENCE: Debounced persistent save (localStorage) every 2s
     autoSaveTimeoutRef.current = setTimeout(() => autoSaveDraft(true), 2000);
-    
+
     return () => {
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
       autoSaveDraft(true); // Save on unmount
@@ -213,11 +257,11 @@ const SalesForm: React.FC<SalesFormProps> = ({
   useEffect(() => {
     const handleBeforeUnload = () => autoSaveDraft();
     const handleVisibilityChange = () => document.hidden && autoSaveDraft();
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [autoSaveDraft]);
 
@@ -225,7 +269,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     if (draftData && !initialData) {
       setFormData(draftData.formData);
       setSelectedDate(draftData.selectedDate);
-      setTaxRateInput(draftData.formData.taxRate?.toString() || '');
+      setTaxRateInput(draftData.formData.taxRate?.toString() || "");
       // Removed onClearDraft call to keep draft until sale is saved/completed
     }
   }, [draftData, initialData, setFormData, setTaxRateInput]);
@@ -235,23 +279,36 @@ const SalesForm: React.FC<SalesFormProps> = ({
       if (initialData?.cashTransactionId) {
         setLinkToCash(true);
         setCashTransactionId(initialData.cashTransactionId);
-        const accountId = await findCashTransactionForSale(initialData.cashTransactionId);
+        const accountId = await findCashTransactionForSale(
+          initialData.cashTransactionId,
+        );
         if (accountId) setSelectedCashAccountId(accountId);
       }
-      if (cashAccounts.length > 0 && !selectedCashAccountId && !initialData?.cashTransactionId) {
-        const defaultAccount = cashAccounts.find(acc => acc.isDefault) || cashAccounts[0];
+      if (
+        cashAccounts.length > 0 &&
+        !selectedCashAccountId &&
+        !initialData?.cashTransactionId
+      ) {
+        const defaultAccount =
+          cashAccounts.find((acc) => acc.isDefault) || cashAccounts[0];
         setSelectedCashAccountId(defaultAccount.id);
       }
     })();
-  }, [initialData, cashAccounts, findCashTransactionForSale, setSelectedCashAccountId]);
+  }, [
+    initialData,
+    cashAccounts,
+    findCashTransactionForSale,
+    setSelectedCashAccountId,
+  ]);
 
   const calculateTotalProfit = (items: SaleItem[]) => {
     return items.reduce((total, item) => {
       // Calculate the effective price after discount (same logic as revenue calculation)
       const subtotal = item.price * item.quantity;
-      const discountAmount = item.discountType === 'amount'
-        ? (item.discountAmount || 0)
-        : (subtotal * (item.discountPercentage || 0)) / 100;
+      const discountAmount =
+        item.discountType === "amount"
+          ? item.discountAmount || 0
+          : (subtotal * (item.discountPercentage || 0)) / 100;
       const effectiveRevenue = subtotal - discountAmount;
       const totalCost = item.cost * item.quantity;
       const itemProfit = effectiveRevenue - totalCost;
@@ -274,26 +331,42 @@ const SalesForm: React.FC<SalesFormProps> = ({
       } else if (errors.taxRate) {
         toast.error(errors.taxRate);
       } else {
-        toast.error('Please fill in all required fields correctly');
+        toast.error("Please fill in all required fields correctly");
       }
       return;
     }
 
-    if (formData.items.length === 0 || formData.items.every(item => !item.description.trim())) {
-      toast.error('Please add at least one valid item');
+    if (
+      formData.items.length === 0 ||
+      formData.items.every((item) => !item.description.trim())
+    ) {
+      toast.error("Please add at least one valid item");
       return;
     }
 
     setLoading(true);
     try {
-      const receiptNumber = initialData?.receiptNumber || await generateReceiptNumber(currentBusiness?.id || '');
+      const receiptNumber =
+        initialData?.receiptNumber ||
+        (await generateReceiptNumber(currentBusiness?.id || ""));
       const profit = calculateTotalProfit(formData.items);
       let finalCashTransactionId = cashTransactionId;
 
       if (initialData) {
         finalCashTransactionId = await updateCashTransactionForSale(
-          { id: initialData.id, customerName: formData.customerName, receiptNumber: initialData.receiptNumber, items: formData.items },
-          grandTotal, cashTransactionId, originalPaymentStatus, formData.paymentStatus, linkToCash, selectedCashAccountId, selectedDate
+          {
+            id: initialData.id,
+            customerName: formData.customerName,
+            receiptNumber: initialData.receiptNumber,
+            items: formData.items,
+          },
+          grandTotal,
+          cashTransactionId,
+          originalPaymentStatus,
+          formData.paymentStatus,
+          linkToCash,
+          selectedCashAccountId,
+          selectedDate,
         );
         setCashTransactionId(finalCashTransactionId);
       }
@@ -303,9 +376,9 @@ const SalesForm: React.FC<SalesFormProps> = ({
         selectedDate,
         profit,
         receiptNumber,
-        user?.id || '',
-        currentBusiness?.id || '',
-        finalCashTransactionId
+        user?.id || "",
+        currentBusiness?.id || "",
+        finalCashTransactionId,
       );
 
       if (!navigator.onLine) {
@@ -318,33 +391,38 @@ const SalesForm: React.FC<SalesFormProps> = ({
           amountPaid: formData.amountPaid,
           amountDue: formData.amountDue,
           items: formData.items,
-          notes: formData.notes
+          notes: formData.notes,
         };
 
         await queueOfflineSale(
           offlineSaleData,
-          currentBusiness?.id || '',
-          user?.id || ''
+          currentBusiness?.id || "",
+          user?.id || "",
         );
 
-        toast.success('Offline! Sale queued for sync when connection returns.');
+        toast.success("Offline! Sale queued for sync when connection returns.");
         setIsSubmitted(true);
         if (draftData && onClearDraft) onClearDraft();
-        if (!onSaleComplete) router.push('/agency/sales');
+        if (!onSaleComplete) router.push("/agency/sales");
         return;
       }
 
-      const { success, data: saleResult, error } = await upsertSaleAction(saleDbData, !!initialData, initialData?.id);
+      const {
+        success,
+        data: saleResult,
+        error,
+      } = await upsertSaleAction(saleDbData, !!initialData, initialData?.id);
 
-      if (!success || !saleResult) throw new Error(error || 'Failed to save sale');
+      if (!success || !saleResult)
+        throw new Error(error || "Failed to save sale");
       const result = saleResult as any;
 
       const sale: Sale = {
         id: result.id,
         receiptNumber: result.receiptNumber,
         customerName: result.customerName,
-        customerAddress: result.customerAddress || '',
-        customerContact: result.customerContact || '',
+        customerAddress: result.customerAddress || "",
+        customerContact: result.customerContact || "",
         customerId: result.customerId || undefined,
         items: result.items,
         paymentStatus: result.paymentStatus,
@@ -354,7 +432,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         cashTransactionId: result.cashTransactionId || undefined,
         amountPaid: result.amountPaid ? Number(result.amountPaid) : undefined,
         amountDue: result.amountDue ? Number(result.amountDue) : undefined,
-        notes: result.notes || '',
+        notes: result.notes || "",
         categoryId: result.categoryId || undefined,
         total: result.total || 0,
         totalCost: result.totalCost || 0,
@@ -371,23 +449,50 @@ const SalesForm: React.FC<SalesFormProps> = ({
         // This prevents double deduction bug where stock was reduced twice for edited sales
 
         if (hasChanges) await processPendingPaymentChanges();
-        if (formData.paymentStatus === 'Installment Sale' && formData.amountPaid) {
-          await createInstallmentPayment({ saleId: sale.id, amount: formData.amountPaid, notes: sale.items.map(i => i.description).join(', '), paymentDate, accountId: linkToCash ? selectedCashAccountId : undefined, locationId: currentBusiness?.id });
-          setFormData(prev => ({ ...prev, amountPaid: 0 }));
+        if (
+          formData.paymentStatus === "Installment Sale" &&
+          formData.amountPaid
+        ) {
+          await createInstallmentPayment({
+            saleId: sale.id,
+            amount: formData.amountPaid,
+            notes: sale.items.map((i) => i.description).join(", "),
+            paymentDate,
+            accountId: linkToCash ? selectedCashAccountId : undefined,
+            locationId: currentBusiness?.id,
+          });
+          setFormData((prev) => ({ ...prev, amountPaid: 0 }));
         }
-
 
         if (initialData.date.getTime() !== selectedDate.getTime()) {
           await updateStockHistoryDatesBySaleId(sale.id, selectedDate);
         }
       } else {
-        const newCashId = await createCashTransactionForSale(sale, grandTotal, linkToCash, selectedCashAccountId, selectedDate, formData.paymentStatus);
+        const newCashId = await createCashTransactionForSale(
+          sale,
+          grandTotal,
+          linkToCash,
+          selectedCashAccountId,
+          selectedDate,
+          formData.paymentStatus,
+        );
         if (newCashId) {
           await updateSaleCashTransactionAction(sale.id, newCashId);
           sale.cashTransactionId = newCashId;
         }
-        if (formData.paymentStatus === 'Installment Sale' && formData.amountPaid) {
-          await createInstallmentPaymentWithCash(sale.id, formData.amountPaid, sale.items.map(i => i.description).join(', '), linkToCash, selectedCashAccountId, currentBusiness?.id || '', createInstallmentPayment);
+        if (
+          formData.paymentStatus === "Installment Sale" &&
+          formData.amountPaid
+        ) {
+          await createInstallmentPaymentWithCash(
+            sale.id,
+            formData.amountPaid,
+            sale.items.map((i) => i.description).join(", "),
+            linkToCash,
+            selectedCashAccountId,
+            currentBusiness?.id || "",
+            createInstallmentPayment,
+          );
         }
         // Inventory update removed from here - it's handled by onSaleComplete callback in useNewSaleActions.ts
         // This prevents double deduction bug where stock was reduced twice for new sales
@@ -399,37 +504,66 @@ const SalesForm: React.FC<SalesFormProps> = ({
       // IMPORTANT: execute onSaleComplete (which updates inventory) BEFORE showing success
       // If inventory fails, it will throw, identifying the sale as failed
       if (onSaleComplete) {
-        await onSaleComplete(sale, printAfterSave, includePaymentInfo, selectedCustomerCategoryId, undefined, selectedDate, thermalPrintAfterSave);
+        await onSaleComplete(
+          sale,
+          printAfterSave,
+          includePaymentInfo,
+          selectedCustomerCategoryId,
+          undefined,
+          selectedDate,
+          thermalPrintAfterSave,
+        );
       }
 
-      toast.success(initialData ? 'Sale updated successfully!' : 'Sale recorded successfully!');
+      toast.success(
+        initialData
+          ? "Sale updated successfully!"
+          : "Sale recorded successfully!",
+      );
 
       // Send Thank You SMS with comprehensive template
       if (sendSMS && formData.customerContact && !initialData) {
         // Generate items list
         const itemsList = formData.items
-          .map(item => `• ${item.description} (Qty: ${item.quantity})`)
-          .join('\r\n');
+          .map((item) => `• ${item.description} (Qty: ${item.quantity})`)
+          .join("\r\n");
 
         const personalizedMessage = smsMessage
-          .replace(/\{customer_name\}/gi, formData.customerName || 'Valued Customer')
+          .replace(
+            /\{customer_name\}/gi,
+            formData.customerName || "Valued Customer",
+          )
           .replace(/\{receipt_number\}/gi, sale.receiptNumber)
           .replace(/\{items_list\}/gi, itemsList)
-          .replace(/\{currency\}/gi, settings.currency || 'UGX')
+          .replace(/\{currency\}/gi, settings.currency || "UGX")
           .replace(/\{amount\}/gi, grandTotal.toLocaleString())
-          .replace(/\{business_contact\}/gi, settings.businessPhone || 'our office')
-          .replace(/\{business_name\}/gi, currentBusiness?.name || 'Our Business');
+          .replace(
+            /\{business_contact\}/gi,
+            settings.businessPhone || "our office",
+          )
+          .replace(
+            /\{business_name\}/gi,
+            currentBusiness?.name || "Our Business",
+          );
 
         try {
           await createMessage({
             phoneNumber: formData.customerContact,
             content: personalizedMessage,
-            customerId: customers.find(c => c.phoneNumber === formData.customerContact)?.id,
-            metadata: { sale_id: sale.id, receipt_number: sale.receiptNumber, type: 'thank_you' }
+            customerId: customers.find(
+              (c) => c.phoneNumber === formData.customerContact,
+            )?.id,
+            metadata: {
+              sale_id: sale.id,
+              receipt_number: sale.receiptNumber,
+              type: "thank_you",
+            },
           });
-          toast.success('Thank you SMS sent successfully!');
+          toast.success("Thank you SMS sent successfully!");
         } catch (smsError: any) {
-          toast.error('Sale saved, but failed to send SMS: ' + smsError.message);
+          toast.error(
+            "Sale saved, but failed to send SMS: " + smsError.message,
+          );
         }
       }
 
@@ -440,13 +574,12 @@ const SalesForm: React.FC<SalesFormProps> = ({
       setIsSubmitted(true);
 
       if (!onSaleComplete) {
-        router.push('/agency/sales');
+        router.push("/agency/sales");
       }
-
     } catch (error: any) {
-      console.error('Error submitting sale:', error);
+      console.error("Error submitting sale:", error);
       setIsSubmitted(false);
-      toast.error(error.message || 'An error occurred. Please try again.');
+      toast.error(error.message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -455,20 +588,20 @@ const SalesForm: React.FC<SalesFormProps> = ({
   // ⚡️ Performance: Memoize expensive calculations to prevent recomputing on every render
   const totalAmount = useMemo(
     () => calculateTotalAmount(formData.items),
-    [formData.items]
+    [formData.items],
   );
 
   const taxAmount = useMemo(
     () => calculateTaxAmount(totalAmount),
-    [totalAmount, formData.taxRate]
+    [totalAmount, formData.taxRate],
   );
 
   const grandTotal = useMemo(
     () => totalAmount + taxAmount,
-    [totalAmount, taxAmount]
+    [totalAmount, taxAmount],
   );
 
-  const scannerBufferRef = useRef('');
+  const scannerBufferRef = useRef("");
   const lastKeyTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -479,7 +612,12 @@ const SalesForm: React.FC<SalesFormProps> = ({
       lastKeyTimeRef.current = currentTime;
 
       // Ignore special keys
-      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') {
+      if (
+        e.key === "Shift" ||
+        e.key === "Control" ||
+        e.key === "Alt" ||
+        e.key === "Meta"
+      ) {
         return;
       }
 
@@ -488,14 +626,17 @@ const SalesForm: React.FC<SalesFormProps> = ({
       const isAlphanumeric = /^[a-zA-Z0-9\-_]$/.test(e.key);
 
       // Aggressive Interception: If NOT in an input field, suppress ALL alphanumeric keys
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true';
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.contentEditable === "true";
       if (!isInput && isAlphanumeric) {
         e.preventDefault();
         e.stopPropagation();
       }
 
       // Handle Enter key - this is typically the suffix of a scan
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         const scannedBarcode = scannerBufferRef.current.trim();
         if (scannedBarcode.length >= 2) {
           e.preventDefault();
@@ -506,29 +647,37 @@ const SalesForm: React.FC<SalesFormProps> = ({
           const handleScan = async () => {
             // 1. Try Local Lookup (Dexie) - Instant
             let product = await localDb.products
-              .where('barcode').equals(scannedBarcode)
-              .or('itemNumber').equals(scannedBarcode)
+              .where("barcode")
+              .equals(scannedBarcode)
+              .or("itemNumber")
+              .equals(scannedBarcode)
               .first();
 
             // 2. Fallback to Server if not in local cache
             if (!product) {
-              console.log(`[Scanner] 🔍 Not in local DB, trying server lookup...`);
-              const serverResult = await lookupProductByBarcodeAction(scannedBarcode, currentBusiness?.id || '');
+              console.log(
+                `[Scanner] 🔍 Not in local DB, trying server lookup...`,
+              );
+              const serverResult = await lookupProductByBarcodeAction(
+                scannedBarcode,
+                currentBusiness?.id || "",
+              );
               if (serverResult) {
                 // serverResult is now correctly mapped by the action
                 product = {
                   ...serverResult,
                   createdAt: new Date(serverResult.createdAt),
-                  updatedAt: new Date(serverResult.updatedAt)
+                  updatedAt: new Date(serverResult.updatedAt),
                 } as any; // Cast safely since we've mapped all required fields in the action
-                
+
                 // Background update local cache for future scans
                 localDb.products.put(product as Product);
               }
             }
 
             if (product) {
-              const referenceCode = product.barcode || product.itemNumber || scannedBarcode;
+              const referenceCode =
+                product.barcode || product.itemNumber || scannedBarcode;
               console.log(`[Scanner] ✅ Match Found: ${product.name}`);
               handleAddItem(product);
               toast.success(`Scanned: ${product.name} (${referenceCode})`);
@@ -539,10 +688,10 @@ const SalesForm: React.FC<SalesFormProps> = ({
           };
 
           handleScan();
-          scannerBufferRef.current = '';
+          scannerBufferRef.current = "";
           return;
         }
-        scannerBufferRef.current = '';
+        scannerBufferRef.current = "";
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -566,8 +715,8 @@ const SalesForm: React.FC<SalesFormProps> = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [user?.id, currentBusiness?.id]);
 
   return (
@@ -590,7 +739,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onClearForm={!initialData ? handleClearForm : undefined}
       />
 
-
       <SaleItemsManager
         items={formData.items}
         onAddItem={handleAddItem}
@@ -610,12 +758,14 @@ const SalesForm: React.FC<SalesFormProps> = ({
       <SalePaymentSection
         paymentStatus={formData.paymentStatus}
         onPaymentStatusChange={handleSelectChange}
-        isInstallmentSale={formData.paymentStatus === 'Installment Sale'}
+        isInstallmentSale={formData.paymentStatus === "Installment Sale"}
         amountPaid={formData.amountPaid || 0}
         amountDue={formData.amountDue || 0}
         grandTotal={grandTotal}
         currency={settings.currency}
-        onAmountPaidChange={(amount) => handleAmountPaidChange(amount, grandTotal)}
+        onAmountPaidChange={(amount) =>
+          handleAmountPaidChange(amount, grandTotal)
+        }
         onPaymentDateChange={handlePaymentDateChange}
         paymentDate={paymentDate}
         saleId={initialData?.id}
@@ -628,20 +778,27 @@ const SalesForm: React.FC<SalesFormProps> = ({
         selectedCashAccountId={selectedCashAccountId}
         onCashAccountChange={setSelectedCashAccountId}
         cashAccounts={cashAccounts}
-        hasPaidWithHistory={formData.paymentStatus === 'Paid' && payments.length > 0}
-        onLinkPaymentToCash={(paymentId, accountId) => linkPaymentToCashAccount(paymentId, accountId)}
+        hasPaidWithHistory={
+          formData.paymentStatus === "Paid" && payments.length > 0
+        }
+        onLinkPaymentToCash={(paymentId, accountId) =>
+          linkPaymentToCashAccount(paymentId, accountId)
+        }
         onUpdatePayment={updatePayment}
-        onPaymentStatusChangeFromInstallment={async (newStatus) => handleSelectChange(newStatus)}
+        onPaymentStatusChangeFromInstallment={async (newStatus) =>
+          handleSelectChange(newStatus)
+        }
         notes={formData.notes}
         onNotesChange={handleChange}
-        categoryId={formData.categoryId || ''}
+        categoryId={formData.categoryId || ""}
         onCategoryChange={handleSalesCategoryChange}
       />
 
-      <SaleFormActions
+      <SalesFormActions
         loading={loading}
+        onSubmit={handleSubmit}
         isEditing={!!initialData}
-        onCancel={() => router.push('/agency/sales')}
+        onCancel={() => router.push("/agency/sales")}
         onClearForm={!initialData ? handleClearForm : undefined}
         printAfterSave={printAfterSave}
         onPrintAfterSaveChange={setPrintAfterSave}
@@ -659,7 +816,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
         customerName={formData.customerName}
         disabled={isSubmitted}
       />
-
     </form>
   );
 };

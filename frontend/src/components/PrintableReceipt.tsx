@@ -98,18 +98,28 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   const documentTitle = getDocumentTitle();
   const documentNumberLabel = getDocumentNumberLabel();
 
+  // Helper to ensure we always have a valid number for math
+  const toSafeNum = (val: any) => {
+    if (val === null || val === undefined || val === '') return 0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   // Calculate subtotal with discounts
   const subtotal = sale.items.reduce((total, item) => {
-    const itemSubtotal = item.price * item.quantity;
+    const itemPrice = toSafeNum(item.price);
+    const itemQty = toSafeNum(item.quantity);
+    const itemSubtotal = itemPrice * itemQty;
+    
     const discountAmount =
       item.discountType === "amount"
-        ? item.discountAmount || 0
-        : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+        ? toSafeNum(item.discountAmount)
+        : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
     return total + (itemSubtotal - discountAmount);
   }, 0);
 
   // Calculate tax amount based on taxRate (default to 0 if not present)
-  const taxRate = sale.taxRate || 0;
+  const taxRate = toSafeNum(sale.taxRate);
   const taxAmount = subtotal * (taxRate / 100);
 
   // Total amount including tax
@@ -117,18 +127,18 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
   // For installment sales, use payment history total; for others use the provided amounts
   const totalPaidFromHistory = payments.reduce(
-    (sum, payment) => sum + payment.amount,
+    (sum, payment) => sum + toSafeNum(payment.amount),
     0,
   );
   const displayAmountPaid =
     sale.paymentStatus === "Installment Sale" ||
     (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
-      : sale.amountPaid || totalAmount;
+      : toSafeNum(sale.amountPaid || totalAmount);
   const displayAmountDue =
     sale.paymentStatus === "Installment Sale"
       ? Math.max(0, totalAmount - totalPaidFromHistory)
-      : sale.amountDue || 0;
+      : toSafeNum(sale.amountDue);
 
   // Get the total amount in words
   const totalAmountInWords = numberToWords(totalAmount);
@@ -195,16 +205,19 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       customerAddress: sale.customerAddress,
       customerContact: sale.customerContact,
       items: sale.items.map((item) => {
-        const itemSubtotal = item.quantity * item.price;
+        const itemPrice = toSafeNum(item.price);
+        const itemQty = toSafeNum(item.quantity);
+        const itemSubtotal = itemPrice * itemQty;
+        
         const discountAmount =
           item.discountType === "amount"
-            ? item.discountAmount || 0
-            : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+            ? toSafeNum(item.discountAmount)
+            : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
         return {
           description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.price,
-          discountPercentage: item.discountPercentage || 0,
+          quantity: itemQty,
+          unitPrice: itemPrice,
+          discountPercentage: toSafeNum(item.discountPercentage),
           discountAmount,
           discountType: item.discountType || "percentage",
           amount: itemSubtotal - discountAmount,
@@ -688,11 +701,14 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                   </thead>
                   <tbody>
                     {sale.items.map((item, index) => {
-                      const itemSubtotal = item.quantity * item.price;
+                      const itemPrice = toSafeNum(item.price);
+                      const itemQty = toSafeNum(item.quantity);
+                      const itemSubtotal = itemPrice * itemQty;
+                      
                       const discountAmount =
                         item.discountType === "amount"
-                          ? item.discountAmount || 0
-                          : (itemSubtotal * (item.discountPercentage || 0)) /
+                          ? toSafeNum(item.discountAmount)
+                          : (itemSubtotal * toSafeNum(item.discountPercentage)) /
                             100;
                       const finalAmount = itemSubtotal - discountAmount;
 
@@ -702,19 +718,19 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                             {item.description}
                           </td>
                           <td className="py-2 sm:py-3 text-right">
-                            {formatNumber(item.quantity)}
+                            {formatNumber(itemQty)}
                           </td>
                           <td className="py-2 sm:py-3 text-right">
-                            {displayCurrency} {formatNumber(item.price)}
+                            {displayCurrency} {formatNumber(itemPrice)}
                           </td>
                           <td className="py-2 sm:py-3 text-right">
                             {item.discountType === "amount"
-                              ? item.discountAmount && item.discountAmount > 0
+                              ? discountAmount > 0
                                 ? `${displayCurrency} ${formatNumber(
-                                    item.discountAmount,
+                                    discountAmount,
                                   )}`
                                 : "-"
-                              : (item.discountPercentage || 0) > 0
+                              : toSafeNum(item.discountPercentage) > 0
                               ? `${item.discountPercentage}%`
                               : "-"}
                           </td>
@@ -839,11 +855,14 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                   Items
                 </div>
                 {sale.items.map((item, index) => {
-                  const itemSubtotal = item.quantity * item.price;
+                  const itemPrice = toSafeNum(item.price);
+                  const itemQty = toSafeNum(item.quantity);
+                  const itemSubtotal = itemPrice * itemQty;
+                  
                   const discountAmount =
                     item.discountType === "amount"
-                      ? item.discountAmount || 0
-                      : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+                      ? toSafeNum(item.discountAmount)
+                      : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
                   const finalAmount = itemSubtotal - discountAmount;
 
                   return (
@@ -855,8 +874,8 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                       </div>
                       <div className="flex justify-between text-sm">
                         <div className="text-gray-600">
-                          {formatNumber(item.quantity)} x {displayCurrency}{" "}
-                          {formatNumber(item.price)}
+                          {formatNumber(itemQty)} x {displayCurrency}{" "}
+                          {formatNumber(itemPrice)}
                         </div>
                         <div className="font-bold">
                           {displayCurrency} {formatNumber(finalAmount)}
