@@ -1,0 +1,29 @@
+# Cache static assets for 1 year
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache images for 1 year
+/lovable-uploads/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache fonts for 1 year
+*.woff
+  Cache-Control: public, max-age=31536000, immutable
+*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache service worker for 1 day (to allow updates)
+/service-worker.js
+  Cache-Control: public, max-age=86400
+
+# Cache register script for 1 week
+/register-sw.js
+  Cache-Control: public, max-age=604800
+
+# Don't cache HTML files
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Don't cache the root
+/
+  Cache-Control: public, max-age=0, must-revalidate
