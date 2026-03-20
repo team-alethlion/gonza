@@ -65,6 +65,8 @@ export const useFormState = ({
     useState<string>(defaultPaymentStatus);
   const [formRecentlyCleared, setFormRecentlyCleared] =
     useState<boolean>(false);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const clearFormState = useCallback((onDateReset?: () => void) => {
     setFormData({
@@ -91,6 +93,8 @@ export const useFormState = ({
     setLinkToCash(false);
     setErrors({});
     setFormRecentlyCleared(true);
+    setIsSubmitted(false);
+    setIsLoading(false);
     if (onDateReset) {
       onDateReset();
     }
@@ -168,6 +172,8 @@ export const useFormState = ({
     cashTransactionId,
     originalPaymentStatus,
     formRecentlyCleared,
+    isSubmitted,
+    isLoading,
 
     // Setters
     setFormData,
@@ -184,6 +190,8 @@ export const useFormState = ({
     setCashTransactionId,
     setOriginalPaymentStatus,
     setFormRecentlyCleared,
+    setIsSubmitted,
+    setIsLoading,
 
     // Actions
     clearFormState,

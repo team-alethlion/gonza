@@ -35,6 +35,8 @@ export const useSaleFormLogic = ({
     cashTransactionId,
     originalPaymentStatus,
     formRecentlyCleared,
+    isSubmitted,
+    isLoading,
     setFormData,
     setErrors,
     setTaxRateInput,
@@ -42,15 +44,20 @@ export const useSaleFormLogic = ({
     setThermalPrintAfterSave,
     setIncludePaymentInfo,
     setSelectedCustomerCategoryId,
-    setSelectedDate, // Now correctly destructured
+    setSelectedDate,
     setPaymentDate,
     setLinkToCash,
     setSelectedCashAccountId,
     setCashTransactionId,
     setOriginalPaymentStatus,
     setFormRecentlyCleared,
+    setIsSubmitted,
+    setIsLoading,
     clearFormState,
   } = useFormState({ initialData, defaultPaymentStatus });
+
+  // Alias for internal use
+  const setLoading = setIsLoading;
 
   // Form handlers
   const {
@@ -252,6 +259,10 @@ export const useSaleFormLogic = ({
     payments,
     pendingChanges,
     hasChanges,
+    isSubmitted,
+    setIsSubmitted,
+    isLoading,
+    setLoading: setIsLoading,
 
     // Setters
     setFormData,
