@@ -76,20 +76,23 @@ const NavLinks = ({ className = '', onClick, isSidebar = false, isCollapsed = fa
         {!isCollapsed && (
           <button
             onClick={() => toggleGroup(title)}
-            className="w-full flex items-center justify-between px-3 text-[10px] font-bold uppercase tracking-wider text-primary-foreground/50 mb-1.5 mt-4 first:mt-0 hover:text-primary-foreground transition-colors group"
+            className="w-full flex items-center justify-between px-3 text-[11px] font-black uppercase tracking-[0.15em] text-amber-400 mb-2 mt-6 first:mt-0 hover:text-amber-300 transition-all group"
           >
-            <span>{title}</span>
+            <span className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+              {title}
+            </span>
             {isExpanded ? (
-              <ChevronDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronDown className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
             ) : (
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="w-3.5 h-3.5" />
             )}
           </button>
         )}
-        {isCollapsed && <div className="h-4"></div>}
+        {isCollapsed && <div className="h-2"></div>}
 
         {(isExpanded || isCollapsed) && (
-          <SidebarMenu className="w-full animate-in fade-in slide-in-from-top-1 duration-200">
+          <SidebarMenu className="w-full animate-in fade-in slide-in-from-top-1 duration-200 group-data-[collapsible=icon]:items-center">
             {links.map((link) => (
               <SidebarMenuItem key={link.name}>
                 <SidebarMenuButton

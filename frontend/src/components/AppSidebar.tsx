@@ -44,23 +44,24 @@ const AppSidebar = () => {
 
   return (
     <Sidebar collapsible="icon" className="hidden border-r border-primary-foreground/20 bg-primary text-primary-foreground md:flex">
-      <SidebarContent className="p-4 pt-8 flex flex-col gap-6">
+      <SidebarContent className="p-0 pt-8 flex flex-col gap-6 group-data-[collapsible=icon]:pt-10">
         {businessLocations.length > 0 && (
-          <div className="space-y-4">
-            <div className="px-2">
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-foreground/40 mb-3 group-data-[collapsible=icon]:hidden">
+          <div className="space-y-4 group-data-[collapsible=icon]:space-y-0">
+            <div className="px-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+              <div className="w-full flex items-center px-3 text-[11px] font-black uppercase tracking-[0.15em] text-amber-400 mb-2 group-data-[collapsible=icon]:hidden">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] mr-2"></div>
                 Active Branch
-              </h3>
+              </div>
               <BusinessSelector variant="sidebar" />
             </div>
           </div>
         )}
-        <div className="flex-1">
+        <div className="flex-1 px-2 group-data-[collapsible=icon]:px-0">
           <NavLinks isSidebar={true} isCollapsed={state === 'collapsed'} />
         </div>
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-primary-foreground/20">
-        <SidebarMenu>
+      <SidebarFooter className="p-2 border-t border-primary-foreground/20 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:py-4">
+        <SidebarMenu className="group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
