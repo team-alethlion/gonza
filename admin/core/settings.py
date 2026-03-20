@@ -42,7 +42,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -83,7 +83,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 UNFOLD = {
     "SITE_TITLE": "Professional Admin Panel",
     "SITE_HEADER": "Gonza Systems | Database Management",
-    "SITE_SYMBOL": "settings", 
+    "SITE_ICON": lambda request: "/static/icon.png", 
+    "SITE_FAVICON": lambda request: "/static/favicon.ico",
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     "SIDEBAR": {
