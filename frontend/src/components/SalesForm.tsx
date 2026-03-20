@@ -362,6 +362,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         discount: result.discount || 0,
         taxAmount: result.taxAmount || 0,
         createdAt: new Date(result.createdAt),
+        updatedAt: new Date(result.updatedAt || result.createdAt),
       };
 
       // Handle inventory, payments, etc.
@@ -514,14 +515,15 @@ const SalesForm: React.FC<SalesFormProps> = ({
               console.log(`[Scanner] 🔍 Not in local DB, trying server lookup...`);
               const serverResult = await lookupProductByBarcodeAction(scannedBarcode, currentBusiness?.id || '');
               if (serverResult) {
-                // serverResult is already formatted as Product by our refactored action
+                // serverResult is now correctly mapped by the action
                 product = {
                   ...serverResult,
                   createdAt: new Date(serverResult.createdAt),
                   updatedAt: new Date(serverResult.updatedAt)
-                } as Product;
+                } as any; // Cast safely since we've mapped all required fields in the action
+                
                 // Background update local cache for future scans
-                localDb.products.put(product);
+                localDb.products.put(product as Product);
               }
             }
 

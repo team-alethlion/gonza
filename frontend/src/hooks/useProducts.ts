@@ -119,7 +119,11 @@ export const useProducts = (
 
       if (!result) return null;
 
-      const newProduct = result as Product;
+      const newProduct: Product = {
+        ...result,
+        createdAt: new Date(result.createdAt),
+        updatedAt: new Date(result.updatedAt)
+      } as any;
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
@@ -153,13 +157,19 @@ export const useProducts = (
         ...updates,
         imageUrl,
         userId,
-        businessId: currentBusiness.id,
         isFromSale,
         customChangeReason,
         referenceId
-      });
+      } as any);
 
       if (!result) return false;
+
+      // Type-safe conversion of dates
+      const updatedProduct: Product = {
+        ...result,
+        createdAt: new Date(result.createdAt),
+        updatedAt: new Date(result.updatedAt)
+      } as any;
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);

@@ -9,7 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
 import { Rocket, ShieldAlert, CreditCard, ChevronRight } from "lucide-react";
 import {
-  getSubscriptionPaymentsAction,
+  getSubscriptionTransactionsAction,
   initiateSubscriptionPaymentAction,
 } from "@/app/actions/billing";
 
@@ -40,7 +40,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
     const fetchPaymentData = async () => {
       if (!user) return;
       try {
-        const payments = await getSubscriptionPaymentsAction(user.id);
+        const payments = await getSubscriptionTransactionsAction(user.id);
         const latest = payments && payments.length > 0 ? payments[0] : null;
 
         if (latest?.id) {

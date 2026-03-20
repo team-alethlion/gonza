@@ -38,7 +38,7 @@ export const useBusinessSettingsForm = () => {
     }
   }, [localSettings.paymentInfo, paymentMethodsInitialized]);
 
-  const handleBusinessChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBusinessChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | { target: { name: string; value: any } }) => {
     const { name, value } = e.target;
     setLocalSettings(prev => ({ ...prev, [name]: value }));
   }, []);

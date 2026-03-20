@@ -70,6 +70,11 @@ export const authConfig = {
       const trialEnd = user?.trialEndDate
       const isOnboardedVal = user?.isOnboarded
 
+      const isPublicPath = ["/public", "/public/login", "/public/signup", "/privacy-policy", "/auth/error", "/verify-email"].includes(nextUrl.pathname)
+      const isSubscriptionPath = nextUrl.pathname === "/subscription"
+      const isOnboardingPath = nextUrl.pathname === "/onboarding"
+      const isRootPath = nextUrl.pathname === "/"
+
       console.log(`[Middleware] CHECK -> Path: ${nextUrl.pathname}, User: ${user?.email}, Role: ${role}, Status: ${status}, Onboarded: ${isOnboardedVal}, Sub: ${subStatus}`);
       // 1. Handle Public Paths and Authentication via delegating to sub-proxies
       if (isPublicPath || isRootPath) {

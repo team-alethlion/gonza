@@ -48,6 +48,7 @@ export interface Sale {
     amountPaid?: number;
   }>;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 // Supabase database schema and Json type
@@ -418,6 +419,7 @@ export const mapDbSaleToSale = (dbSale: DbSale): Sale => {
     notes: dbSale.notes || '',
     categoryId: dbSale.category_id || undefined,
     createdAt: new Date(dbSale.created_at),
+    updatedAt: new Date(dbSale.updated_at),
   };
 };
 

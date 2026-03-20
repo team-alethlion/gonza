@@ -157,12 +157,17 @@ export async function getProductsDeltaAction(businessId: string, since?: number)
 
     return { success: true, products: productsList.map((p: DjangoProduct) => ({
       ...p,
+      itemNumber: p.sku,
+      manufacturerBarcode: p.manufacturer_barcode,
+      imageUrl: p.image,
+      category: p.category_name || p.category || 'Uncategorized',
+      supplier: p.supplier_name || p.supplier || null,
       quantity: Number(p.stock),
       costPrice: Number(p.cost_price),
       sellingPrice: Number(p.selling_price),
       minimumStock: Number(p.min_stock),
-      createdAt: new Date(p.created_at),
-      updatedAt: new Date(p.updated_at),
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
     })) };
   } catch (error) { return { success: false, error: error instanceof Error ? error.message : String(error) }; }
 }
@@ -171,15 +176,15 @@ export async function createProductAction(data: {
   businessId: string;
   userId: string;
   name: string;
-  description?: string;
-  categoryId?: string;
-  supplierId?: string;
-  barcode?: string;
-  imageUrl?: string;
-  costPrice?: number;
-  sellingPrice?: number;
-  quantity?: number;
-  minimumStock?: number;
+  description?: string | null;
+  categoryId?: string | null;
+  supplierId?: string | null;
+  barcode?: string | null;
+  imageUrl?: string | null;
+  costPrice?: number | null;
+  sellingPrice?: number | null;
+  quantity?: number | null;
+  minimumStock?: number | null;
 }) {
   try {
     await verifyBranchAccess(data.businessId);
@@ -207,29 +212,32 @@ export async function createProductAction(data: {
 
     return {
       ...result,
+      itemNumber: result.sku,
+      manufacturerBarcode: result.manufacturer_barcode,
+      imageUrl: result.image,
       quantity: Number(result.stock),
       costPrice: Number(result.cost_price),
       sellingPrice: Number(result.selling_price),
       minimumStock: Number(result.min_stock),
-      createdAt: new Date(result.created_at), updatedAt: new Date(result.updated_at),
+      createdAt: result.created_at,
+      updatedAt: result.updated_at,
     };
   } catch { return null; }
 }
-
 export async function updateProductAction(id: string, branchId: string, updates: {
   userId: string;
   name?: string;
-  description?: string;
-  categoryId?: string;
-  supplierId?: string;
-  itemNumber?: string;
-  sku?: string;
-  barcode?: string;
-  imageUrl?: string;
-  costPrice?: number;
-  sellingPrice?: number;
-  quantity?: number;
-  minimumStock?: number;
+  description?: string | null;
+  categoryId?: string | null;
+  supplierId?: string | null;
+  itemNumber?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  imageUrl?: string | null;
+  costPrice?: number | null;
+  sellingPrice?: number | null;
+  quantity?: number | null;
+  minimumStock?: number | null;
   customChangeReason?: string;
   isFromSale?: boolean;
   referenceId?: string;
@@ -379,12 +387,15 @@ export async function lookupProductByBarcodeAction(code: string, branchId: strin
     if (result && !result.error && result.id) {
       return {
         ...result,
+        itemNumber: result.sku,
+        manufacturerBarcode: result.manufacturer_barcode,
+        imageUrl: result.image,
         quantity: Number(result.stock),
         costPrice: Number(result.cost_price),
         sellingPrice: Number(result.selling_price),
         minimumStock: Number(result.min_stock),
-        createdAt: new Date(result.created_at),
-        updatedAt: new Date(result.updated_at),
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
       };
     }
     return null;

@@ -33,14 +33,30 @@ export const useProductCRUD = (
         return null;
       }
 
+      if (!productData.name) {
+        toast({
+          title: "Error",
+          description: "Product name is required",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const result = await createProductAction({
         ...productData,
+        name: productData.name,
         userId,
         businessId: currentBusiness.id
-      });
+      } as any);
 
       if (result) {
-        const newProduct = result as Product;
+        // Correctly format dates before adding to state
+        const newProduct: Product = {
+          ...result,
+          createdAt: new Date(result.createdAt),
+          updatedAt: new Date(result.updatedAt)
+        } as any;
+        
         setProducts(prev => [newProduct, ...prev]);
 
         // Log activity
@@ -95,11 +111,10 @@ export const useProductCRUD = (
       const result = await updateProductAction(productId, currentBusiness.id, {
         ...productData,
         userId,
-        businessId: currentBusiness.id,
         customChangeReason,
         isFromSale,
         referenceId
-      });
+      } as any);
 
       if (result) {
         // Update local state

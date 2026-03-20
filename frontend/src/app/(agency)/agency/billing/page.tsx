@@ -4,7 +4,7 @@
 import React from 'react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useQuery } from '@tanstack/react-query';
-import { getSubscriptionPaymentsAction, initiateSubscriptionPaymentAction } from '@/app/actions/billing';
+import { getSubscriptionTransactionsAction, initiateSubscriptionPaymentAction } from '@/app/actions/billing';
 import { getPackagesAction } from '@/app/actions/packages';
 import {
     CreditCard,
@@ -61,7 +61,7 @@ const BillingHistory = () => {
         queryKey: ['subscription-payments', user?.id],
         queryFn: async () => {
             if (!user?.id) return [];
-            const data = await getSubscriptionPaymentsAction(user.id);
+            const data = await getSubscriptionTransactionsAction(user.id);
             return data as SubscriptionPayment[];
         },
         enabled: !!user

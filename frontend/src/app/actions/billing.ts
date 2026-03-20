@@ -3,7 +3,15 @@
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
 
-export async function getSubscriptionPaymentsAction(userId: string) {
+interface PaginatedResponse<T> {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: T[];
+}
+
+// Force module cache invalidation
+export async function getSubscriptionTransactionsAction(userId: string) {
     await verifyUserAccess(userId);
     try {
         const transactions = await djangoFetch<any[] | PaginatedResponse<any>>(`core/subscriptions/?userId=${userId}`);

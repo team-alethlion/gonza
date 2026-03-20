@@ -3,6 +3,7 @@ import { useBusiness } from '@/contexts/BusinessContext';
 import { localDb } from '@/lib/dexie';
 import { getProductsDeltaAction } from '@/app/actions/products';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Product } from '@/types';
 
 export const useProductSync = () => {
   const { currentBusiness } = useBusiness();
@@ -26,7 +27,12 @@ export const useProductSync = () => {
       if (result.success && result.products) {
         // 3. Update local Dexie database
         if (result.products.length > 0) {
-          await localDb.products.bulkPut(result.products);
+          const formattedProducts = result.products.map((p: any) => ({
+            ...p,
+            createdAt: new Date(p.createdAt),
+            updatedAt: new Date(p.updatedAt)
+          }));
+          await localDb.products.bulkPut(formattedProducts as Product[]);
         }
 
         // 4. Update sync metadata with CURRENT server time (or just now)

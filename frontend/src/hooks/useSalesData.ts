@@ -94,7 +94,7 @@ export const useSalesData = (
       ...s,
       date: new Date(s.date),
       createdAt: new Date(s.createdAt),
-      updatedAt: new Date(s.updatedAt)
+      updatedAt: new Date(s.updatedAt || s.createdAt)
     }));
   }, [initialData]);
 

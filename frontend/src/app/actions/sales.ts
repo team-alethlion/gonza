@@ -53,7 +53,8 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
             date: item.date,
             tax_rate: toValidNum(item.tax_rate), // assuming tax_rate or similar
             created_at: item.created_at,
-            updated_at: item.updated_at,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
             cash_transaction_id: item.cash_transaction,
             amount_paid: toValidNum(item.amount_paid),
             amount_due: toValidNum(item.balance_due),
