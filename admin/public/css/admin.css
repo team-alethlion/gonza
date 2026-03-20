@@ -1,0 +1,12 @@
+:root {
+    --unfold-logo: url('/static/icon.png');
+}
+
+/* Optional: if you want to use a specific logo for the header */
+.unfold-logo {
+    background-image: url('/static/icon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    height: 32px;
+    width: 32px;
+}
