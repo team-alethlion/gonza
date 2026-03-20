@@ -639,7 +639,7 @@ const BusinessManagement = () => {
               <Shield className="h-5 w-5" />
               Location Limit Reached
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm pt-2">
+            <AlertDialogDescription className="text-sm pt-2" asChild>
               <div className="space-y-4">
                 <p className="font-medium text-foreground">
                   You have reached the maximum allowed limit of{" "}

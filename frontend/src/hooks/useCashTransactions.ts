@@ -59,19 +59,21 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
         return [];
       }
 
-      const skip = (page - 1) * pageSize;
-      const result = await getCashTransactionsAction(currentBusiness.id, accountId, skip, pageSize);
+      const result = await getCashTransactionsAction(currentBusiness.id, accountId, page, pageSize);
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to fetch transactions');
       }
 
-      if (result.count !== undefined) {
-        setTotalCount(result.count);
+      if (result.data?.count !== undefined) {
+        setTotalCount(result.data.count);
       }
 
+      // Sanitize: getCashTransactionsAction returns { data: { transactions: [] } }
+      const rawTransactions = Array.isArray(result.data?.transactions) ? result.data.transactions : [];
+
       // Format all transactions
-      const formattedTransactions = result.data.map((item: any) => {
+      const formattedTransactions = rawTransactions.map((item: any) => {
         const dbTransaction: DbCashTransaction = {
           id: item.id,
           user_id: item.user_id,

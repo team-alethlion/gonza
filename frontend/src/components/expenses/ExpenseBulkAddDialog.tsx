@@ -392,6 +392,10 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] md:max-w-6xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+                <DialogTitle className="sr-only">Bulk Expense Entry</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Log multiple expenses efficiently and link them to finance accounts.
+                </DialogDescription>
                 <div className="space-y-4 md:space-y-6">
                     <Card className="shadow-2xl overflow-hidden border-none bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
                         <CardHeader className="pb-3 bg-white dark:bg-slate-900 border-b">

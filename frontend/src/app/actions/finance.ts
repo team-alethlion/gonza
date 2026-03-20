@@ -386,25 +386,27 @@ export async function getCashTransactionsAction(locationId: string, accountId?: 
         }
         
         const data = await djangoFetch<any>(url);
-        const results = data.results || [];
+        const results = data.results || (Array.isArray(data) ? data : []);
         const count = data.count || results.length;
 
         return {
             success: true,
-            data: results.map((t: any) => ({
-                ...t,
-                amount: toSafeNumber(t.amount),
-                created_at: t.created_at,
-                updated_at: t.updated_at,
-                user_id: t.user,
-                account_id: t.account,
-                location_id: t.branch,
-                transaction_type: t.transaction_type,
-                person_in_charge: t.person_in_charge,
-                payment_method: t.payment_method,
-                receipt_image: t.receipt_image
-            })),
-            count
+            data: {
+                transactions: results.map((t: any) => ({
+                    ...t,
+                    amount: toSafeNumber(t.amount),
+                    created_at: t.created_at,
+                    updated_at: t.updated_at,
+                    user_id: t.user,
+                    account_id: t.account,
+                    location_id: t.branch,
+                    transaction_type: t.transaction_type,
+                    person_in_charge: t.person_in_charge,
+                    payment_method: t.payment_method,
+                    receipt_image: t.receipt_image
+                })),
+                count
+            }
         };
     } catch (error: any) { return { success: false, error: error.message }; }
 }

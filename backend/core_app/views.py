@@ -382,11 +382,11 @@ class TaskViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user_id = self.request.query_params.get('userId')
-        location_id = self.request.query_params.get('locationId')
+        branch_id = self.request.query_params.get('locationId')
         if user_id:
             qs = qs.filter(created_by_id=user_id)
-        if location_id:
-            qs = qs.filter(branch_id=location_id)
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
         return qs.order_by('due_date')
 
 class TaskCategoryViewSet(viewsets.ModelViewSet):
@@ -397,12 +397,22 @@ class TaskCategoryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user_id = self.request.query_params.get('userId')
-        location_id = self.request.query_params.get('locationId')
-        if user_id:
+        branch_id = self.request.query_params.get('locationId')
+        if user_id and user_id != 'ALL':
             qs = qs.filter(user_id=user_id)
-        if location_id:
-            qs = qs.filter(branch_id=location_id)
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
         return qs.order_by('name')
+
+    def perform_create(self, serializer):
+        # Allow manual passing of user and branch from frontend
+        user_id = self.request.data.get('user')
+        branch_id = self.request.data.get('branch')
+        
+        serializer.save(
+            user_id=user_id or self.request.user.id,
+            branch_id=branch_id
+        )
 
 class ActivityHistoryViewSet(viewsets.ModelViewSet):
     queryset = ActivityHistory.objects.all()
@@ -411,9 +421,9 @@ class ActivityHistoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        location_id = self.request.query_params.get('locationId')
-        if location_id:
-            qs = qs.filter(branch_id=location_id)
+        branch_id = self.request.query_params.get('locationId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
             
         user_id = self.request.query_params.get('userId')
         if user_id and user_id != 'ALL':

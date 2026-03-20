@@ -102,4 +102,4 @@ const StockSummaryOverview: React.FC<StockSummaryOverviewProps> = ({ data }) => 
   );
 };
 
-export default StockSummaryOverview;
+export default React.memo(StockSummaryOverview);

@@ -71,11 +71,14 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       setIsLoading(stockHistory.length === 0);
       const result = await getStockHistoryAction(currentBusiness.id, productId);
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to fetch stock history');
       }
 
-      const formattedHistory: StockHistoryEntry[] = result.data.map((entry: any) => ({
+      // Sanitize: Ensure data is an array
+      const rawData = Array.isArray(result.data) ? result.data : [];
+
+      const formattedHistory: StockHistoryEntry[] = rawData.map((entry: any) => ({
         id: entry.id,
         productId: entry.productId,
         oldQuantity: entry.oldQuantity,

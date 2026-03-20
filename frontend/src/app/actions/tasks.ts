@@ -183,10 +183,20 @@ export async function createTaskCategoryAction(userId: string, locationId: strin
             method: 'POST',
             body: JSON.stringify({ user: userId, branch: locationId, name })
         });
+        
+        // Handle DRF unique constraint error specifically
+        if (category && category.non_field_errors && category.non_field_errors[0]?.includes('unique set')) {
+            return { success: true, alreadyExists: true };
+        }
+
         if (category && category.error) throw new Error(category.error);
 
         return { success: true, data: category };
     } catch (error: any) {
+        // If the error message itself contains the unique constraint message
+        if (error.message?.includes('unique set')) {
+            return { success: true, alreadyExists: true };
+        }
         console.error('Error creating category:', error);
         return { success: false, error: error.message };
     }

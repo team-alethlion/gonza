@@ -509,4 +509,4 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
   );
 };
 
-export default StockSummaryTable;
+export default React.memo(StockSummaryTable);

@@ -6,13 +6,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearInventoryCaches } from '@/utils/inventoryCacheUtils';
 
 // Import our new Server Actions
-import {
-  getProductsAction,
-  createProductAction,
-  updateProductAction,
-  deleteProductAction,
-  updateProductsBulkAction
-} from '@/app/actions/products';
+import { getProductsAction, createProductAction, updateProductAction, deleteProductAction, updateProductsBulkAction } from '@/app/actions/products';
+
+const EMPTY_ARRAY: Product[] = [];
 
 export const useProducts = (
   userId: string | undefined, 
@@ -84,7 +80,7 @@ export const useProducts = (
     initialData: (page === 1 && filters.search === '' && filters.category === 'all' && filters.stockStatus === 'all' && initialData?.products.length) ? initialData : undefined
   });
 
-  const products = queriedData?.products || [];
+  const products = useMemo(() => queriedData?.products || EMPTY_ARRAY, [queriedData?.products]);
   const totalCount = queriedData?.count || 0;
 
   const isLoading = (isQueryLoading && !queriedData) && !isTyping;

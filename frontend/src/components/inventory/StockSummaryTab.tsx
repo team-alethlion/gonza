@@ -37,41 +37,54 @@ const StockSummaryTab = () => {
   const { user } = useAuth();
   const { products } = useProducts(user?.id, 10000); // Load all products for filtering
 
-  // Load persisted state from localStorage
-  const getPersistedState = () => {
+  // Load persisted state from localStorage using a lazy initializer
+  const [period, setPeriod] = useState<'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-year' | 'all-time' | 'specific-day' | 'custom'>(() => {
+    if (typeof window === 'undefined') return 'all-time';
     try {
       const saved = localStorage.getItem('stockSummaryFilters');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return {
-          period: parsed.period || 'this-month',
-          dateRange: parsed.dateRange ? {
-            from: parsed.dateRange.from ? new Date(parsed.dateRange.from) : startOfMonth(new Date()),
-            to: parsed.dateRange.to ? new Date(parsed.dateRange.to) : endOfMonth(new Date())
-          } : {
-            from: startOfMonth(new Date()),
-            to: endOfMonth(new Date())
-          },
-          specificDay: parsed.specificDay ? new Date(parsed.specificDay) : undefined
-        };
+        return parsed.period || 'all-time';
       }
-    } catch (error) {
-      console.error('Error loading persisted stock summary filters:', error);
+    } catch (e) {
+      console.error('Error loading period:', e);
     }
-    return {
-      period: 'all-time' as const,
-      dateRange: {
-        from: new Date(2020, 0, 1),
-        to: endOfDay(new Date())
-      },
-      specificDay: undefined
-    };
-  };
+    return 'all-time';
+  });
 
-  const persistedState = getPersistedState();
-  const [period, setPeriod] = useState<'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-year' | 'all-time' | 'specific-day' | 'custom'>('all-time');
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(persistedState.dateRange);
-  const [specificDay, setSpecificDay] = useState<Date | undefined>(persistedState.specificDay);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
+    if (typeof window === 'undefined') return { from: new Date(2020, 0, 1), to: new Date() };
+    try {
+      const saved = localStorage.getItem('stockSummaryFilters');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.dateRange) {
+          return {
+            from: parsed.dateRange.from ? new Date(parsed.dateRange.from) : new Date(2020, 0, 1),
+            to: parsed.dateRange.to ? new Date(parsed.dateRange.to) : new Date()
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Error loading dateRange:', e);
+    }
+    return { from: new Date(2020, 0, 1), to: new Date() };
+  });
+
+  const [specificDay, setSpecificDay] = useState<Date | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    try {
+      const saved = localStorage.getItem('stockSummaryFilters');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.specificDay ? new Date(parsed.specificDay) : undefined;
+      }
+    } catch (e) {
+      console.error('Error loading specificDay:', e);
+    }
+    return undefined;
+  });
+
   const [filteredStockData, setFilteredStockData] = useState<StockSummaryData[]>([]);
 
   const { stockSummaryData, isLoading, loadStockSummaryData, clearCache } = useStockSummaryData(dateRange);
@@ -113,85 +126,62 @@ const StockSummaryTab = () => {
   // Update date range when period changes
   useEffect(() => {
     const now = new Date();
-    let newRange: { from: Date; to: Date };
+    let newRange: { from: Date; to: Date } | null = null;
 
     switch (period) {
       case 'today':
-        newRange = {
-          from: startOfDay(now),
-          to: endOfDay(now)
-        };
+        newRange = { from: startOfDay(now), to: endOfDay(now) };
         break;
       case 'yesterday':
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
-        newRange = {
-          from: startOfDay(yesterday),
-          to: endOfDay(yesterday)
-        };
+        newRange = { from: startOfDay(yesterday), to: endOfDay(yesterday) };
         break;
       case 'this-week':
-        newRange = {
-          from: startOfWeek(now),
-          to: endOfWeek(now)
-        };
+        newRange = { from: startOfWeek(now), to: endOfWeek(now) };
         break;
       case 'last-week':
         const lastWeek = new Date(now);
         lastWeek.setDate(lastWeek.getDate() - 7);
-        newRange = {
-          from: startOfWeek(lastWeek),
-          to: endOfWeek(lastWeek)
-        };
+        newRange = { from: startOfWeek(lastWeek), to: endOfWeek(lastWeek) };
         break;
       case 'this-month':
-        newRange = {
-          from: startOfMonth(now),
-          to: endOfMonth(now)
-        };
+        newRange = { from: startOfMonth(now), to: endOfMonth(now) };
         break;
       case 'last-month':
         const lastMonth = new Date(now);
         lastMonth.setMonth(lastMonth.getMonth() - 1);
-        newRange = {
-          from: startOfMonth(lastMonth),
-          to: endOfMonth(lastMonth)
-        };
+        newRange = { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
         break;
       case 'this-year':
-        newRange = {
-          from: new Date(now.getFullYear(), 0, 1),
-          to: new Date(now.getFullYear(), 11, 31)
-        };
+        newRange = { from: new Date(now.getFullYear(), 0, 1), to: new Date(now.getFullYear(), 11, 31) };
         break;
       case 'all-time':
-        newRange = {
-          from: new Date(2020, 0, 1), // Go back far enough to cover everything
-          to: endOfDay(now) // Ensure we cover up to the very end of today
-        };
+        newRange = { from: new Date(2020, 0, 1), to: endOfDay(now) };
         break;
       case 'specific-day':
         if (specificDay) {
-          newRange = {
-            from: startOfDay(specificDay),
-            to: endOfDay(specificDay)
-          };
-        } else {
-          return; // Don't update if no specific day is selected
+          newRange = { from: startOfDay(specificDay), to: endOfDay(specificDay) };
         }
         break;
       default:
-        return; // Don't change for custom
+        break; // Don't change for custom
     }
 
-    const nextRange = newRange;
-    if (JSON.stringify(dateRange) !== JSON.stringify(nextRange)) {
-      const timer = setTimeout(() => {
-        setDateRange(nextRange);
-      }, 0);
-      return () => clearTimeout(timer);
+    if (newRange) {
+      // Avoid infinite loops by only updating if values actually change
+      const currentFrom = dateRange.from?.getTime();
+      const currentTo = dateRange.to?.getTime();
+      const nextFrom = newRange.from.getTime();
+      const nextTo = newRange.to.getTime();
+      
+      const isSame = currentFrom === nextFrom && currentTo === nextTo;
+        
+      if (!isSame) {
+        setDateRange(newRange);
+      }
     }
-  }, [period, specificDay, dateRange]);
+  }, [period, specificDay]); // Removed dateRange from dependencies to prevent loop
 
   const exportToCSV = () => {
     const headers = [
@@ -238,13 +228,13 @@ const StockSummaryTab = () => {
     exportStockSummaryToPDF(filteredStockData, 'Current Period', dateRange);
   };
 
-  const handleProductClick = (productId: string) => {
+  const handleProductClick = React.useCallback((productId: string) => {
     router.push(`/inventory/${productId}`);
-  };
+  }, [router]);
 
-  const handleFilteredDataChange = (filteredData: StockSummaryData[]) => {
+  const handleFilteredDataChange = React.useCallback((filteredData: StockSummaryData[]) => {
     setFilteredStockData(filteredData);
-  };
+  }, []);
 
   return (
     <div className="space-y-6">

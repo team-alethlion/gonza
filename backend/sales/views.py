@@ -122,7 +122,7 @@ class SaleViewSet(viewsets.ModelViewSet):
             
             ProductHistory.objects.create(
                 user_id=user_id,
-                location_id=branch_id,
+                branch_id=branch_id,
                 product=product,
                 old_stock=old_stock,
                 new_stock=new_stock,
@@ -362,7 +362,7 @@ class SaleViewSet(viewsets.ModelViewSet):
                         
                         ProductHistory.objects.create(
                             user_id=request.user.id,
-                            location_id=sale.branch_id,
+                            branch_id=sale.branch_id,
                             product=product,
                             old_stock=old_stock,
                             new_stock=new_stock,

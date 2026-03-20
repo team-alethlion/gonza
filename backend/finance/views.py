@@ -193,7 +193,7 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         
         # For a truly comprehensive P&L, we would iterate over all products or use a single optimized query
         # Let's calculate Stock Returns (Return In)
-        returns_in_qs = ProductHistory.objects.filter(location_id=branch_id, created_at__range=[start_date, end_date], type='RETURN_IN')
+        returns_in_qs = ProductHistory.objects.filter(branch_id=branch_id, created_at__range=[start_date, end_date], type='RETURN_IN')
         # We need the selling price of return ins... this is complex because return in might not have it.
         # Sale returns in the React hook used `item.returnIn * item.sellingPrice`.
         # In Django, we'll sum up the value of RETURN_IN entries. 

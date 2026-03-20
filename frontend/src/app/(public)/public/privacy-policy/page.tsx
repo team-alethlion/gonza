@@ -29,12 +29,13 @@ const PrivacyPolicy = () => {
         <CardContent className="prose">
           <p>Last Updated: May 18, 2025</p>
           <p>
-            Gonza Systems (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) respects your privacy and is
-            committed to protecting it through our compliance with this policy.
-            This policy describes the types of information we may collect from
-            you or that you may provide when you use our business management
-            application (the &quot;App&quot;) and our practices for collecting, using,
-            maintaining, protecting, and disclosing that information.
+            Gonza Systems (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;)
+            respects your privacy and is committed to protecting it through our
+            compliance with this policy. This policy describes the types of
+            information we may collect from you or that you may provide when you
+            use our business management application (the &quot;App&quot;) and
+            our practices for collecting, using, maintaining, protecting, and
+            disclosing that information.
           </p>
         </CardContent>
       </Card>

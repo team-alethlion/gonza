@@ -23,6 +23,8 @@ export interface StockSummaryData {
   revaluation: number;
 }
 
+const EMPTY_ARRAY: StockSummaryData[] = [];
+
 export const useStockSummaryData = (
   dateRange: { from: Date | undefined; to: Date | undefined }
 ) => {
@@ -31,7 +33,7 @@ export const useStockSummaryData = (
   const queryClient = useQueryClient();
 
   const fetchStockSummary = async (): Promise<StockSummaryData[]> => {
-    if (!user?.id || !currentBusiness?.id || !dateRange?.from || !dateRange?.to) return [];
+    if (!user?.id || !currentBusiness?.id || !dateRange?.from || !dateRange?.to) return EMPTY_ARRAY;
 
     try {
       const result = await getStockSummaryReportAction(
@@ -51,13 +53,15 @@ export const useStockSummaryData = (
     }
   };
 
-  const { data: stockSummaryData = [], isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['stockSummary', currentBusiness?.id, dateRange.from?.toISOString(), dateRange.to?.toISOString()],
     queryFn: fetchStockSummary,
     enabled: !!user?.id && !!currentBusiness?.id && !!dateRange?.from && !!dateRange?.to,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
+  const stockSummaryData = data || EMPTY_ARRAY;
 
   return {
     stockSummaryData,

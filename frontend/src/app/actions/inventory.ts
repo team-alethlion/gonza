@@ -12,8 +12,24 @@ export async function getStockHistoryAction(locationId: string, productId?: stri
         if (productId) url += `&productId=${productId}`;
         
         const data = await djangoFetch(url);
-        // Map Django keys back to frontend expected keys if necessary
-        return { success: true, data: data };
+        
+        // Handle DRF Pagination (results) or direct Array
+        const rawList = Array.isArray(data) ? data : (data.results || []);
+        
+        // Map backend snake_case to frontend camelCase
+        const mappedData = rawList.map((entry: any) => ({
+            id: entry.id,
+            productId: entry.product,
+            oldQuantity: Number(entry.old_stock || 0),
+            newQuantity: Number(entry.new_stock || 0),
+            changeReason: entry.change_reason || entry.reason || 'Manual Adjustment',
+            createdAt: entry.created_at,
+            referenceId: entry.reference_id,
+            receiptNumber: entry.reference_id, // Fallback for historical data
+            product: entry.product_details // If you decide to add nested details later
+        }));
+
+        return { success: true, data: mappedData };
     } catch (error: any) {
         console.error('Error fetching stock history:', error);
         return { success: false, error: error.message };
@@ -129,7 +145,17 @@ export async function getRequisitionsAction(userId: string, branchId: string) {
         await verifyUserAccess(userId);
         await verifyBranchAccess(branchId);
         const data = await djangoFetch(`inventory/requisitions/?branchId=${branchId}`);
-        return { success: true, data };
+        
+        const results = data.results || (Array.isArray(data) ? data : []);
+        const count = data.count || results.length;
+
+        return { 
+            success: true, 
+            data: {
+                requisitions: results,
+                count
+            } 
+        };
     } catch (error: any) {
         return { success: false, error: error.message };
     }

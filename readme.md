@@ -9,3 +9,5 @@ Access Credentials
 - URL: http://127.0.0.1:8001/admin/
 - Email: admin@gonza.com
 - Password: admin123
+
+technologies used

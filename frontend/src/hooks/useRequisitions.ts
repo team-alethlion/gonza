@@ -71,12 +71,15 @@ export const useRequisitions = (userId: string | undefined, locationId: string |
     try {
       setIsLoading(requisitions.length === 0);
       const result = await getRequisitionsAction(userId, locationId);
-      if (result.success && result.data) {
-        const fetched = result.data.map((req: any) => ({
+      if (result.success) {
+        // Sanitize: getRequisitionsAction returns { data: { requisitions: [] } }
+        const rawData = Array.isArray(result.data?.requisitions) ? result.data.requisitions : [];
+        
+        const fetched = rawData.map((req: any) => ({
           ...req,
-          createdAt: new Date(req.createdAt),
-          updatedAt: new Date(req.updatedAt),
-          branchId: req.branchId || locationId
+          createdAt: new Date(req.createdAt || req.created_at || req.date),
+          updatedAt: new Date(req.updatedAt || req.updated_at || req.date),
+          branchId: req.branchId || req.branch || locationId
         }));
 
         // Update Dexie cache in the background

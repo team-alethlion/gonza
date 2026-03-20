@@ -70,7 +70,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             if product.stock > 0 and user_id and branch_id:
                 ProductHistory.objects.create(
                     user_id=user_id,
-                    location_id=branch_id,
+                    branch_id=branch_id,
                     product=product,
                     type='CREATED',
                     old_stock=0,
@@ -110,7 +110,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 type_enum = 'SALE' if is_from_sale else ('RESTOCK' if product.stock > old_stock else 'ADJUSTMENT')
                 ProductHistory.objects.create(
                     user_id=user_id,
-                    location_id=product.branch_id,
+                    branch_id=product.branch_id,
                     product=product,
                     type=type_enum,
                     old_stock=old_stock,
@@ -260,7 +260,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                             ProductHistory.objects.create(
                                 id=hist_id,
                                 user_id=user_id,
-                                location_id=branch_id,
+                                branch_id=branch_id,
                                 product=product,
                                 type='CREATED',
                                 old_stock=0,
@@ -272,7 +272,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                             ProductHistory.objects.create(
                                 id=hist_id,
                                 user_id=user_id,
-                                location_id=branch_id,
+                                branch_id=branch_id,
                                 product=product,
                                 type='ADJUSTMENT',
                                 old_stock=old_stock,
@@ -292,11 +292,11 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary_report(self, request):
-        location_id = request.query_params.get('locationId')
+        branch_id = request.query_params.get('locationId')
         start_date = request.query_params.get('startDate')
         end_date = request.query_params.get('endDate')
         
-        if not all([location_id, start_date, end_date]):
+        if not all([branch_id, start_date, end_date]):
             return Response({"error": "Missing parameters"}, status=400)
             
         try:
@@ -316,7 +316,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     SUM(CASE WHEN ("new_stock" - "old_stock") > 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsIn",
                     SUM(CASE WHEN ("new_stock" - "old_stock") < 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ABS("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsOut"
                 FROM inventory_producthistory
-                WHERE location_id = %s AND created_at BETWEEN %s AND %s
+                WHERE branch_id = %s AND created_at BETWEEN %s AND %s
                 GROUP BY "product_id"
             ),
             ClosingStock AS (
@@ -324,7 +324,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     "product_id",
                     "new_stock" as "closingStock"
                 FROM inventory_producthistory
-                WHERE location_id = %s AND created_at <= %s
+                WHERE branch_id = %s AND created_at <= %s
                 ORDER BY "product_id", created_at DESC, id DESC
             )
             SELECT 
@@ -348,7 +348,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         
         with connection.cursor() as cursor:
-            cursor.execute(query, [location_id, start_date, end_date, location_id, end_date, location_id])
+            cursor.execute(query, [branch_id, start_date, end_date, branch_id, end_date, branch_id])
             columns = [col[0] for col in cursor.description]
             results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -474,7 +474,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 ProductHistory.objects.create(
                     id=f"hist_{uuid.uuid4().hex[:10]}",
                     user_id=user_id,
-                    location_id=branch_id,
+                    branch_id=branch_id,
                     product=product,
                     type=adj_type,
                     old_stock=old_stock,
@@ -554,10 +554,10 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        location_id = self.request.query_params.get('locationId')
+        branch_id = self.request.query_params.get('locationId')
         product_id = self.request.query_params.get('productId')
-        if location_id:
-            qs = qs.filter(location_id=location_id)
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
         if product_id:
             qs = qs.filter(product_id=product_id)
         return qs.order_by('-created_at')
@@ -565,7 +565,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data
         product_id = data.get('productId')
-        location_id = data.get('locationId')
+        branch_id = data.get('locationId')
         
         with transaction.atomic():
             try:
@@ -579,7 +579,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
             
             history = ProductHistory.objects.create(
                 user=request.user,
-                location_id=location_id,
+                branch_id=branch_id,
                 product=product,
                 old_stock=current_stock,
                 new_stock=actual_new_stock,
@@ -601,7 +601,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
         loc_id = request.query_params.get('locationId')
         if not ref_id or not loc_id:
             return Response(status=400)
-        self.get_queryset().filter(reference_id=ref_id, location_id=loc_id).delete()
+        self.get_queryset().filter(reference_id=ref_id, branch_id=loc_id).delete()
         return Response(status=204)
 
     @action(detail=False, methods=['patch'])
@@ -612,7 +612,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
         if not all([ref_id, loc_id, new_date]):
             return Response(status=400)
         
-        self.get_queryset().filter(reference_id=ref_id, location_id=loc_id).update(created_at=new_date)
+        self.get_queryset().filter(reference_id=ref_id, branch_id=loc_id).update(created_at=new_date)
         return Response(status=200)
 
     @action(detail=False, methods=['patch'])
@@ -671,7 +671,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                     ProductHistory.objects.create(
                         id=f"hist_{uuid.uuid4().hex[:10]}",
                         user_id=user_id,
-                        location_id=from_branch_id,
+                        branch_id=from_branch_id,
                         product=src_product,
                         type='TRANSFER_OUT',
                         old_stock=old_stock,
@@ -691,7 +691,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                     ProductHistory.objects.create(
                         id=f"hist_{uuid.uuid4().hex[:10]}",
                         user_id=user_id,
-                        location_id=to_branch_id,
+                        branch_id=to_branch_id,
                         product=dest_product,
                         type='TRANSFER_IN',
                         old_stock=old_stock,

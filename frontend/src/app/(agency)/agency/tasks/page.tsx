@@ -55,9 +55,12 @@ const Tasks = () => {
     bulkUpdateTasks,
   });
 
+  const hasCreatedDefaults = React.useRef(false);
+
   // Create default categories on first load if none exist
   React.useEffect(() => {
-    if (categories.length === 0 && !isLoading) {
+    if (categories.length === 0 && !isLoading && !hasCreatedDefaults.current) {
+      hasCreatedDefaults.current = true;
       createDefaultCategories();
     }
   }, [categories.length, isLoading, createDefaultCategories]);

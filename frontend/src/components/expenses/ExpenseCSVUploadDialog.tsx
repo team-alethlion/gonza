@@ -401,6 +401,10 @@ const ExpenseCSVUploadDialog: React.FC<ExpenseCSVUploadDialogProps> = ({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] md:max-w-4xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+                <DialogTitle className="sr-only">CSV/Excel Expense Importer</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Upload and preview historical expense logs from CSV or Excel files.
+                </DialogDescription>
                 <div className="space-y-6">
                     <Card className="shadow-2xl border-none bg-transparent">
                         <CardHeader className="px-6 py-4 bg-white dark:bg-slate-900 border-b rounded-t-[2rem]">

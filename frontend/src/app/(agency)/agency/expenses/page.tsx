@@ -27,21 +27,22 @@ export default async function ExpensesPage() {
 
       if (activeBranchId) {
         const result: any = await getExpensesAction(activeBranchId);
-        // using arbitrary large page since Expenses frontend seemingly handles array directly.
-        if (result && result.success && result.data) {
-          // Format the mapped expenses if the action doesn't already return `Expense[]` perfectly
-          initialExpenses = result.data.map((item: any) => ({
+        // getExpensesAction returns { success: true, data: { expenses: [], count: 0 } }
+        if (result && result.success && result.data?.expenses) {
+          const rawExpenses = Array.isArray(result.data.expenses) ? result.data.expenses : [];
+          
+          initialExpenses = rawExpenses.map((item: any) => ({
             id: item.id,
             amount: item.amount,
             category: item.category,
             date: new Date(item.date),
             description: item.description,
-            receiptUrl: item.receiptUrl,
+            receiptUrl: item.receipt_image || item.receiptUrl,
             receiptId: item.receiptId,
-            businessLocationId: item.businessLocationId,
-            recordedBy: item.recordedBy,
-            createdAt: new Date(item.createdAt),
-            updatedAt: new Date(item.updatedAt),
+            businessLocationId: item.branch || item.businessLocationId,
+            recordedBy: item.user || item.recordedBy,
+            createdAt: new Date(item.created_at || item.createdAt),
+            updatedAt: new Date(item.updated_at || item.updatedAt),
           }));
         }
       }

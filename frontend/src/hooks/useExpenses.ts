@@ -68,23 +68,26 @@ export const useExpenses = (initialData?: Expense[]) => {
     try {
       const result = await getExpensesAction(currentBusiness.id);
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to fetch expenses');
       }
 
-      const formattedExpenses: Expense[] = result.data.map((expense: any) => ({
+      // Sanitize: Ensure expenses is an array
+      const rawExpenses = Array.isArray(result.data?.expenses) ? result.data.expenses : [];
+
+      const formattedExpenses: Expense[] = rawExpenses.map((expense: any) => ({
         id: expense.id,
         amount: Number(expense.amount),
         description: expense.description,
         category: expense.category,
         date: new Date(expense.date),
-        paymentMethod: expense.paymentMethod,
-        personInCharge: expense.personInCharge,
-        receiptImage: expense.receiptImage,
-        cashAccountId: expense.cashAccountId,
-        cashTransactionId: expense.cashTransactionId,
-        createdAt: new Date(expense.createdAt),
-        updatedAt: new Date(expense.updatedAt)
+        paymentMethod: expense.payment_method || expense.paymentMethod,
+        personInCharge: expense.person_in_charge || expense.personInCharge,
+        receiptImage: expense.receipt_image || expense.receiptImage,
+        cashAccountId: expense.cash_account_id || expense.cashAccountId,
+        cashTransactionId: expense.cash_transaction_id || expense.cashTransactionId,
+        createdAt: new Date(expense.created_at || expense.createdAt),
+        updatedAt: new Date(expense.updated_at || expense.updatedAt)
       }));
 
       // Update Dexie cache in the background
