@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+.next/
+node_modules/
+dist/
+build/
+.yarn/
+.pnp.*

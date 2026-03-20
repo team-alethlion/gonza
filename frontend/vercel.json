@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/subscription-monitor",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/expiry-notifier",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/activity-cleanup",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/orphaned-account-cleanup",
+      "schedule": "0 0 * * 0"
+    }
+  ]
+}

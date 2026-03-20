@@ -1,0 +1,1676 @@
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/postcss.config.js
+  1:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(admin)/admin/components/AdminDashboardClient.tsx
+  10:3   warning  'Package' is defined but never used           @typescript-eslint/no-unused-vars
+  73:11  warning  'user' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  73:17  warning  'signOut' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(admin)/admin/contexts/AuthContext.tsx
+   4:44  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+   4:55  warning  'useState' is defined but never used   @typescript-eslint/no-unused-vars
+  10:10  warning  'useRouter' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(admin)/admin/packages/page.tsx
+  14:3   warning  'LayoutDashboard' is defined but never used  @typescript-eslint/no-unused-vars
+  19:3   warning  'TrendingUp' is defined but never used       @typescript-eslint/no-unused-vars
+  20:3   warning  'CheckCircle2' is defined but never used     @typescript-eslint/no-unused-vars
+  21:3   warning  'XCircle' is defined but never used          @typescript-eslint/no-unused-vars
+  23:3   warning  'Trash2' is defined but never used           @typescript-eslint/no-unused-vars
+  30:3   warning  'UserCheck' is defined but never used        @typescript-eslint/no-unused-vars
+  31:3   warning  'Calendar' is defined but never used         @typescript-eslint/no-unused-vars
+  38:11  warning  'user' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/billing/page.tsx
+  17:5  warning  'Building2' is defined but never used     @typescript-eslint/no-unused-vars
+  18:5  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  25:5  warning  'Loader2' is defined but never used       @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/business-management/page.tsx
+    4:27  warning  'Settings' is defined but never used                   @typescript-eslint/no-unused-vars
+   41:16  warning  'passwordLoading' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  141:11  warning  'updatedLocations' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/cash/[account-id]/page.tsx
+   7:3   warning  'Search' is defined but never used                      @typescript-eslint/no-unused-vars
+   8:3   warning  'Filter' is defined but never used                      @typescript-eslint/no-unused-vars
+   9:3   warning  'RotateCw' is defined but never used                    @typescript-eslint/no-unused-vars
+  10:3   warning  'ChevronLeft' is defined but never used                 @typescript-eslint/no-unused-vars
+  11:3   warning  'Eye' is defined but never used                         @typescript-eslint/no-unused-vars
+  12:3   warning  'Pencil' is defined but never used                      @typescript-eslint/no-unused-vars
+  13:3   warning  'Trash2' is defined but never used                      @typescript-eslint/no-unused-vars
+  14:3   warning  'Wallet' is defined but never used                      @typescript-eslint/no-unused-vars
+  16:3   warning  'ArrowDownLeft' is defined but never used               @typescript-eslint/no-unused-vars
+  17:3   warning  'ArrowLeftRight' is defined but never used              @typescript-eslint/no-unused-vars
+  18:3   warning  'MoreVertical' is defined but never used                @typescript-eslint/no-unused-vars
+  20:3   warning  'RefreshCw' is defined but never used                   @typescript-eslint/no-unused-vars
+  34:3   warning  'Dialog' is defined but never used                      @typescript-eslint/no-unused-vars
+  35:3   warning  'DialogContent' is defined but never used               @typescript-eslint/no-unused-vars
+  36:3   warning  'DialogDescription' is defined but never used           @typescript-eslint/no-unused-vars
+  37:3   warning  'DialogHeader' is defined but never used                @typescript-eslint/no-unused-vars
+  38:3   warning  'DialogTitle' is defined but never used                 @typescript-eslint/no-unused-vars
+  61:10  warning  'Skeleton' is defined but never used                    @typescript-eslint/no-unused-vars
+  71:84  warning  'deleteTransaction' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/categories/page.tsx
+  10:8  warning  'CategoryManager' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/customers/CustomersClient.tsx
+  10:10  warning  'useSalesData' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/expenses/ExpensesClient.tsx
+   4:27  warning  'useMemo' is defined but never used             @typescript-eslint/no-unused-vars
+  12:8   warning  'EditExpenseDialog' is defined but never used   @typescript-eslint/no-unused-vars
+  14:10  warning  'Dialog' is defined but never used              @typescript-eslint/no-unused-vars
+  14:18  warning  'DialogContent' is defined but never used       @typescript-eslint/no-unused-vars
+  21:10  warning  'formatCashCurrency' is defined but never used  @typescript-eslint/no-unused-vars
+  22:10  warning  'LayoutGrid' is defined but never used          @typescript-eslint/no-unused-vars
+  22:38  warning  'Plus' is defined but never used                @typescript-eslint/no-unused-vars
+  22:44  warning  'Upload' is defined but never used              @typescript-eslint/no-unused-vars
+  33:11  warning  'user' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/[id]/page.tsx
+   19:32   warning  'loadProducts' is assigned a value but never used                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   21:111  warning  'recalculateProductStock' is assigned a value but never used                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   21:136  warning  'createStockHistoryEntry' is assigned a value but never used                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   22:11   warning  'clearAllLocationCaches' is assigned a value but never used                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   54:41   warning  'entryId' is defined but never used                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   54:58   warning  'newQuantity' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   54:79   warning  'newReason' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   54:98   warning  'newDate' is defined but never used                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   62:43   warning  'entryId' is defined but never used                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  105:9    warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/carriage-inwards/page.tsx
+   23:11  warning  'user' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   38:5   warning  'updateCarriageInward' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  205:26  warning  'error' is defined but never used                          @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/edit/[id]/page.tsx
+  27:79  warning  'loadProducts' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/new/page.tsx
+  27:79  warning  'loadProducts' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/products/page.tsx
+  529:9  warning  'handleBulkBarcodeExport' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/inventory/reconcile/page.tsx
+  11:10  warning  'Progress' is defined but never used                    @typescript-eslint/no-unused-vars
+  20:37  warning  'TrendingUp' is defined but never used                  @typescript-eslint/no-unused-vars
+  20:62  warning  'PackageMinus' is defined but never used                @typescript-eslint/no-unused-vars
+  33:10  warning  'format' is defined but never used                      @typescript-eslint/no-unused-vars
+  76:10  warning  'repairPreviews' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  77:10  warning  'showRepairPreview' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/layout.tsx
+  3:20  warning  'notFound' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/messages/page.tsx
+  6:23  warning  'Message' is defined but never used   @typescript-eslint/no-unused-vars
+  6:49  warning  'Purchase' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/new-sale/page.tsx
+  19:8   warning  'LoadingSpinner' is defined but never used        @typescript-eslint/no-unused-vars
+  32:20  warning  'setEditSale' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/products/page.tsx
+  547:9  warning  'handleBulkBarcodeExport' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(agency)/agency/reset-password/page.tsx
+   92:16  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  169:9   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(onboarding)/onboarding/error.tsx
+  5:37  warning  'Home' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(onboarding)/onboarding/page.tsx
+   25:3   warning  'Sparkles' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   28:3   warning  'ArrowLeft' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   36:3   warning  'Globe' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   37:3   warning  'Users' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   38:3   warning  'TrendingUp' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  101:6   warning  React Hook useCallback has a missing dependency: 'updateForm'. Either include it or remove the dependency array                                                                                                                                                                          react-hooks/exhaustive-deps
+  137:6   warning  React Hook useEffect has a missing dependency: 'user'. Either include it or remove the dependency array                                                                                                                                                                                  react-hooks/exhaustive-deps
+  137:26  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                                                 react-hooks/exhaustive-deps
+  157:9   warning  'validateStep2' is assigned a value but never used                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  287:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  434:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(payments)/payments/callback/page.tsx
+  65:15  warning  'isSubscription' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/index/AppShowcase.tsx
+  127:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/index/DashboardShowcase.tsx
+  140:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/index/Footer.tsx
+  23:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/index/Nav.tsx
+  33:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/index/WhySection.tsx
+  115:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/login/LoginForm.tsx
+  64:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/login/LoginLogo.tsx
+  6:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/components/login/LoginSocial.tsx
+  19:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  36:7   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(public)/public/signup/page.tsx
+   30:3   warning  'HelpCircle' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   31:3   warning  'Mail' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   32:3   warning  'Phone' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   43:3   warning  'DialogHeader' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  206:9   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  350:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/(subscription)/subscription/page.tsx
+    9:16  warning  'TabsContent' is defined but never used   @typescript-eslint/no-unused-vars
+   11:24  warning  'Zap' is defined but never used           @typescript-eslint/no-unused-vars
+   11:52  warning  'Calendar' is defined but never used      @typescript-eslint/no-unused-vars
+   38:40  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:83  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:32  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:62  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/admin.ts
+    7:51  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   31:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   38:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  109:56  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  137:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  145:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  157:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  164:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  220:15  warning  'primarySettings' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  228:52  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  254:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  261:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  292:94  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  293:89  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  307:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  314:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  323:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  328:60  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  330:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  406:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  414:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  451:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  457:55  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  459:38  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  472:57  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  486:21  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/app-init.ts
+  6:10  warning  'getBusinessLocationsAction' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/billing.ts
+  5:10  warning  'revalidatePath' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/business.ts
+  5:10  warning  'revalidatePath' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/finance.ts
+    4:14   warning  'PaymentStatus' is defined but never used   @typescript-eslint/no-unused-vars
+    4:29   warning  'ActivityType' is defined but never used    @typescript-eslint/no-unused-vars
+    4:43   warning  'ActivityModule' is defined but never used  @typescript-eslint/no-unused-vars
+  443:107  warning  'locationId' is defined but never used      @typescript-eslint/no-unused-vars
+  443:127  warning  'userId' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/inventory.ts
+  690:21  warning  'totalIn' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  703:21  warning  'totalOut' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/products.ts
+  5:10  warning  'Product' is defined but never used                @typescript-eslint/no-unused-vars
+  5:19  warning  'ProductFormData' is defined but never used        @typescript-eslint/no-unused-vars
+  5:36  warning  'mapDbProductToProduct' is defined but never used  @typescript-eslint/no-unused-vars
+  5:59  warning  'mapProductToDbProduct' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/sales.ts
+  407:78  warning  'userId' is defined but never used              @typescript-eslint/no-unused-vars
+  523:99  warning  'isDefault' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/actions/tasks.ts
+  6:40  warning  'format' is defined but never used    @typescript-eslint/no-unused-vars
+  6:48  warning  'parseISO' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/cron/activity-cleanup/route.ts
+  75:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/cron/expiry-notifier/route.ts
+  102:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/cron/orphaned-account-cleanup/route.ts
+  71:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/cron/subscription-monitor/route.ts
+  103:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/email/resend/route.ts
+  26:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/email/smtp/route.ts
+  42:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/app/api/print-receipt/route.ts
+   77:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   79:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/auth.config.ts
+  68:13  warning  'agencyOnboarded' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/AgencyLayout.tsx
+  13:10  warning  'ProfileSelectionOverlay' is defined but never used  @typescript-eslint/no-unused-vars
+  14:10  warning  'PinEntryOverlay' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/AnalyticsDashboard.tsx
+    4:34  warning  'Product' is defined but never used             @typescript-eslint/no-unused-vars
+   33:9   warning  'isMobile' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  126:34  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  130:9   warning  'isLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/AppSidebar.tsx
+  4:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ExpensesChart.tsx
+    7:10  warning  'ChartContainer' is defined but never used       @typescript-eslint/no-unused-vars
+    7:26  warning  'ChartTooltip' is defined but never used         @typescript-eslint/no-unused-vars
+    7:40  warning  'ChartTooltipContent' is defined but never used  @typescript-eslint/no-unused-vars
+  101:9   warning  'config' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/LoadingSpinner.tsx
+  23:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/PrintableReceipt.tsx
+   13:16  warning  'BusinessSettings' is defined but never used                           @typescript-eslint/no-unused-vars
+   17:38  warning  'Smartphone' is defined but never used                                 @typescript-eslint/no-unused-vars
+   21:3   warning  'Table' is defined but never used                                      @typescript-eslint/no-unused-vars
+   22:3   warning  'TableBody' is defined but never used                                  @typescript-eslint/no-unused-vars
+   23:3   warning  'TableCell' is defined but never used                                  @typescript-eslint/no-unused-vars
+   24:3   warning  'TableHead' is defined but never used                                  @typescript-eslint/no-unused-vars
+   25:3   warning  'TableHeader' is defined but never used                                @typescript-eslint/no-unused-vars
+   26:3   warning  'TableRow' is defined but never used                                   @typescript-eslint/no-unused-vars
+   39:10  warning  'generateThermalText' is defined but never used                        @typescript-eslint/no-unused-vars
+   65:10  warning  'isBridgeOnline' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  174:9   warning  'isIOSDevice' is assigned a value but never used                       @typescript-eslint/no-unused-vars
+  175:9   warning  'isAndroidDevice' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  179:9   warning  'currentDateTime' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  369:9   warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  415:21  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  425:9   warning  'handleDirectThermalPrint' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  445:21  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  607:35  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ProductSaleItemInput.tsx
+    2:38   warning  'useCallback' is defined but never used                          @typescript-eslint/no-unused-vars
+    2:51   warning  'useMemo' is defined but never used                              @typescript-eslint/no-unused-vars
+   24:10   warning  'matchProductSearch' is defined but never used                   @typescript-eslint/no-unused-vars
+   47:5    warning  'user' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+   49:11   warning  'currentBusiness' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   50:50   warning  'formatFinancial' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  207:9    warning  'toggleCostVisibility' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  218:11   warning  'currentQuantity' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  629:153  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/Providers.tsx
+  17:5   warning  'initialBusinessSettings' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  18:5   warning  'initialAnalyticsSummary' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  21:22  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  22:32  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  23:23  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  24:28  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  25:31  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  26:31  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/SalesForm.tsx
+    6:16  warning  'SaleFormData' is defined but never used                                                                                                                                 @typescript-eslint/no-unused-vars
+    8:10  warning  'calculateProfit' is defined but never used                                                                                                                              @typescript-eslint/no-unused-vars
+   13:10  warning  'useProducts' is defined but never used                                                                                                                                  @typescript-eslint/no-unused-vars
+   14:10  warning  'useSaleProductSelection' is defined but never used                                                                                                                      @typescript-eslint/no-unused-vars
+   23:10  warning  'useQuery' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+   32:8   warning  'SaleCategorySelector' is defined but never used                                                                                                                         @typescript-eslint/no-unused-vars
+   33:10  warning  'mapDbProductToProduct' is defined but never used                                                                                                                        @typescript-eslint/no-unused-vars
+   41:15  error    Unexpected any. Specify a different type                                                                                                                                 @typescript-eslint/no-explicit-any
+   48:3   warning  'currency' is assigned a value but never used                                                                                                                            @typescript-eslint/no-unused-vars
+   55:9   warning  'searchParams' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+   84:26  warning  'templates' is assigned a value but never used                                                                                                                           @typescript-eslint/no-unused-vars
+   85:10  warning  'selectedTemplateId' is assigned a value but never used                                                                                                                  @typescript-eslint/no-unused-vars
+   85:30  warning  'setSelectedTemplateId' is assigned a value but never used                                                                                                               @typescript-eslint/no-unused-vars
+  120:5   warning  'setOriginalPaymentStatus' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  136:5   warning  'updateInstallmentPayment' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  137:5   warning  'deleteInstallmentPayment' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  139:5   warning  'clearChanges' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+  156:15  warning  'installmentPayments' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  158:5   warning  'unlinkPaymentFromCashAccount' is assigned a value but never used                                                                                                        @typescript-eslint/no-unused-vars
+  246:6   warning  React Hook useEffect has missing dependencies: 'selectedCashAccountId', 'setCashTransactionId', and 'setLinkToCash'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  340:36  error    Unexpected any. Specify a different type                                                                                                                                 @typescript-eslint/no-explicit-any
+  430:28  error    Unexpected any. Specify a different type                                                                                                                                 @typescript-eslint/no-explicit-any
+  445:21  error    Unexpected any. Specify a different type                                                                                                                                 @typescript-eslint/no-explicit-any
+  457:5   warning  React Hook useMemo has a missing dependency: 'calculateTotalAmount'. Either include it or remove the dependency array                                                    react-hooks/exhaustive-deps
+  462:5   warning  React Hook useMemo has a missing dependency: 'calculateTaxAmount'. Either include it or remove the dependency array                                                      react-hooks/exhaustive-deps
+  569:6   warning  React Hook useEffect has a missing dependency: 'handleAddItem'. Either include it or remove the dependency array                                                         react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/SalesTable.tsx
+   28:57  warning  'MessageCircle' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   30:10  warning  'generatePaymentReminderPDF' is defined but never used                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   84:9   warning  'subtotal' is assigned a value but never used                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   87:9   warning  'taxAmount' is assigned a value but never used                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  407:33  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  413:33  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  429:9   warning  'getReceiptButtonLabel' is assigned a value but never used                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  442:9   warning  'getReceiptButtonIcon' is assigned a value but never used                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  496:13  warning  'customer' is assigned a value but never used                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  515:13  warning  'totalAmountDue' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  528:6   warning  React Hook useCallback has unnecessary dependencies: 'businessSettings' and 'settings'. Either exclude them or remove the dependency array                                                                                                                                               react-hooks/exhaustive-deps
+  531:9   warning  'handleSendThankYouWhatsApp' is assigned a value but never used                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  557:9   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ThermalReceipt.tsx
+    3:17  warning  'useRef' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    3:25  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    3:36  warning  'useState' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    4:16  warning  'BusinessSettings' is defined but never used                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  112:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  276:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/analytics/AnalyticsCards.tsx
+    5:29  warning  'CardDescription' is defined but never used        @typescript-eslint/no-unused-vars
+    5:46  warning  'CardHeader' is defined but never used             @typescript-eslint/no-unused-vars
+    5:58  warning  'CardTitle' is defined but never used              @typescript-eslint/no-unused-vars
+   24:55  error    Component definition is missing display name       react/display-name
+  113:9   warning  'visibleCards' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/analytics/DateRangeFilter.tsx
+  10:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/analytics/FinancialOverview.tsx
+  16:3   warning  'ReferenceLine' is defined but never used  @typescript-eslint/no-unused-vars
+  23:27  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  26:68  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  45:31  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  45:36  warning  'index' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/analytics/SalesPerformanceChart.tsx
+   23:27   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   37:61   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:28   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:72   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:101  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/auth/AuthProvider.tsx
+   13:10  warning  'signInAction' is defined but never used  @typescript-eslint/no-unused-vars
+  141:50  warning  'email' is defined but never used         @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/auth/RequiredSetupGate.tsx
+  18:57  warning  'daysRemaining' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  48:51  error    Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/auth/SubscriptionGate.tsx
+  10:18  warning  'ShieldAlert' is defined but never used   @typescript-eslint/no-unused-vars
+  10:43  warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/business/BusinessPasswordManager.tsx
+  351:57  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  351:72  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/business/ResetBusinessDialog.tsx
+  41:46  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  41:61  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/business/RestoreDialog.tsx
+  133:27  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/carriage/CarriageInwardsForm.tsx
+  60:6  warning  React Hook useEffect has missing dependencies: 'hasDraft' and 'loadDraft'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/BulkTransactionAddTab.tsx
+    2:38  warning  'useCallback' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   47:13  warning  'user' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+   62:40  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   71:8   warning  React Hook useEffect has a missing dependency: 'addEmptyRow'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  140:59  warning  'id' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  198:58  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  335:54  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashAccountCard.tsx
+  199:54  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashAccountDialog.tsx
+  72:21  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashAccountDialog.tsx:72:21
+  70 |   }, [open, initialData, reset]);
+  71 |
+> 72 |   const isDefault = watch("isDefault");
+     |                     ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  73 |
+  74 |   const handleFormSubmit = (data: CashAccountFormData) => {
+  75 |     onSubmit(data);  react-hooks/incompatible-library
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashAccountsList.tsx
+  24:9  warning  'isMobile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashCSVUploadDialog.tsx
+    2:35  warning  'useMemo' is defined but never used       @typescript-eslint/no-unused-vars
+   12:35  warning  'CashAccount' is defined but never used   @typescript-eslint/no-unused-vars
+   63:40  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:68  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashTransactionDialog.tsx
+   63:30  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   80:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  115:41  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  396:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/CashTransactionsList.tsx
+  5:29  warning  'FileText' is defined but never used         @typescript-eslint/no-unused-vars
+  5:39  warning  'FileSpreadsheet' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/DailyCashSummary.tsx
+  13:10  warning  'useIsMobile' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/DeleteCashAccountDialog.tsx
+  44:64  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  44:79  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/EditCashTransactionDialog.tsx
+   30:3   warning  'accounts' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   59:41  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   94:41  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  134:9   warning  'inputDateValue' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  240:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/ProfitLossTab.tsx
+  47:6  warning  React Hook useEffect has missing dependencies: 'dateRange.from', 'dateRange.to', and 'specificDate'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/ProfitLossTable.tsx
+  95:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/cash/ViewCashTransactionDialog.tsx
+  136:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/BirthdayCard.tsx
+  81:27  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/BusinessNoticeGenerator.tsx
+  14:10  warning  'formalizeText' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerCategoryManager.tsx
+  107:61  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  107:77  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerContent.tsx
+  33:40  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  62:3   warning  'canCreate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerDetail.tsx
+    12:43  warning  'Plus' is defined but never used                                 @typescript-eslint/no-unused-vars
+    12:49  warning  'Download' is defined but never used                             @typescript-eslint/no-unused-vars
+    12:59  warning  'Printer' is defined but never used                              @typescript-eslint/no-unused-vars
+    16:79  warning  'DialogFooter' is defined but never used                         @typescript-eslint/no-unused-vars
+    18:10  warning  'MoreHorizontal' is defined but never used                       @typescript-eslint/no-unused-vars
+    34:10  warning  'useInstallmentPayments' is defined but never used               @typescript-eslint/no-unused-vars
+    75:32  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+    85:59  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+    89:52  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+    95:9   warning  'getDueAmount' is assigned a value but never used                @typescript-eslint/no-unused-vars
+    95:31  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   101:77  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   124:67  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   130:26  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   226:67  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   232:26  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   330:10  warning  'isLoadingCredit' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   779:80  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   794:42  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   966:63  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  1000:58  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  1005:40  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1048:27  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1093:58  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  1098:40  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1141:27  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  1186:15  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  1186:35  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerFilters.tsx
+  30:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerForm.tsx
+    9:39  warning  'Plus' is defined but never used                                                                                                                  @typescript-eslint/no-unused-vars
+  103:6   warning  React Hook React.useEffect has missing dependencies: 'hasDraft', 'loadDraft', and 'setValue'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  152:37  error    Unexpected any. Specify a different type                                                                                                          @typescript-eslint/no-explicit-any
+  352:42  error    Unexpected any. Specify a different type                                                                                                          @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerList.tsx
+  32:3  warning  'canDelete' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/CustomerTabs.tsx
+   3:47  warning  'FileText' is defined but never used   @typescript-eslint/no-unused-vars
+  11:54  warning  'activeTab' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/MergeCustomersDialog.tsx
+  52:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/NewCustomerDialog.tsx
+  18:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/PaymentReminderPreviewDialog.tsx
+    3:60  warning  'DialogFooter' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+    7:49  warning  'MessageCircle' is defined but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+    8:26  warning  'BusinessSettings' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+   12:10  warning  'openWhatsApp' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+   31:34  warning  'settingsLoading' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+   77:8   warning  React Hook useEffect has missing dependencies: 'generatePreview', 'pdfUrl', 'targetCustomer', and 'targetSales.length'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  119:18  warning  'error' is defined but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+  187:22  warning  'err' is defined but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/SMSNoticeDialog.tsx
+  7:25  warning  'X' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/customers/WeMissYouDialog.tsx
+   72:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  100:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  129:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/EditExpenseDialog.tsx
+  11:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseBulkAddDialog.tsx
+   11:94   warning  'Wallet' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   11:102  warning  'Link' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   20:5    warning  'DialogDescription' is defined but never used                                                                   @typescript-eslint/no-unused-vars
+   21:5    warning  'DialogHeader' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   22:5    warning  'DialogTitle' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   54:13   warning  'user' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+   69:40   error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   78:8    warning  React Hook useEffect has a missing dependency: 'addEmptyRow'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  143:55   warning  'id' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseCSVUploadDialog.tsx
+   15:5   warning  'DialogDescription' is defined but never used     @typescript-eslint/no-unused-vars
+   16:5   warning  'DialogHeader' is defined but never used          @typescript-eslint/no-unused-vars
+   17:5   warning  'DialogTitle' is defined but never used           @typescript-eslint/no-unused-vars
+   59:12  warning  'isUploading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   63:40  error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  123:68  error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseCategoriesManager.tsx
+  127:65  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  127:81  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseCategoriesSummary.tsx
+   6:16  warning  'TabsContent' is defined but never used          @typescript-eslint/no-unused-vars
+  12:3   warning  'Legend' is defined but never used               @typescript-eslint/no-unused-vars
+  15:10  warning  'ChartContainer' is defined but never used       @typescript-eslint/no-unused-vars
+  15:26  warning  'ChartTooltipContent' is defined but never used  @typescript-eslint/no-unused-vars
+  19:6   warning  'CategorySummaryItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseCenter.tsx
+  5:36  warning  'Download' is defined but never used  @typescript-eslint/no-unused-vars
+  5:46  warning  'Receipt' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseContent.tsx
+  17:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseForm.tsx
+   13:24  warning  'Upload' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   25:20  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   26:17  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   77:6   warning  React Hook useEffect has missing dependencies: 'hasDraft', 'loadDraft', and 'toast'. Either include them or remove the dependency array                                                                                                                                                  react-hooks/exhaustive-deps
+  116:9   warning  'userId' is assigned a value but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  476:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpenseHeader.tsx
+  6:3  warning  'DropdownMenu' is defined but never used         @typescript-eslint/no-unused-vars
+  7:3  warning  'DropdownMenuContent' is defined but never used  @typescript-eslint/no-unused-vars
+  8:3  warning  'DropdownMenuItem' is defined but never used     @typescript-eslint/no-unused-vars
+  9:3  warning  'DropdownMenuTrigger' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpensesDateFilter.tsx
+  9:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ExpensesList.tsx
+  23:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  74:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/expenses/ViewExpenseDialog.tsx
+  98:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/header/InstallButton.tsx
+  8:35  warning  'TooltipProvider' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/header/Logo.tsx
+  6:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/header/MobileMenuButton.tsx
+  23:11  warning  'updateAvailable' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/header/NavLinks.tsx
+  6:162  warning  'UserCircle' is defined but never used  @typescript-eslint/no-unused-vars
+  6:174  warning  'CreditCard' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/header/UserMenu.tsx
+   3:28  warning  'User' is defined but never used                           @typescript-eslint/no-unused-vars
+   3:34  warning  'ChevronDown' is defined but never used                    @typescript-eslint/no-unused-vars
+   3:47  warning  'Check' is defined but never used                          @typescript-eslint/no-unused-vars
+  22:11  warning  'currentBusiness' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  22:28  warning  'businessLocations' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  23:11  warning  'updateAvailable' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  29:9   warning  'handleBusinessSwitch' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/history/HistoryFilters.tsx
+  33:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/history/HistoryItem.tsx
+  122:83  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:87  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  219:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  282:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/BarcodeExportDialog.tsx
+  7:10  warning  'RadioGroup' is defined but never used      @typescript-eslint/no-unused-vars
+  7:22  warning  'RadioGroupItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/BulkDeleteDialog.tsx
+  13:10  warning  'Progress' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/BulkStockAddTab.tsx
+   39:3   warning  'onProductSelect' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   60:13  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  554:6   warning  React Hook useCallback has a missing dependency: 'validateStockDate'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  741:35  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                         react/no-unescaped-entities
+  741:43  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                         react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/CSVUpdateDialog.tsx
+  6:10  warning  'Progress' is defined but never used                 @typescript-eslint/no-unused-vars
+  8:41  warning  'CheckCircle' is defined but never used              @typescript-eslint/no-unused-vars
+  9:97  warning  'extractUpdateCategories' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/CSVUploadDialog.tsx
+   6:10  warning  'Progress' is defined but never used                 @typescript-eslint/no-unused-vars
+   8:41  warning  'CheckCircle' is defined but never used              @typescript-eslint/no-unused-vars
+   8:70  warning  'Info' is defined but never used                     @typescript-eslint/no-unused-vars
+   9:73  warning  'extractUniqueCategories' is defined but never used  @typescript-eslint/no-unused-vars
+  39:3   warning  'onUpload' is defined but never used                 @typescript-eslint/no-unused-vars
+  40:3   warning  'categories' is defined but never used               @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/CategoryManager.tsx
+    7:26  warning  'Plus' is defined but never used                                 @typescript-eslint/no-unused-vars
+  208:46  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  208:59  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/DeleteProductDialog.tsx
+  40:42  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  40:58  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/DeleteStockHistoryDialog.tsx
+  148:70  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/DesktopProductTable.tsx
+  13:10  warning  'formatNumber' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/EditStockHistoryDialog.tsx
+   35:3   warning  'productCreatedAt' is defined but never used                     @typescript-eslint/no-unused-vars
+   45:9   warning  'getInitialStockDate' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   94:9   warning  'handleReasonChange' is assigned a value but never used          @typescript-eslint/no-unused-vars
+   98:31  warning  'skipDateUpdate' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  282:72  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/InlineEditableCell.tsx
+  65:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  67:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/InventoryFilters.tsx
+   44:6   warning  React Hook React.useEffect has a missing dependency: 'localSearch'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  117:80  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/InventoryHeader.tsx
+   9:3  warning  'Search' is defined but never used  @typescript-eslint/no-unused-vars
+  13:3  warning  'Scale' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/InventorySearchBar.tsx
+  20:5   warning  'products' is defined but never used           @typescript-eslint/no-unused-vars
+  25:11  warning  'isMobile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ItemSalesDialog.tsx
+  107:34  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  107:52  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/MobileProductCard.tsx
+  39:67  warning  'canViewProfit' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductDetails.tsx
+    3:1   error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                      @typescript-eslint/ban-ts-comment
+   25:10  warning  'Alert' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   25:17  warning  'AlertTitle' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   25:29  warning  'AlertDescription' is defined but never used                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   46:3   warning  'isLoadingHistory' is defined but never used                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   52:29  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   58:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   64:11  warning  'currentBusiness' is assigned a value but never used                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   70:10  warning  'isDeleteDialogOpen' is assigned a value but never used                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   70:30  warning  'setIsDeleteDialogOpen' is assigned a value but never used                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  475:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductForm.tsx
+  122:6   warning  React Hook useEffect has missing dependencies: 'hasDraft' and 'loadDraft'. Either include them or remove the dependency array                                                                                                                                                            react-hooks/exhaustive-deps
+  191:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  646:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductImage.tsx
+  20:7  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductSelector.tsx
+  7:3  warning  'CommandDialog' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductStockHistory.tsx
+   9:3   warning  'DropdownMenu' is defined but never used           @typescript-eslint/no-unused-vars
+  10:3   warning  'DropdownMenuTrigger' is defined but never used    @typescript-eslint/no-unused-vars
+  11:3   warning  'DropdownMenuContent' is defined but never used    @typescript-eslint/no-unused-vars
+  12:3   warning  'DropdownMenuItem' is defined but never used       @typescript-eslint/no-unused-vars
+  13:3   warning  'DropdownMenuLabel' is defined but never used      @typescript-eslint/no-unused-vars
+  14:3   warning  'DropdownMenuSeparator' is defined but never used  @typescript-eslint/no-unused-vars
+  26:13  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/ProductSuggestionsPanel.tsx
+  155:77  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  155:90  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/RequisitionTab.tsx
+    2:40  warning  'useEffect' is defined but never used                            @typescript-eslint/no-unused-vars
+   29:26  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   30:20  error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+   63:3   warning  'onProductSelect' is defined but never used                      @typescript-eslint/no-unused-vars
+  894:37  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  894:46  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/SavedRequisitions.tsx
+   10:3   warning  'Edit' is defined but never used          @typescript-eslint/no-unused-vars
+   12:3   warning  'Calendar' is defined but never used      @typescript-eslint/no-unused-vars
+  168:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/SoldItemsTab.tsx
+   14:10  warning  'formatNumber' is defined but never used                 @typescript-eslint/no-unused-vars
+  136:7   warning  'dateRangeForExport' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockCountTab.tsx
+   19:5   warning  'AlertDialogAction' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   36:79  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   59:68  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  143:23  warning  'updateProduct' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  162:18  warning  'e' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+  292:8   warning  React Hook useEffect has a missing dependency: 'handleScanSuccess'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  621:65  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                       react/no-unescaped-entities
+  621:80  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                       react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockInputHistory.tsx
+   24:3   warning  'DropdownMenu' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   25:3   warning  'DropdownMenuContent' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+   26:3   warning  'DropdownMenuItem' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   27:3   warning  'DropdownMenuTrigger' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+  115:38  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  304:6   warning  React Hook useMemo has a missing dependency: 'getProductDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockLevelChart.tsx
+   3:10  warning  'Card' is defined but never used         @typescript-eslint/no-unused-vars
+   3:16  warning  'CardContent' is defined but never used  @typescript-eslint/no-unused-vars
+   3:29  warning  'CardHeader' is defined but never used   @typescript-eslint/no-unused-vars
+   3:41  warning  'CardTitle' is defined but never used    @typescript-eslint/no-unused-vars
+  12:3   warning  'Legend' is defined but never used       @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockReconciliation.tsx
+  105:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockSummaryFilters.tsx
+  15:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:57  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockSummaryTab.tsx
+  189:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockSummaryTab.tsx:189:7
+  187 |     const nextRange = newRange;
+  188 |     if (JSON.stringify(dateRange) !== JSON.stringify(nextRange)) {
+> 189 |       setDateRange(nextRange);
+      |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  190 |     }
+  191 |   }, [period, specificDay, dateRange]);
+  192 |  react-hooks/set-state-in-effect
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockSummaryTable.tsx
+    7:51  warning  'ChevronLeft' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+    7:64  warning  'ChevronRight' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   69:11  warning  'canViewCostPrice' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  116:6   warning  React Hook useEffect has a missing dependency: 'getTableFiltersCacheKey'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  207:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/inventory/StockSummaryTable.tsx:207:7
+  205 |   useEffect(() => {
+  206 |     if (currentPage !== 1) {
+> 207 |       setCurrentPage(1);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  208 |     }
+  209 |   }, [searchTerm, categoryFilter, stockStatusFilter, currentPage]);
+  210 |  react-hooks/set-state-in-effect
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/BulkMessageDialog.tsx
+   98:27  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/BulkMessageDialog.tsx:98:27
+   96 |   useEffect(() => {
+   97 |     if (!open) {
+>  98 |       if (content !== '') setContent('');
+      |                           ^^^^^^^^^^ Avoid calling setState() directly within an effect
+   99 |       if (selectedCustomers.length > 0) setSelectedCustomers([]);
+  100 |       if (selectedTemplate !== 'none') setSelectedTemplate('none');
+  101 |       if (statusSelection !== 'all') setStatusSelection('all');  react-hooks/set-state-in-effect
+  110:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/BulkMessageDialog.tsx:110:9
+  108 |       const template = templates.find(t => t.id === selectedTemplate);
+  109 |       if (template && content !== template.content) {
+> 110 |         setContent(template.content);
+      |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  111 |       }
+  112 |     }
+  113 |   }, [selectedTemplate, templates, content]);                                                                          react-hooks/set-state-in-effect
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/MessageContent.tsx
+  45:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:95  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/MessageHeader.tsx
+   3:41  warning  'Zap' is defined but never used         @typescript-eslint/no-unused-vars
+  20:3   warning  'smsCredits' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/messages/NewMessageDialog.tsx
+  114:6  warning  React Hook useMemo has a missing dependency: 'getCustomerPhone'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/DeleteProfileDialog.tsx
+  51:57  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  51:80  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/EditProfileDialog.tsx
+  43:6  warning  React Hook useEffect has a missing dependency: 'loadRoles'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/FirstTimePinSetup.tsx
+   3:35  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  81:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  92:28  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/NewProfileDialog.tsx
+  37:6   warning  React Hook React.useEffect has a missing dependency: 'loadRoles'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  69:12  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/PinEntryOverlay.tsx
+  78:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/ProfileSelectionOverlay.tsx
+   4:23  warning  'BusinessProfile' is defined but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   7:16  warning  'CardContent' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   8:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  22:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/profiles/RoleManagement.tsx
+  44:8  warning  React Hook useEffect has a missing dependency: 'loadRoles'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/CustomerInformation.tsx
+  39:3  warning  'notes' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/DateRangeFilter.tsx
+  8:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/DeletedSalesTable.tsx
+  7:31  warning  'Package' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/InstallmentPaymentHistory.tsx
+  228:9  warning  'getCashAccountName' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/InstallmentPaymentInput.tsx
+   32:18   error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+   39:3    warning  'amountDue' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   45:3    warning  'maxAmount' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   47:3    warning  'onPaymentStatusChange' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   68:6    warning  React Hook React.useEffect has a missing dependency: 'amountPaidInput'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  212:105  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                           react/no-unescaped-entities
+  212:117  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                           react/no-unescaped-entities
+  219:85   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                           react/no-unescaped-entities
+  219:97   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                           react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/NewSaleContent.tsx
+  12:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/ReceiptDialog.tsx
+  10:3  warning  'DrawerTrigger' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SaleFormActions.tsx
+   84:9  warning  'FALLBACK_PLACEHOLDER' is assigned a value but never used                                                        @typescript-eslint/no-unused-vars
+  143:6  warning  React Hook useEffect has a missing dependency: 'fillTemplate'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalePaymentSection.tsx
+  27:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesCategoryAnalysis.tsx
+    4:10   warning  'PieChart' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+    4:20   warning  'Pie' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+    4:25   warning  'Cell' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+    4:31   warning  'Legend' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+    4:39   warning  'ResponsiveContainer' is defined but never used                                                                @typescript-eslint/no-unused-vars
+    4:60   warning  'Tooltip' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   17:18   warning  'isAfter' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   17:27   warning  'isBefore' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   17:37   warning  'isEqual' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   17:172  warning  'subYears' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+  171:6    warning  React Hook useMemo has a missing dependency: 'getDateRange'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  172:9    warning  'pieChartData' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  178:9    warning  'COLORS' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  179:9    warning  'PieTooltip' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  182:6    error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  198:9    warning  'getIcon' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  203:38   error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  214:14   warning  'error' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  230:14   warning  'error' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  250:14   warning  'error' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  494:56   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                react/no-unescaped-entities
+  494:81   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                react/no-unescaped-entities
+  495:85   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                react/no-unescaped-entities
+  495:99   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesCategoryManager.tsx
+    8:30  warning  'Settings' is defined but never used                             @typescript-eslint/no-unused-vars
+  125:47  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  125:72  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesClient.tsx
+  18:21  warning  'History' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesSummaryCards.tsx
+  14:11  warning  'formatFinancial' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesTableFilters.tsx
+  10:10  warning  'cn' is defined but never used                  @typescript-eslint/no-unused-vars
+  54:3   warning  'sortOrder' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  55:3   warning  'setSortOrder' is defined but never used        @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/SalesTableRow.tsx
+  12:3  warning  'TooltipProvider' is defined but never used     @typescript-eslint/no-unused-vars
+  57:9  warning  'subtotal' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  59:9  warning  'taxAmount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/sales/TableActions.tsx
+  11:10  warning  'format' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/settings/BusinessProfileForm.tsx
+  22:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  81:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/settings/PaymentMethodsManager.tsx
+    5:10  warning  'Label' is defined but never used                                @typescript-eslint/no-unused-vars
+  102:57  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  102:68  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  112:33  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/settings/PrinterBridgeSettings.tsx
+   43:22   warning  'error' is defined but never used                                @typescript-eslint/no-unused-vars
+   71:18   warning  'error' is defined but never used                                @typescript-eslint/no-unused-vars
+   87:54   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  167:78   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  208:89   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  208:117  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  209:221  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/settings/SignatureManager.tsx
+  29:13   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  72:103  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/signature/SignaturePad.tsx
+  116:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskCalendar.tsx
+   10:29  warning  'startOfMonth' is defined but never used       @typescript-eslint/no-unused-vars
+   10:43  warning  'endOfMonth' is defined but never used         @typescript-eslint/no-unused-vars
+  144:32  warning  'props' is defined but never used              @typescript-eslint/no-unused-vars
+  145:23  warning  'dayTasks' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskFilters.tsx
+  42:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskForm.tsx
+  16:10  warning  'useTaskCategories' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  66:6   warning  React Hook useEffect has missing dependencies: 'hasDraft' and 'loadDraft'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskItems.tsx
+  32:64  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskList.tsx
+  35:11  warning  'categories' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskPageContent.tsx
+  66:56  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskStats.tsx
+    7:27  warning  'isTomorrow' is defined but never used                           @typescript-eslint/no-unused-vars
+  134:51  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  139:28  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  144:67  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  157:18  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/tasks/TaskTabNavigation.tsx
+  9:64  warning  'activeTab' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/ImageViewer.tsx
+  38:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  54:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/calendar.tsx
+  63:25  warning  '_props' is defined but never used  @typescript-eslint/no-unused-vars
+  64:26  warning  '_props' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/chart.tsx
+  70:7  warning  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/command.tsx
+  27:11  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/date-range-picker.tsx
+  4:10  warning  'addDays' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/components/ui/textarea.tsx
+  5:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/contexts/BusinessContext.tsx
+   33:28  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   34:28  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   50:26  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   51:29  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   52:29  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  109:9   warning  The 'getStorageKey' function makes the dependencies of useCallback Hook (at line 214) change on every render. To fix this, wrap the definition of 'getStorageKey' in its own useCallback() Hook                  react-hooks/exhaustive-deps
+  109:9   warning  The 'getStorageKey' function makes the dependencies of useCallback Hook (at line 271) change on every render. To fix this, wrap the definition of 'getStorageKey' in its own useCallback() Hook                  react-hooks/exhaustive-deps
+  111:9   warning  The 'loadBusinessLocations' function makes the dependencies of useEffect Hook (at line 167) change on every render. To fix this, wrap the definition of 'loadBusinessLocations' in its own useCallback() Hook    react-hooks/exhaustive-deps
+  111:9   warning  The 'loadBusinessLocations' function makes the dependencies of useCallback Hook (at line 363) change on every render. To fix this, wrap the definition of 'loadBusinessLocations' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  111:9   warning  The 'loadBusinessLocations' function makes the dependencies of useMemo Hook (at line 379) change on every render. To fix this, wrap the definition of 'loadBusinessLocations' in its own useCallback() Hook      react-hooks/exhaustive-deps
+  131:37  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  138:38  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  141:36  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  145:36  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  244:24  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  245:26  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  246:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  247:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  248:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  249:42  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  287:24  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  288:26  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  289:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  290:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  291:32  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  292:42  error    Unexpected any. Specify a different type                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  343:6   warning  React Hook React.useCallback has a missing dependency: 'getStorageKey'. Either include it or remove the dependency array                                                                                         react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/contexts/ProfileContext.tsx
+  127:6  warning  React Hook useEffect has missing dependencies: 'currentProfile.business_role?.name' and 'currentProfile.role'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  360:6  warning  React Hook useEffect has a missing dependency: 'profiles'. Either include it or remove the dependency array                                                        react-hooks/exhaustive-deps
+  395:6  warning  React Hook useEffect has a missing dependency: 'currentProfile'. Either include it or remove the dependency array                                                  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/sale-form/useFormHandlers.ts
+  14:3   warning  'formData' is defined but never used  @typescript-eslint/no-unused-vars
+  65:48  warning  'date' is defined but never used      @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/sale-form/useFormState.ts
+  12:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/sale-form/useFormValidation.ts
+   8:17  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  21:57  warning  'saleDate' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  45:21  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  55:21  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  60:23  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  63:23  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  69:23  error    Unexpected any. Specify a different type                                                                                       @typescript-eslint/no-explicit-any
+  74:6   warning  React Hook useCallback has an unnecessary dependency: 'formRecentlyCleared'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/sale-form/useItemManagement.ts
+  16:37  warning  'formData' is defined but never used      @typescript-eslint/no-unused-vars
+  24:58  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/use-toast.ts
+  20:7  warning  'actionTypes' is assigned a value but only used as a type  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useActivityHistory.ts
+  26:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useActivityLogger.ts
+   1:29  warning  'ActivityLogInput' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+  16:14  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  26:41  error    React Hook "useProfiles" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  43:44  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  44:32  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useAnalyticsData.ts
+   32:42  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  142:6   warning  React Hook useEffect has missing dependencies: 'initialAnalyticsSummary' and 'summary'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useBusiness.ts
+  15:38  error    Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  91:6   warning  React Hook useEffect has a missing dependency: 'loadBusinesses'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useBusinessBackup.ts
+  18:24  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  23:23  warning  'setIsImporting' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  54:45  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  78:37  warning  '_file' is defined but never used                    @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useBusinessSettingsForm.ts
+  7:3  warning  'BusinessSettings' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCarriageInwards.ts
+  48:57  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  60:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCashAccounts.ts
+   45:6   warning  React Hook useEffect has a missing dependency: 'accounts.length'. Either include it or remove the dependency array                                                                                                                                                  react-hooks/exhaustive-deps
+   57:59  error    Unexpected any. Specify a different type                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+   87:9   warning  The 'queryKey' array makes the dependencies of useCallback Hook (at line 105) change on every render. To fix this, wrap the initialization of 'queryKey' in its own useMemo() Hook                                                                                  react-hooks/exhaustive-deps
+   87:9   warning  The 'queryKey' array makes the dependencies of useCallback Hook (at line 140) change on every render. To fix this, wrap the initialization of 'queryKey' in its own useMemo() Hook                                                                                  react-hooks/exhaustive-deps
+  142:9   warning  The 'updateAccount' function makes the dependencies of useMemo Hook (at line 248) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'updateAccount' in its own useCallback() Hook                                  react-hooks/exhaustive-deps
+  171:9   warning  The 'deleteAccount' function makes the dependencies of useMemo Hook (at line 248) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'deleteAccount' in its own useCallback() Hook                                  react-hooks/exhaustive-deps
+  186:24  error    Unexpected any. Specify a different type                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  198:9   warning  The 'deleteAccountWithTransactions' function makes the dependencies of useMemo Hook (at line 248) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'deleteAccountWithTransactions' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCashTransactions.ts
+   39:13  error    'query' is never reassigned. Use 'const' instead                                                                                                                                                                                                      prefer-const
+   53:6   warning  React Hook useEffect has a missing dependency: 'internalTransactions.length'. Either include it or remove the dependency array                                                                                                                        react-hooks/exhaustive-deps
+   73:60  error    Unexpected any. Specify a different type                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  116:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array                                                                                                                                  react-hooks/exhaustive-deps
+  136:9   warning  The 'createTransaction' function makes the dependencies of useMemo Hook (at line 415) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'createTransaction' in its own useCallback() Hook            react-hooks/exhaustive-deps
+  159:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  171:9   warning  The 'createBulkTransactions' function makes the dependencies of useMemo Hook (at line 415) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'createBulkTransactions' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  191:30  error    Unexpected any. Specify a different type                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  191:48  error    Unexpected any. Specify a different type                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  203:9   warning  The 'updateTransaction' function makes the dependencies of useMemo Hook (at line 415) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'updateTransaction' in its own useCallback() Hook            react-hooks/exhaustive-deps
+  215:67  error    Unexpected any. Specify a different type                                                                                                                                                                                                              @typescript-eslint/no-explicit-any
+  227:9   warning  The 'deleteTransaction' function makes the dependencies of useMemo Hook (at line 415) change on every render. Move it inside the useMemo callback. Alternatively, wrap the definition of 'deleteTransaction' in its own useCallback() Hook            react-hooks/exhaustive-deps
+  257:14  warning  'error' is defined but never used                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  260:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array                                                                                                                                  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCategories.ts
+  40:6   warning  React Hook useEffect has a missing dependency: 'categories.length'. Either include it or remove the dependency array                                                                                                                                       react-hooks/exhaustive-deps
+  57:77  error    Unexpected any. Specify a different type                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  86:6   warning  React Hook useCallback has a missing dependency: 'categories.length'. Either include it or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setIsLoading' needs the current value of 'categories.length'  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCustomerCategories.ts
+  45:6   warning  React Hook useEffect has a missing dependency: 'categories.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  58:40  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  62:45  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  89:6   warning  React Hook useEffect has a missing dependency: 'fetchCategories'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useCustomers.ts
+   78:6   warning  React Hook useEffect has a missing dependency: 'customers.length'. Either include it or remove the dependency array   react-hooks/exhaustive-deps
+  101:20  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  144:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  151:5   warning  'isFetching' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  226:42  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  236:52  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  280:25  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  312:52  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  368:48  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useDashboardData.ts
+  1:19  warning  'useCallback' is defined but never used   @typescript-eslint/no-unused-vars
+  8:49  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useDeletedSales.ts
+  15:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:86  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useExpenseCategories.ts
+   66:6   warning  React Hook useEffect has a missing dependency: 'categories.length'. Either include it or remove the dependency array                                                                                                                                                                       react-hooks/exhaustive-deps
+   83:81  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+  116:6   warning  React Hook useCallback has missing dependencies: 'categories.length' and 'createDefaultCategories'. Either include them or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setIsLoading' needs the current value of 'categories.length'  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useExpenseDraft.ts
+  66:15  warning  'receiptFile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useExpenses.ts
+   10:3   warning  'createBulkCashTransactionsAction' is defined but never used                                                          @typescript-eslint/no-unused-vars
+   61:6   warning  React Hook useEffect has a missing dependency: 'expenses.length'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+   75:70  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  113:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  117:61  warning  'isFetching' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  264:48  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useInstallmentPayments.ts
+   41:81  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   59:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  127:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  177:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  203:21  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useInventoryData.ts
+  4:10  warning  'format' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useMessages.ts
+   32:14   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+   79:46   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  104:6    warning  React Hook useEffect has a missing dependency: 'messages.length'. Either include it or remove the dependency array                          react-hooks/exhaustive-deps
+  133:21   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  148:21   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  162:21   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  222:138  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  249:98   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  256:21   error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  263:124  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  266:16   warning  'customerId' is assigned a value but never used                                                                                             @typescript-eslint/no-unused-vars
+  274:41   warning  'creditsAmount' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+  274:64   warning  'phoneNumber' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+  285:6    warning  React Hook useEffect has missing dependencies: 'fetchLiveCredits' and 'fetchTemplates'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useMobileOptimization.ts
+  23:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useNewSaleDraft.ts
+  6:10  warning  'showDraftNotification' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  7:46  error    Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  9:11  warning  'hasDraft' is assigned a value but never used               @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useOfflineSync.ts
+  42:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useOnboarding.tsx
+   1:10  warning  'useState' is defined but never used      @typescript-eslint/no-unused-vars
+  68:28  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/usePagination.ts
+  29:7  error  Error: Calling setState from useMemo may trigger an infinite loop
+
+Each time the memo callback is evaluated it will change state. This can cause a memoization dependency to change, running the memo function again and causing an infinite loop. Instead of setting state in useMemo(), prefer deriving the value during render. (https://react.dev/reference/react/useState).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/usePagination.ts:29:7
+  27 |   useMemo(() => {
+  28 |     if (currentPage > totalPages) {
+> 29 |       setCurrentPage(totalPages);
+     |       ^^^^^^^^^^^^^^ Found setState() within useMemo()
+  30 |     }
+  31 |   }, [totalPages, currentPage]);
+  32 |     react-hooks/set-state-in-render
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductCRUD.ts
+  18:3   warning  'applyFilters' is defined but never used  @typescript-eslint/no-unused-vars
+  18:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductCSVUpdate.ts
+  6:10  warning  'Product' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductDraft.ts
+   2:10  warning  'ProductFormData' is defined but never used     @typescript-eslint/no-unused-vars
+  41:44  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  45:13  warning  'imageFile' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductFilters.ts
+  44:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductFilters.ts:44:7
+  42 |   useEffect(() => {
+  43 |     if (currentBusiness?.id) {
+> 44 |       setFiltersState(loadFiltersFromStorage());
+     |       ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  45 |     }
+  46 |   }, [currentBusiness?.id, loadFiltersFromStorage]);
+  47 |  react-hooks/set-state-in-effect
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductSuggestions.ts
+  52:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductSuggestions.ts:52:7
+  50 |   useEffect(() => {
+  51 |     if (searchTerm.length >= 1 && suggestions.length > 0) {
+> 52 |       setIsOpen(true);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  53 |     } else if (searchTerm.length === 0) {
+  54 |       setIsOpen(false);
+  55 |     }  react-hooks/set-state-in-effect
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductSync.ts
+  40:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProducts.ts
+    1:20  warning  'useEffect' is defined but never used          @typescript-eslint/no-unused-vars
+   25:11  warning  'settings' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   74:9   warning  'queryKey' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   94:37  warning  'imageFile' is defined but never used          @typescript-eslint/no-unused-vars
+  146:5   warning  'receiptNumber' is defined but never used      @typescript-eslint/no-unused-vars
+  197:5   warning  'userIdForHistory' is defined but never used   @typescript-eslint/no-unused-vars
+  198:5   warning  'changeReason' is defined but never used       @typescript-eslint/no-unused-vars
+  199:5   warning  'referenceId' is defined but never used        @typescript-eslint/no-unused-vars
+  200:5   warning  'adjustmentDate' is defined but never used     @typescript-eslint/no-unused-vars
+  201:5   warning  'receiptNumber' is defined but never used      @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProductsBase.ts
+  45:6  warning  React Hook useEffect has a missing dependency: 'loadProducts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useProfitLossData.ts
+   2:20  warning  'useEffect' is defined but never used                 @typescript-eslint/no-unused-vars
+  38:11  warning  'currentBusiness' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  39:10  warning  'isLoading' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  39:21  warning  'setIsLoading' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useRecurringTasks.ts
+   7:3   warning  'updateTaskAction' is defined but never used  @typescript-eslint/no-unused-vars
+  19:55  warning  'task' is defined but never used              @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useRequisitions.ts
+   61:6   warning  React Hook useEffect has a missing dependency: 'requisitions.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   74:47  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+   83:45  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+   97:21  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  111:6   warning  React Hook useEffect has a missing dependency: 'loadRequisitions'. Either include it or remove the dependency array     react-hooks/exhaustive-deps
+  115:12  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  153:21  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  166:14  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  193:21  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useSaleFormLogic.ts
+   11:17  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+   13:17  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+   19:3   warning  'cashAccounts' is defined but never used                      @typescript-eslint/no-unused-vars
+   57:5   warning  'handlePaymentDateChange' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  144:56  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  160:77  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  175:63  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useSaleProductSelection.ts
+  8:11  warning  'currentBusiness' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useSalesCategories.ts
+  29:38  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  47:6   warning  React Hook useEffect has a missing dependency: 'fetchCategories'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useSalesData.ts
+   37:13  error    'query' is never reassigned. Use 'const' instead                                                                                                                                                                                                                prefer-const
+   57:6   warning  React Hook useEffect has a missing dependency: 'internalSales.length'. Either include it or remove the dependency array                                                                                                                                         react-hooks/exhaustive-deps
+   66:79  error    Unexpected any. Specify a different type                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+   68:71  error    Unexpected any. Specify a different type                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+   78:32  error    Unexpected any. Specify a different type                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  123:6   warning  React Hook useCallback has a missing dependency: 'currentBusiness'. Either include it or remove the dependency array                                                                                                                                            react-hooks/exhaustive-deps
+  309:6   warning  React Hook useCallback has an unnecessary dependency: 'clearInventoryCaches'. Either exclude it or remove the dependency array. Outer scope values like 'clearInventoryCaches' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+  318:6   warning  React Hook useCallback has an unnecessary dependency: 'clearInventoryCaches'. Either exclude it or remove the dependency array. Outer scope values like 'clearInventoryCaches' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useSoldItemsData.ts
+   1:10  warning  'useState' is defined but never used      @typescript-eslint/no-unused-vars
+   5:10  warning  'useProducts' is defined but never used   @typescript-eslint/no-unused-vars
+  49:32  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useStockHistory.ts
+   17:10  warning  'useAuth' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   49:13  error    'query' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                       prefer-const
+   62:6   warning  React Hook useEffect has a missing dependency: 'stockHistory.length'. Either include it or remove the dependency array                                                                                                                                                                 react-hooks/exhaustive-deps
+   79:77  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+  108:6   warning  React Hook useCallback has missing dependencies: 'currentBusiness' and 'stockHistory.length'. Either include them or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setIsLoading' needs the current value of 'stockHistory.length'  react-hooks/exhaustive-deps
+  241:39  warning  'progressCallback' is defined but never used                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  253:43  warning  'progressCallback' is defined but never used                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useStockSummaryData.ts
+  48:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useTaskCategories.ts
+   39:6   warning  React Hook useEffect has a missing dependency: 'categories.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   56:38  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   60:43  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   89:35  error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  163:6   warning  React Hook useEffect has a missing dependency: 'loadCategories'. Either include it or remove the dependency array     react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useTaskDraft.ts
+  40:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useTasks.ts
+   44:58  warning  'isFetching' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   72:40  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   78:53  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   88:35  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  127:28  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  202:28  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/hooks/useUserHeartbeat.ts
+  42:8  warning  React Hook useEffect has a missing dependency: 'HEARTBEAT_INTERVAL'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/lib/dexie.ts
+   2:29  warning  'Sale' is defined but never used          @typescript-eslint/no-unused-vars
+  11:13  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:12  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:26  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:23  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:26  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:34  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:28  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/lib/email.ts
+   46:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/admin.ts
+  3:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/agency.ts
+  3:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  4:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/onboarding.ts
+  3:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  6:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  7:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/payments.ts
+  1:10  warning  'NextResponse' is defined but never used  @typescript-eslint/no-unused-vars
+  3:31  warning  'auth' is defined but never used          @typescript-eslint/no-unused-vars
+  3:37  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:42  warning  'nextUrl' is defined but never used       @typescript-eslint/no-unused-vars
+  3:51  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/public.ts
+  3:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  6:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/middleware/auth/subscription.ts
+  3:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/types/index.ts
+  367:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  607:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  611:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  611:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/csvParser.ts
+   96:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  182:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  206:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  259:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/csvUpdateParser.ts
+  68:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  92:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportBarcodeToJPEG.ts
+  69:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportBarcodeToPDF.ts
+  71:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportCustomersToPDF.ts
+  10:3  warning  'businessLogo' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportSoldItemsToCSV.ts
+  13:77  warning  'currency' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportSoldItemsToPDF.ts
+  1:10  warning  'formatCashCurrency' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/exportStockCount.ts
+   42:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateBluetoothPrintJSON.ts
+  2:10  warning  'formatNumber' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateNoticePDF.ts
+  51:13  warning  'currentY' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  65:11  warning  'headerHeight' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generatePDF.ts
+   3:10  warning  'ReceiptData' is defined but never used       @typescript-eslint/no-unused-vars
+  11:73  warning  'options' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generatePaymentReminderPDF.ts
+  131:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateReceiptVectorPDF.ts
+   55:65  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   80:14  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  149:9   warning  'headerStartY' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  157:41  warning  'reject' is defined but never used                   @typescript-eslint/no-unused-vars
+  204:9   warning  'businessInfoX' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  444:11  warning  'itemSubtotal' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  445:11  warning  'discountAmount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateSalesReportVectorPDF.ts
+  301:11  warning  'avgSaleValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  303:11  warning  'taxRate' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateStatementPDF.ts
+  98:7  warning  'totalAmountRowValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateSubscriptionInvoice.ts
+    7:60  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+   16:11  warning  'innerWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   39:14  warning  'e' is defined but never used                    @typescript-eslint/no-unused-vars
+  136:24  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+  168:24  error    Unexpected any. Specify a different type         @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateThermalReceipt.ts
+   11:9   error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   12:13  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   38:25  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   42:25  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  113:3   warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  114:31  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  159:24  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  227:32  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  242:27  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  242:82  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateThermalText.ts
+   25:10  warning  'centerText' is defined but never used                                 @typescript-eslint/no-unused-vars
+   32:43  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   32:58  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  123:3   warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  123:58  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  150:45  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  205:32  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/generateVectorPDF.ts
+  125:11  warning  'imgData' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/thermalPrinterNative.ts
+  32:16  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+  90:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:14  warning  '_' is defined but never used             @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/thermalPrinterPlug.ts
+  15:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  37:18  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/src/utils/thermalPrinterWeb.ts
+   9:5   warning  'selectedPort' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  20:53  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  23:29  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  33:17  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/Users/macbookair/Desktop/untitled folder 3/gonza-final/tailwind.config.ts
+  116:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 994 problems (415 errors, 579 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

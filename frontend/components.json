@@ -1,0 +1,13 @@
+{
+  "appId": "com.gonza.salestracker",
+  "appName": "Gonza Systems",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "androidScaleType": "CENTER_CROP",
+      "launchAutoHide": true,
+      "backgroundColor": "#252861"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.gonza.salestracker"
+
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.gonza.salestracker"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // ✅ Use Java 17
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def version = variant.versionName   // e.g. "1.0"
+            def buildType = variant.buildType.name // debug or release
+
+            // Optional: include build type to avoid overwriting debug & release
+            // outputFileName = "GonzaSystems-v${version}-${buildType}.apk"
+
+            // Or omit buildType for simpler filename
+            outputFileName = "GonzaSystems-v${version}.apk"
+        }
+    }
+}
+
+repositories {
+    flatDir { dirs 'libs' }
+}
+
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+
+    // ✅ Add these Capacitor dependencies
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-bluetooth-spp')
+    
+    // Printer
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // Testing (optional)
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

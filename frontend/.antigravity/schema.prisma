@@ -1,0 +1,1145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =========================
+// 🔐 AUTHENTICATION MODULE
+// =========================
+
+model Agency {
+  id                 String    @id @default(cuid())
+  name               String
+  subscriptionStatus String    @default("trial") // "trial", "active", "expired", "blocked"
+  trialEndDate       DateTime?
+  subscriptionExpiry DateTime?
+  isUnlimitedUsage   Boolean   @default(false)
+
+  // Package Management
+  packageId          String?
+  package            Package?  @relation(fields: [packageId], references: [id])
+
+  users          User[]
+  branches       Branch[]
+  auditLogs      AuditLog[]
+  categories     Category[]
+  suppliers      Supplier[]
+  products       Product[]
+  customers      Customer[]
+  sales          Sale[]
+  expenses       Expense[]
+  cashAccounts   CashAccount[]
+  stockTransfers StockTransfer[]
+  requisitions   Requisition[]
+  tasks          Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activityHistories ActivityHistory[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String // ID of the Super Admin
+  actor     User     @relation("AuditLogActor", fields: [actorId], references: [id])
+  targetId  String? // ID of the Agency or User being modified
+  agencyId  String?
+  agency    Agency?  @relation(fields: [agencyId], references: [id])
+  action    String // "IMPERSONATION_START", "PASSWORD_RESET", "TRIAL_EXTENSION"
+  metadata  Json? // Store old_value vs new_value or IP address
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String?
+  password              String? // Null for OAuth-only users
+  emailVerified         DateTime? // Changed from Boolean to DateTime for NextAuth
+  passwordResetRequired Boolean?  @default(false)
+  status                String?   @default("active") // "active", "suspended", "expired"
+  image                 String? // Profile picture URL
+  roleId                String
+  role                  Role      @relation(fields: [roleId], references: [id])
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  auditLogs AuditLog[] @relation("AuditLogActor")
+
+  branchId          String?
+  branch            Branch?            @relation("BranchUsers", fields: [branchId], references: [id])
+  ownedBranches     Branch[]           @relation("AdminBranches")
+  refreshTokens     RefreshToken[]
+  accounts          Account[] // OAuth accounts (Google, etc.)
+  sessions          Session[] // Added for NextAuth
+  messages          Message[]
+  campaigns         Campaign[]
+  templates         MessageTemplate[]
+  whatsappSession   WhatsAppSession?
+  transactions      Transaction[]
+  products          Product[]
+  customers         Customer[]         @relation("CustomerOwner")
+  favoriteCustomers FavoriteCustomer[]
+  sales             Sale[]             @relation("SalesCreated")
+  expenses          Expense[]
+  credits           Int                @default(0)
+  createdAt         DateTime           @default(now())
+
+  updatedAt                 DateTime         @updatedAt
+  productHistory            ProductHistory[]
+  defaultThankYouTemplateId String?
+
+  stockTransfers StockTransfer[]
+  requisitions   Requisition[]
+
+  assignedTasks      Task[]             @relation("TaskAssignee")
+  createdTasks       Task[]             @relation("TaskCreator")
+  taskCategories     TaskCategory[]
+  customerCategories CustomerCategory[]
+  expenseCategories  ExpenseCategory[]
+  saleCategories     SaleCategory[]
+  activityHistory    ActivityHistory[]
+
+  cashTransactions CashTransaction[]
+  receivedPayments InstallmentPayment[] @relation("PaymentReceiver")
+  salesGoals       SalesGoal[]
+
+  isActive      Boolean        @default(true)
+  pin           String? // 4-digit security PIN for switching profiles
+  notifications Notification[]
+
+  carriageInwards CarriageInward[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String // Added for NextAuth
+  provider          String // "google", "github", etc.
+  providerAccountId String // OAuth provider's user ID
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// Add this to your schema.prisma
+model CarriageInward {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  supplierName String
+  details      String?
+  amount       Float
+  date         DateTime @default(now())
+
+  // Optional link to cash account if paid immediately
+  cashAccountId String?
+  cashAccount   CashAccount? @relation(fields: [cashAccountId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String // Removed @unique to allow same role name in different branches
+  description String?
+  permissions Permission[]
+  users       User[]
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // "users:view", etc.
+  description String?
+  roles       Role[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// =========================
+// 💬 MESSAGING MODULE
+// =========================
+
+model Message {
+  id         String    @id @default(cuid())
+  content    String
+  recipient  String
+  channel    String // "sms", "whatsapp", "both"
+  status     String    @default("pending") // "sent", "failed", "delivered"
+  mediaUrl   String?
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Campaign {
+  id        String    @id @default(cuid())
+  name      String?
+  messages  Message[]
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WhatsAppSession {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  status            String   @default("disconnected") // "connected", "connecting", "disconnected"
+  instanceName      String?  @unique
+  sessionData       String?
+  qrCode            String?
+  pairingCode       String?
+  linkedPhoneNumber String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Transaction {
+  id                       String   @id @default(cuid())
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id])
+  amount                   Float
+  currency                 String   @default("UGX")
+  status                   String   @default("pending") // "pending", "completed", "failed"
+  pesapalOrderTrackingId   String?  @unique
+  pesapalMerchantReference String   @unique
+  description              String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// =========================
+// 📦 PRODUCT INVENTORY
+// =========================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  
+  agencyId    String?
+  agency      Agency?   @relation(fields: [agencyId], references: [id])
+  
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([agencyId, name])
+}
+
+model Supplier {
+  id          String    @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  
+  agencyId    String?
+  agency      Agency?   @relation(fields: [agencyId], references: [id])
+  
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([agencyId, name])
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String?  @unique
+  description  String?
+  sellingPrice Float    @default(0) // renamed from price
+  costPrice    Float    @default(0)
+  initialStock Int      @default(0)
+  minStock     Int      @default(0)
+  stock        Int      @default(0) // current stock
+  barcode      String?
+  sku          String?
+  image        String? // R2 URL
+  overheadCost Float    @default(0)
+  tags         String[]
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  saleItems SaleItem[]
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  history   ProductHistory[]
+
+  // relations
+  stockAuditItems StockAuditItem[]
+
+  @@unique([branchId, sku])
+  @@unique([branchId, barcode])
+  @@unique([branchId, slug])
+}
+
+model StockAudit {
+  id            String    @id @default(cuid())
+  auditNumber   String?   @unique // "AUD-2024-001"
+  location      String? // Optional specific location within branch
+  status        String    @default("In Progress") // "In Progress", "Completed", "Cancelled"
+  dateStarted   DateTime  @default(now())
+  dateCompleted DateTime?
+
+  items         StockAuditItem[]
+  totalVariance Int              @default(0)
+
+  performedBy String?
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockAuditItem {
+  id      String     @id @default(cuid())
+  auditId String
+  audit   StockAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  productName String
+  sku         String?
+
+  expectedQty Int
+  countedQty  Int
+  variance    Int
+  status      String // "Matched", "Missing", "Surplus", "Pending"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id             String     @id @default(cuid())
+  name           String     @unique
+  location       String
+  phone          String?
+  email          String?
+  type           BranchType @default(SUB)
+  accessPassword String? // Nullable if we want to allow open branches
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  adminId      String
+  admin        User          @relation("AdminBranches", fields: [adminId], references: [id])
+  users        User[]        @relation("BranchUsers")
+  products     Product[]
+  customers    Customer[]
+  sales        Sale[]
+  expenses     Expense[]
+  cashAccounts CashAccount[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  fromTransfers      StockTransfer[]    @relation("FromBranch")
+  toTransfers        StockTransfer[]    @relation("ToBranch")
+  requisitions       Requisition[]
+  tasks              Task[]
+  taskCategories     TaskCategory[]
+  customerCategories CustomerCategory[]
+  expenseCategories  ExpenseCategory[]
+  saleCategories     SaleCategory[]
+  activityHistory    ActivityHistory[]
+  cashTransactions   CashTransaction[]
+  salesGoals         SalesGoal[]
+  settings           BranchSettings?
+  roles              Role[]
+  stockAudits        StockAudit[]
+  notifications      Notification[]
+
+  carriageInwards CarriageInward[]
+}
+
+model CashAccount {
+  id             String  @id @default(cuid())
+  name           String
+  description    String?
+  initialBalance Decimal @default(0) @db.Decimal(10, 2)
+  currentBalance Decimal @default(0) @db.Decimal(10, 2)
+  isDefault      Boolean @default(false)
+  isActive       Boolean @default(true)
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  sales Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions CashTransaction[]
+  expenses     Expense[]
+
+  carriageInwards CarriageInward[]
+}
+
+model CashTransaction {
+  id              String   @id @default(cuid())
+  amount          Decimal  @db.Decimal(10, 2)
+  transactionType String // "cash_in", "cash_out", "transfer_in", "transfer_out"
+  category        String?
+  description     String?
+  personInCharge  String? // person_in_charge
+  tags            String[]
+  date            DateTime
+  paymentMethod   String? // payment_method
+  receiptImage    String? // receipt_image
+
+  accountId String
+  account   CashAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  branchId String // location_id
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  installmentPayment InstallmentPayment?
+  expenses           Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InstallmentPayment {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(10, 2)
+  paymentDate DateTime // payment_date
+  notes       String?
+
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("PaymentReceiver", fields: [userId], references: [id])
+
+  cashTransactionId String?          @unique
+  cashTransaction   CashTransaction? @relation(fields: [cashTransactionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String
+  category      String
+  date          DateTime @default(now())
+  paymentMethod String?
+  reference     String?
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  receiptImage String?
+
+  cashAccountId     String?
+  cashAccount       CashAccount?     @relation(fields: [cashAccountId], references: [id])
+  cashTransactionId String?
+  cashTransaction   CashTransaction? @relation(fields: [cashTransactionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum BranchType {
+  MAIN
+  SUB
+}
+
+// =========================
+// 👥 CUSTOMER MODULE
+// =========================
+
+model Customer {
+  id      String  @id @default(cuid())
+  name    String
+  phone   String? // Non-unique, duplicates allowed
+  email   String?
+  address String?
+  city    String?
+  notes   String?
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  birthday    DateTime?
+  gender      String?
+  categoryId  String?
+  category    CustomerCategory? @relation(fields: [categoryId], references: [id])
+  tags        String[]
+  socialMedia Json?
+
+  // New fields matching reference implementation
+  avatar   String?
+  source   String? @default("System")
+  timezone String? @default("UTC")
+  language String? @default("English")
+  assignee String? // Could be a relation later, string for now matches reference types
+
+  // Multi-tenancy
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  adminId  String // Owner isolation
+  admin    User    @relation("CustomerOwner", fields: [adminId], references: [id])
+
+  sales   Sale[]
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  favoritedBy FavoriteCustomer[]
+}
+
+model FavoriteCustomer {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, customerId])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  type        TicketType     @default(Question)
+  priority    TicketPriority @default(Medium)
+  status      TicketStatus   @default(Open)
+
+  assignedTo String?
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TicketType {
+  Question
+  Bug
+  Feature
+}
+
+enum TicketPriority {
+  High
+  Medium
+  Low
+}
+
+enum TicketStatus {
+  Open
+  Closed
+  Pending
+}
+
+model CustomerCategory {
+  id        String  @id @default(cuid())
+  name      String
+  isDefault Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  customers Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+}
+
+// =========================
+// 💰 SALES MODULE
+// =========================
+
+model Sale {
+  id         String   @id @default(cuid())
+  saleNumber String   @unique // Auto-generated: "SAL-2024-001"
+  date       DateTime @default(now())
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  // Customer Info (denormalized for fast access)
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  customerName    String
+  customerPhone   String?
+  customerAddress String?
+
+  // Sale Source
+  source SaleSource @default(WALK_IN)
+
+  // Line Items
+  items SaleItem[]
+
+  // Financials
+  subtotal     Decimal      @db.Decimal(10, 2)
+  discount     Decimal      @default(0) @db.Decimal(10, 2)
+  discountType DiscountType @default(AMOUNT)
+  taxRate      Decimal      @default(0) @db.Decimal(5, 2)
+  taxAmount    Decimal      @default(0) @db.Decimal(10, 2)
+  total        Decimal      @db.Decimal(10, 2)
+
+  // Payment
+  paymentStatus PaymentStatus @default(UNPAID)
+  amountPaid    Decimal       @default(0) @db.Decimal(10, 2)
+  balance       Decimal       @default(0) @db.Decimal(10, 2)
+
+  // Cash Account (optional)
+  cashAccountId String?
+  cashAccount   CashAccount? @relation(fields: [cashAccountId], references: [id])
+
+  // Multi-tenancy & Tracking
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+  userId   String
+  user     User   @relation("SalesCreated", fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categoryId String?
+  category   SaleCategory? @relation(fields: [categoryId], references: [id])
+
+  installmentPayments InstallmentPayment[]
+}
+
+model SaleCategory {
+  id        String  @id @default(cuid())
+  name      String
+  isDefault Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  sales Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+}
+
+model SaleItem {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Item Details (snapshot at sale time)
+  productName  String
+  sku          String?
+  quantity     Int
+  unitCost     Decimal @db.Decimal(10, 2) // Hidden from regular users
+  sellingPrice Decimal @db.Decimal(10, 2)
+  discount     Decimal @default(0) @db.Decimal(10, 2)
+  lineTotal    Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+}
+
+enum SaleSource {
+  WALK_IN
+  PHONE
+  ONLINE
+  REFERRAL
+  RETURNING
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  QUOTE // Does NOT deduct stock
+  INSTALLMENT
+  PARTIAL
+}
+
+enum DiscountType {
+  PERCENTAGE
+  AMOUNT
+}
+
+model ProductHistory {
+  id             String             @id @default(cuid())
+  productId      String
+  product        Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type           ProductHistoryType
+  quantityChange Int                @default(0)
+  oldStock       Int
+  newStock       Int
+  oldPrice       Float?
+  newPrice       Float?
+  oldCost        Float?
+  newCost        Float?
+  referenceId    String? // saleId, orderId, etc.
+  referenceType  String? // "SALE", "ORDER", etc.
+  reason         String?
+  userId         String
+  user           User               @relation(fields: [userId], references: [id])
+  createdAt      DateTime           @default(now())
+}
+
+enum ProductHistoryType {
+  SALE
+  RETURN_IN
+  RESTOCK
+  ADJUSTMENT
+  PRICE_CHANGE
+  COST_CHANGE
+  CREATED
+  STOCK_TAKE
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+model StockTransfer {
+  id             String   @id @default(cuid())
+  transferNumber String   @unique // "TRF-2024-001"
+  date           DateTime @default(now())
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  fromBranchId String
+  fromBranch   Branch @relation("FromBranch", fields: [fromBranchId], references: [id])
+
+  toBranchId String
+  toBranch   Branch @relation("ToBranch", fields: [toBranchId], references: [id])
+
+  status TransferStatus      @default(COMPLETED)
+  items  StockTransferItem[]
+
+  transferCost Float @default(0)
+
+  notes  String?
+  userId String
+  user   User    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockTransferItem {
+  id         String        @id @default(cuid())
+  transferId String
+  transfer   StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  productId   String
+  productName String
+  sku         String?
+  quantity    Int
+
+  createdAt DateTime @default(now())
+}
+
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Requisition {
+  id                String   @id @default(cuid())
+  requisitionNumber String   @unique // "REQ-2024-001"
+  date              DateTime @default(now())
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  status   RequisitionStatus @default(PENDING)
+  priority String            @default("NORMAL") // "LOW", "NORMAL", "HIGH", "URGENT"
+
+  items RequisitionItem[]
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RequisitionItem {
+  id            String      @id @default(cuid())
+  requisitionId String
+  requisition   Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+
+  productName String
+  sku         String?
+  quantity    Int
+
+  createdAt DateTime @default(now())
+}
+
+enum RequisitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+  CANCELLED
+}
+
+// =========================
+// 🗓️ TASKS MODULE
+// =========================
+
+model TaskCategory {
+  id   String @id @default(cuid())
+  name String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+}
+
+model ExpenseCategory {
+  id        String  @id @default(cuid())
+  name      String
+  isDefault Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, name])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+
+  priority TaskPriority @default(NORMAL)
+  status   TaskStatus   @default(TODO)
+
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  // Category
+  categoryId String?
+  category   TaskCategory? @relation(fields: [categoryId], references: [id])
+
+  // Completion
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  // Reminders
+  reminderEnabled Boolean   @default(false)
+  reminderTime    DateTime?
+
+  // Recurrence
+  isRecurring       Boolean         @default(false)
+  recurrenceType    RecurrenceType?
+  recurrenceEndDate DateTime?
+  recurrenceCount   Int             @default(0)
+
+  // Hierarchy
+  parentTaskId String?
+
+  assignedToId String?
+  assignedTo   User?   @relation("TaskAssignee", fields: [assignedToId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+enum RecurrenceType {
+  daily
+  weekly
+  monthly
+}
+
+// =========================
+// ⚙️ SETTINGS MODULE
+// =========================
+
+model BranchSettings {
+  id       String @id @default(cuid())
+  branchId String @unique
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Branding
+  logo            String?
+  signatureImage  String?
+  enableSignature Boolean @default(false)
+
+  // Business Info
+  businessName String?
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+
+  // Preferences
+  currency String @default("UGX")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =========================
+// 📝 ACTIVITY HISTORY
+// =========================
+
+model ActivityHistory {
+  id         String @id @default(cuid())
+  userId     String @map("user_id")
+  user       User   @relation(fields: [userId], references: [id])
+  locationId String @map("location_id")
+  branch     Branch @relation(fields: [locationId], references: [id])
+
+  activityType ActivityType   @map("activity_type")
+  module       ActivityModule
+
+  entityType  String  @map("entity_type")
+  entityId    String? @map("entity_id")
+  entityName  String  @map("entity_name")
+  description String
+  metadata    Json?
+
+  profileId   String? @map("profile_id")
+  profileName String? @map("profile_name")
+
+  agencyId String? @map("agency_id")
+  agency   Agency? @relation(fields: [agencyId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("activity_history")
+}
+
+enum ActivityType {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum ActivityModule {
+  SALES
+  INVENTORY
+  EXPENSES
+  FINANCE
+  CUSTOMERS
+  TASKS
+}
+
+model SalesGoal {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  month Int
+  year  Int
+
+  dailyGoal   Float @default(0)
+  weeklyGoal  Float @default(0)
+  monthlyGoal Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, userId, month, year])
+}
+
+model Notification {
+  id      String @id @default(cuid())
+  title   String
+  message String
+  type    String // "TRANSFER", "ALERT", "INFO"
+
+  read Boolean @default(false)
+
+  // Link to Branch context (e.g. "You have a transfer at Branch B")
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  // Link to specific User (optional, if personal)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  referenceId   String? // e.g. StockTransfer ID
+  referenceType String? // "StockTransfer", "Audit"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Package {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  price       Float    @default(0)
+  hasFreeTrial Boolean @default(false)
+  trialDays   Int      @default(14)
+  features    Json?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  agencies    Agency[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,7 @@
+include ':app'
+include ':capacitor-android'
+include ':capacitor-bluetooth-spp'
+
+project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+project(':capacitor-bluetooth-spp').projectDir = new File('../capacitor-bluetooth-spp')
+apply from: 'capacitor.settings.gradle'

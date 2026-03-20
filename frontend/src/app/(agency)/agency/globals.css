@@ -1,0 +1,431 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 195 33% 97%;
+    --foreground: 200 20% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 20% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 20% 20%;
+
+    --primary: 242 57% 27%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 14 88% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 195 33% 94%;
+    --muted-foreground: 195 10% 50%;
+
+    --accent: 187 48% 67%;
+    --accent-foreground: 195 67% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 195 33% 85%;
+    --input: 195 33% 85%;
+    --ring: 242 57% 27%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 200 25% 10%;
+    --foreground: 195 33% 97%;
+
+    --card: 200 25% 15%;
+    --card-foreground: 195 33% 97%;
+
+    --popover: 200 25% 15%;
+    --popover-foreground: 195 33% 97%;
+
+    --primary: 242 57% 27%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 14 88% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 200 25% 20%;
+    --muted-foreground: 195 10% 70%;
+
+    --accent: 187 48% 40%;
+    --accent-foreground: 195 33% 97%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 200 25% 25%;
+    --input: 200 25% 25%;
+    --ring: 242 57% 27%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+/* Mobile-specific styles */
+.mobile-card {
+  @apply bg-white rounded-lg shadow-sm border p-3 md:p-4 space-y-2 md:space-y-3;
+}
+
+.mobile-dashboard-grid {
+  @apply grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4;
+}
+
+.mobile-card-content {
+  @apply space-y-2;
+}
+
+.mobile-heading {
+  @apply text-base md:text-lg font-semibold;
+}
+
+.mobile-section {
+  @apply space-y-3 md:space-y-4;
+}
+
+.mobile-scroll-container {
+  @apply overflow-x-auto pb-4;
+}
+
+/* Mobile navigation improvements */
+.mobile-nav-item {
+  @apply flex flex-1 flex-col items-center justify-center py-2 px-1 rounded-md transition-all duration-200 min-h-[48px] touch-manipulation;
+}
+
+.mobile-nav-active {
+  @apply text-blue-600 bg-blue-50 shadow-sm;
+}
+
+/* Improved mobile responsive utilities */
+@media (max-width: 767px) {
+  .mobile-compact {
+    @apply text-sm space-y-2;
+  }
+  
+  .mobile-touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Improved scrolling for mobile */
+  .mobile-scroll-container {
+    @apply overflow-x-auto pb-2 -mx-2 px-2;
+    scrollbar-width: none; /* Firefox */
+  }
+  
+  .mobile-scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+  }
+  
+  /* Mobile tab improvements */
+  .mobile-tabs {
+    @apply space-y-2;
+  }
+  
+  .mobile-tabs .tabsList {
+    @apply h-auto p-1 gap-1;
+  }
+  
+  .mobile-tabs .tabsTrigger {
+    @apply min-h-[44px] text-xs leading-tight;
+  }
+}
+
+/* Custom styles for printable receipt */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  body {
+    background-color: white;
+    font-size: 12pt;
+  }
+  
+  .receipt-container {
+    border: 3px solid #000000;
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  
+  /* Enhanced print receipt table styles */
+  .receipt-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  .receipt-table th,
+  .receipt-table td {
+    border: 1px solid #000000;
+    padding: 8px;
+  }
+  
+  .receipt-table thead th {
+    background-color: #e5e5e5;
+    font-weight: bold;
+  }
+  
+  .receipt-table tfoot td {
+    font-weight: bold;
+    background-color: #e5e5e5;
+  }
+  
+  /* Receipt title styles */
+  .receipt-title {
+    font-size: 18pt;
+    font-weight: 700;
+    text-align: center;
+    margin: 10px 0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Amount in words styles */
+  .amount-in-words {
+    font-style: italic;
+    border-top: 1px solid #000;
+    padding: 8px 0;
+  }
+}
+
+/* Hide print-only elements when not printing */
+.print-only {
+  display: none;
+}
+
+/* Drawer height fix for mobile receipt */
+.receipt-drawer {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Enhanced responsive fixes */
+@media (max-width: 640px) {
+  .vaul-drawer-content {
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Receipt scrolling improvements */
+  .drawer-receipt-content {
+    max-height: 75vh;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+  
+  /* Card styling improvements */
+  .card-stats {
+    @apply p-3 flex flex-col h-full;
+  }
+  
+  .card-title-mobile {
+    @apply text-sm font-medium text-muted-foreground mb-1;
+  }
+  
+  .card-value-mobile {
+    @apply text-2xl font-bold;
+  }
+  
+  .card-footer-mobile {
+    @apply text-xs mt-2 text-muted-foreground;
+  }
+  
+  /* Improved chart containers */
+  .chart-container-mobile {
+    @apply h-64 mt-2;
+  }
+  
+  /* Mobile navigation improvements */
+  .mobile-nav-active {
+    @apply bg-primary/10 text-primary font-medium;
+  }
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Signature style */
+.signature-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  border-top: 1px solid #000000;
+  padding-top: 1rem;
+}
+
+.signature-image {
+  max-height: 60px;
+  object-fit: contain;
+}
+
+.signature-label {
+  font-size: 0.75rem;
+  color: #222222;
+  text-align: center;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/* Thermal receipt specific styles */
+.thermal-receipt {
+  font-family: 'Courier New', monospace;
+  line-height: 1.2;
+  color: #000;
+  background: #fff;
+}
+
+@media print {
+  .thermal-receipt {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 5mm !important;
+  }
+  
+  .thermal-receipt * {
+    font-family: 'Courier New', monospace !important;
+    font-weight: inherit !important;
+  }
+  
+  .thermal-receipt .font-extrabold {
+    font-weight: 900 !important;
+  }
+  
+  .thermal-receipt .font-bold {
+    font-weight: 800 !important;
+  }
+  
+  /* Hide print UI elements */
+  [class~="print:hidden"] {
+    display: none !important;
+  }
+  
+  /* Thermal printer page settings */
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
+
+/* Mobile Dialog & Sheet z-index fixes */
+[data-radix-popper-content-wrapper] {
+  z-index: 200 !important;
+}
+
+[data-radix-dialog-overlay] {
+  z-index: 150 !important;
+}
+
+[data-radix-dialog-content] {
+  z-index: 151 !important;
+}
+
+[data-radix-sheet-overlay] {
+  z-index: 100 !important;
+}
+
+[data-radix-sheet-content] {
+  z-index: 101 !important;
+}
+
+/* Enhanced thermal receipt styling for better readability */
+.thermal-receipt .font-bold {
+  font-weight: bold;
+}
+
+.thermal-receipt .text-center {
+  text-align: center;
+}
+
+.thermal-receipt .text-xs {
+  font-size: 0.75rem;
+}
+
+.thermal-receipt .text-sm {
+  font-size: 0.875rem;
+}
+
+/* Thermal receipt spacing adjustments */
+.thermal-receipt .mb-1 {
+  margin-bottom: 0.25rem;
+}
+
+.thermal-receipt .mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.thermal-receipt .mt-1 {
+  margin-top: 0.25rem;
+}
+
+.thermal-receipt .mt-2 {
+  margin-top: 0.5rem;
+}
+
+.thermal-receipt .mt-4 {
+  margin-top: 1rem;
+}
+
+.thermal-receipt .my-2 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.thermal-receipt .pt-1 {
+  padding-top: 0.25rem;
+}
+
+/* Thermal receipt flex utilities */
+.thermal-receipt .flex {
+  display: flex;
+}
+
+.thermal-receipt .justify-between {
+  justify-content: space-between;
+}
+
+.thermal-receipt .justify-center {
+  justify-content: center;
+}
+
+.thermal-receipt .border-t {
+  border-top: 1px solid #000;
+}
+
+.thermal-receipt .border-black {
+  border-color: #000;
+}
+
+/* Ensure monospace alignment for thermal receipts */
+.thermal-receipt .flex span {
+  font-family: 'Courier New', monospace;
+}
