@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Sale, AnalyticsData } from '@/types';
 import {
   startOfDay,
@@ -23,19 +23,33 @@ interface UseAnalyticsDataProps {
   specificDate?: Date | undefined;
   isCustomRange: boolean;
   isSpecificDate?: boolean;
+  initialAnalytics?: AnalyticsData | null;
 }
 
 import { localDb } from '@/lib/dexie';
 
-export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, specificDate, isCustomRange, isSpecificDate }: UseAnalyticsDataProps) {
-  const { currentBusiness, initialAnalyticsSummary } = useBusiness();
+export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, specificDate, isCustomRange, isSpecificDate, initialAnalytics }: UseAnalyticsDataProps) {
+  const { currentBusiness } = useBusiness();
+  
+  // Use a ref to track if we've already initialized from context to prevent loops
+  const hasInitializedFromContext = useRef(false);
+
   const [summary, setSummary] = useState<AnalyticsData | null>(() => {
-    // 1. Try initial summary from SSR
-    if (dateFilter === 'all' && initialAnalyticsSummary) {
-      return initialAnalyticsSummary;
+    if (dateFilter === 'all' && initialAnalytics) {
+      hasInitializedFromContext.current = true;
+      return initialAnalytics;
     }
     return null;
   });
+
+  // Sync summary instantly if context data arrives after mount
+  useEffect(() => {
+    if (dateFilter === 'all' && initialAnalytics && !hasInitializedFromContext.current) {
+      setSummary(initialAnalytics);
+      hasInitializedFromContext.current = true;
+    }
+  }, [initialAnalytics, dateFilter]);
+
   const [isLoadingSummary, setIsLoadingSummary] = useState(!summary);
 
   // Fetch analytics summary from server based on filters
@@ -49,11 +63,11 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
         return;
       }
 
-      // If it's the 'all' filter and we have SSR data, we still fetch in background 
-      // to ensure freshness, but we don't set loading state to true.
-      const isInitialAll = dateFilter === 'all' && initialAnalyticsSummary && !summary;
+      // If it's 'all' and we already have the context data, skip the initial loading state
+      // but still fetch in background to ensure 100% freshness
+      const isInitialAll = dateFilter === 'all' && initialAnalytics;
       
-      if (!summary && !isInitialAll) {
+      if (!isInitialAll) {
         setIsLoadingSummary(true);
       }
 
@@ -137,46 +151,70 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     };
   }, [dateFilter, isCustomRange, isSpecificDate, dateRange.from, dateRange.to, specificDate, currentBusiness?.id]);
 
-  // Memoize bar chart data
+  // 1. Calculate INSTANT client-side analytics from the local sales list
+  // This ensures the cards and bar chart show data the exact millisecond they mount
+  const localAnalytics = useMemo(() => {
+    const activeSales = initialSales.filter(s => (s.paymentStatus || '').toUpperCase() !== 'QUOTE');
+    
+    const totalSales = activeSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+    const totalCost = activeSales.reduce((sum, s) => sum + (Number(s.totalCost) || 0), 0);
+    const totalProfit = activeSales.reduce((sum, s) => sum + (Number(s.profit) || 0), 0);
+    
+    const paidCount = activeSales.filter(s => (s.paymentStatus || '').toUpperCase() === 'PAID').length;
+    const pendingCount = activeSales.length - paidCount;
+
+    return {
+      totalSales,
+      totalCost,
+      totalProfit,
+      paidSalesCount: paidCount,
+      pendingSalesCount: pendingCount,
+      totalExpenses: 0, // Expenses still need server data
+    };
+  }, [initialSales]);
+
+  // 2. Merge local instant data with server-side summary
+  // We prioritize server data once it arrives, but use local data as the "Instant View"
+  const displaySummary = useMemo(() => {
+    if (summary) return summary;
+    
+    // If no server summary yet, use our instant local calculations
+    return {
+      ...localAnalytics,
+      recentSales: [...initialSales].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20)
+    } as AnalyticsData;
+  }, [summary, localAnalytics, initialSales]);
+
+  // Memoize bar chart data using the merged summary
   const barChartData = useMemo(() => [
-    { name: 'Total Sales', amount: summary?.totalSales || 0 },
-    { name: 'Total Cost', amount: summary?.totalCost || 0 },
-    { name: 'Total Expenses', amount: summary?.totalExpenses || 0 },
-    { name: 'Total Profit', amount: summary?.totalProfit || 0 },
-  ], [summary]);
+    { name: 'Total Sales', amount: displaySummary.totalSales || 0 },
+    { name: 'Total Cost', amount: displaySummary.totalCost || 0 },
+    { name: 'Total Expenses', amount: displaySummary.totalExpenses || 0 },
+    { name: 'Total Profit', amount: displaySummary.totalProfit || 0 },
+  ], [displaySummary]);
 
   // Prioritize initialSales (formatted data) over summary.recentSales (raw data)
   const recentSales = useMemo(() => {
-    // If we have local sales data, use it as it is already formatted/mapped
     if (initialSales && initialSales.length > 0) {
         return [...initialSales]
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 20);
     }
-    
-    // Fallback to summary data only if main list is empty
     return summary?.recentSales || [];
   }, [initialSales, summary?.recentSales]);
 
-  // Non-quote count (from summary if available, else from list)
+  // Non-quote count
   const nonQuoteSalesCount = useMemo(() => {
-    if (summary) return summary.paidSalesCount + summary.pendingSalesCount;
-    return initialSales.filter(s => s.paymentStatus !== 'Quote').length;
-  }, [summary, initialSales]);
+    return displaySummary.paidSalesCount + displaySummary.pendingSalesCount;
+  }, [displaySummary]);
 
   return {
     filteredSales: initialSales,
-    analyticsData: summary || {
-      totalSales: 0,
-      totalProfit: 0,
-      totalCost: 0,
-      paidSalesCount: 0,
-      pendingSalesCount: 0,
-    },
+    analyticsData: displaySummary,
     barChartData,
     recentSales,
     nonQuoteSalesCount,
-    expenses: summary?.totalExpenses || 0,
-    isLoadingExpenses: isLoadingSummary
+    expenses: displaySummary.totalExpenses || 0,
+    isLoadingExpenses: isLoadingSummary && !summary
   };
 }

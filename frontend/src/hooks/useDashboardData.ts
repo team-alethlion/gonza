@@ -4,8 +4,9 @@ import { useBusiness } from '@/contexts/BusinessContext';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useSalesData } from '@/hooks/useSalesData';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
+import { AnalyticsData } from '@/types';
 
-export const useDashboardData = (initialSales?: any[]) => {
+export const useDashboardData = (initialSales?: any[], initialAnalytics?: AnalyticsData | null) => {
   const { user } = useAuth();
   const { isLoading: businessLoading, error: businessError, currentBusiness } = useBusiness();
   const { settings, isLoading: settingsLoading } = useBusinessSettings();
@@ -39,6 +40,7 @@ export const useDashboardData = (initialSales?: any[]) => {
     currentBusiness,
     settings,
     sales,
+    initialAnalytics,
     pageTitle,
     nonQuoteSalesCount,
     isLoading,

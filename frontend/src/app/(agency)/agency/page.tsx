@@ -2,12 +2,13 @@
 import AgencyDashboardClient from "../components/AgencyDashboardClient";
 import { auth } from "@/auth";
 import { getSalesAction } from "@/app/actions/sales";
+import { getAnalyticsSummaryAction } from "@/app/actions/analytics";
 import { getBusinessLocationsAction } from "@/app/actions/business";
-import { Sale, mapDbSaleToSale } from "@/types";
+import { Sale, mapDbSaleToSale, AnalyticsData } from "@/types";
 import { enforceStrictAccess } from "@/lib/strict-guard";
 
 export default async function AgencyDashboard() {
-  // SUPER STRICT GUARD: Return notFound() if status is invalid 
+  // SUPER STRICT GUARD: Return notFound() if status is invalid
   // before ANY other code or data fetching runs.
   await enforceStrictAccess();
 
@@ -16,6 +17,7 @@ export default async function AgencyDashboard() {
   const branchId = (session?.user as any)?.branchId;
 
   let initialSales: Sale[] = [];
+  let initialAnalytics: AnalyticsData | null = null;
 
   if (userId) {
     try {
@@ -31,9 +33,14 @@ export default async function AgencyDashboard() {
       }
 
       if (activeBranchId) {
-        // Pre-fetch the latest 20 sales for the dashboard (reduced from 50)
-        const result: any = await getSalesAction(activeBranchId, 1, 20);
-        const salesData = result?.success ? result.data?.sales : [];
+        // 🚀 SSR: Parallel fetch for both sales and analytics
+        // This ensures the dashboard loads fully populated instantly
+        const [salesResult, analyticsResult] = await Promise.all([
+          getSalesAction(activeBranchId, 1, 20),
+          getAnalyticsSummaryAction(activeBranchId),
+        ]);
+
+        const salesData = salesResult?.success ? salesResult.data?.sales : [];
 
         if (salesData && salesData.length > 0) {
           initialSales = salesData.map((item: any) =>
@@ -68,11 +75,28 @@ export default async function AgencyDashboard() {
             }),
           );
         }
+
+        if (analyticsResult?.success) {
+          initialAnalytics = analyticsResult.data as {
+            totalSales: number;
+            totalCost: number;
+            totalProfit: number;
+            paidSalesCount: number;
+            pendingSalesCount: number;
+            totalExpenses: number;
+            recentSales: any;
+          };
+        }
       }
     } catch (error) {
-      console.error("Failed to prefetch dashboard sales SSR:", error);
+      console.error("Failed to prefetch dashboard data SSR:", error);
     }
   }
 
-  return <AgencyDashboardClient initialSales={initialSales} />;
+  return (
+    <AgencyDashboardClient
+      initialSales={initialSales}
+      initialAnalytics={initialAnalytics}
+    />
+  );
 }

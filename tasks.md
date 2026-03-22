@@ -1,0 +1,1 @@
+- track deleted sales

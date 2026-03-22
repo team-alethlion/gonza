@@ -14,12 +14,14 @@ import { useDashboardActions } from "@/hooks/useDashboardActions";
 const AnalyticsDashboard = lazy(
   () => import("@/components/AnalyticsDashboard"),
 );
-import { Sale } from "@/types";
+import { Sale, AnalyticsData } from "@/types";
 
 export default function AgencyDashboardClient({
   initialSales,
+  initialAnalytics,
 }: {
   initialSales?: Sale[];
+  initialAnalytics?: AnalyticsData | null;
 }) {
   const { isLoading: profilesLoading } = useProfiles();
   const {
@@ -32,7 +34,7 @@ export default function AgencyDashboardClient({
     updateAvailable,
     isUpdating,
     triggerUpdate,
-  } = useDashboardData(initialSales);
+  } = useDashboardData(initialSales, initialAnalytics);
 
   const { isRefreshing, handleRefresh, handleQuickCreate } =
     useDashboardActions();
@@ -71,7 +73,11 @@ export default function AgencyDashboardClient({
       <QuickActionButtons onQuickCreate={handleQuickCreate} />
 
       <Suspense fallback={<DashboardSkeleton />}>
-        <AnalyticsDashboard sales={sales} currency={settings.currency} />
+        <AnalyticsDashboard 
+          sales={sales} 
+          currency={settings.currency} 
+          initialAnalytics={initialAnalytics}
+        />
       </Suspense>
     </>
   );

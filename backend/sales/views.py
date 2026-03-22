@@ -39,11 +39,29 @@ class SalesGoalViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         branch_id = self.request.query_params.get('branchId')
         period = self.request.query_params.get('period')
+        period_name = self.request.query_params.get('period_name')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
         if period:
             qs = qs.filter(period=period)
+        if period_name:
+            qs = qs.filter(period_name=period_name)
         return qs.order_by('-start_date')
+
+    def perform_create(self, serializer):
+        branch_id = self.request.data.get('branch')
+        start_date = self.request.data.get('start_date')
+        end_date = self.request.data.get('end_date')
+        
+        # Calculate current progress for this period
+        current_progress = 0
+        if branch_id and start_date and end_date:
+            current_progress = Sale.objects.filter(
+                branch_id=branch_id,
+                date__range=[start_date, end_date]
+            ).exclude(status='QUOTE').aggregate(total=Sum('total_amount'))['total'] or 0
+            
+        serializer.save(current_amount=current_progress)
 
 class SaleCategoryViewSet(viewsets.ModelViewSet):
     queryset = SaleCategory.objects.all()

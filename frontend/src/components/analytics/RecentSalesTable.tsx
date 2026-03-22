@@ -30,6 +30,13 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({ recentSales, curren
     canViewTotalAmount
   } = useFinancialVisibility();
 
+  // Helper to ensure we always have a valid number for math
+  const toSafeNum = (val: any) => {
+    if (val === null || val === undefined || val === '' || String(val).toLowerCase() === 'none') return 0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   const handleSaleClick = (sale: Sale) => {
     router.push(`/agency/new-sale?editSaleId=${sale.id}`);
   };
@@ -62,30 +69,30 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({ recentSales, curren
           <div className="space-y-3">
             {recentSales.map((sale) => {
               // Calculate subtotal from items with discount considerations
-              const subtotal = sale.items.reduce((total, item) => {
-                const itemSubtotal = item.price * item.quantity;
-                const discountAmount = (itemSubtotal * (item.discountPercentage || 0)) / 100;
+              const subtotal = (sale.items || []).reduce((total, item) => {
+                const itemPrice = toSafeNum(item.price);
+                const itemQty = toSafeNum(item.quantity);
+                const itemSubtotal = itemPrice * itemQty;
+                const discountAmount = (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
                 return total + (itemSubtotal - discountAmount);
               }, 0);
 
               // Calculate total discount amount
-              const totalDiscount = sale.items.reduce((total, item) => {
-                const itemSubtotal = item.price * item.quantity;
-                const discountAmount = (itemSubtotal * (item.discountPercentage || 0)) / 100;
+              const totalDiscount = (sale.items || []).reduce((total, item) => {
+                const itemSubtotal = toSafeNum(item.price) * toSafeNum(item.quantity);
+                const discountAmount = (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
                 return total + discountAmount;
               }, 0);
 
               // Calculate tax amount based on subtotal and tax rate
-              const taxRate = sale.taxRate || 0;
+              const taxRate = toSafeNum(sale.taxRate);
               const taxAmount = subtotal * (taxRate / 100);
 
               // Total including tax
               const saleTotal = subtotal + taxAmount;
 
               // Calculate total cost for the sale
-              const totalCost = sale.items && Array.isArray(sale.items)
-                ? sale.items.reduce((sum, item) => sum + (item.cost * item.quantity), 0)
-                : 0;
+              const totalCost = (sale.items || []).reduce((sum, item) => sum + (toSafeNum(item.cost) * toSafeNum(item.quantity)), 0);
 
               // Get primary item description (or combination)
               let itemDescription = "No items";
@@ -154,7 +161,7 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({ recentSales, curren
                     <div className="text-center border-r border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Avg Price</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {canViewAvgPrice ? `${currency} ${formatNumber(saleTotal / sale.items.reduce((total, item) => total + item.quantity, 0))}` : '•••'}
+                        {canViewAvgPrice ? `${currency} ${formatNumber(saleTotal / Math.max(1, (sale.items || []).reduce((total, item) => total + toSafeNum(item.quantity), 0)))}` : '•••'}
                       </p>
                     </div>
                     <div className="text-center">
@@ -217,32 +224,34 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({ recentSales, curren
               <tbody>
                 {recentSales.map((sale) => {
                   // Calculate total quantity
-                  const totalQuantity = sale.items.reduce((total, item) => total + item.quantity, 0);
+                  const totalQuantity = (sale.items || []).reduce((total, item) => total + toSafeNum(item.quantity), 0);
                   // Calculate subtotal from items with discount considerations
-                  const subtotal = sale.items.reduce((total, item) => {
-                    const itemSubtotal = item.price * item.quantity;
-                    const discountAmount = (itemSubtotal * (item.discountPercentage || 0)) / 100;
+                  const subtotal = (sale.items || []).reduce((total, item) => {
+                    const itemPrice = toSafeNum(item.price);
+                    const itemQty = toSafeNum(item.quantity);
+                    const itemSubtotal = itemPrice * itemQty;
+                    const discountAmount = (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
                     return total + (itemSubtotal - discountAmount);
                   }, 0);
 
                   const averagePrice = totalQuantity > 0 ? subtotal / totalQuantity : 0;
 
                   // Calculate total discount amount
-                  const totalDiscount = sale.items.reduce((total, item) => {
-                    const itemSubtotal = item.price * item.quantity;
-                    const discountAmount = (itemSubtotal * (item.discountPercentage || 0)) / 100;
+                  const totalDiscount = (sale.items || []).reduce((total, item) => {
+                    const itemSubtotal = toSafeNum(item.price) * toSafeNum(item.quantity);
+                    const discountAmount = (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
                     return total + discountAmount;
                   }, 0);
 
                   // Calculate tax amount based on subtotal and tax rate
-                  const taxRate = sale.taxRate || 0;
+                  const taxRate = toSafeNum(sale.taxRate);
                   const taxAmount = subtotal * (taxRate / 100);
 
                   // Total including tax
                   const saleTotal = subtotal + taxAmount;
 
                   // Calculate total cost
-                  const totalCost = sale.items.reduce((total, item) => total + (item.cost * item.quantity), 0);
+                  const totalCost = (sale.items || []).reduce((total, item) => total + (toSafeNum(item.cost) * toSafeNum(item.quantity)), 0);
 
                   // Get primary item description (or combination)
                   let itemDescription = "No items";

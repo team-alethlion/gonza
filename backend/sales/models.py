@@ -21,6 +21,7 @@ class SalesGoal(models.Model):
     products_sold_target = models.IntegerField(default=0)
     
     period = models.CharField(max_length=50, choices=GOAL_PERIODS, default='MONTHLY')
+    period_name = models.CharField(max_length=100, null=True, blank=True) # e.g. "MONTHLY-2026-03"
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField()
     
