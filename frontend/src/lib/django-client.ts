@@ -26,28 +26,46 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
 
   const url = `${DJANGO_API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  // 🛡️ RETRY LOGIC: Try up to 2 times for transient connection errors
+  let attempts = 0;
+  const maxAttempts = 2;
 
-  if (!response.ok) {
-    let errorMsg = `Django API Error: ${response.status} ${response.statusText}`;
+  while (attempts < maxAttempts) {
     try {
-      const errorData = await response.json();
-      // Prefix with status code for easier detection by callers
-      errorMsg = `${response.status}: ${JSON.stringify(errorData)}`;
-    } catch {
-      // Not JSON, use default
-      errorMsg = `${response.status}: ${response.statusText}`;
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Django API Error: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = `${response.status}: ${JSON.stringify(errorData)}`;
+        } catch {
+          errorMsg = `${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMsg);
+      }
+
+      if (response.status === 204) return null as unknown as T;
+      return await response.json();
+
+    } catch (error: any) {
+      attempts++;
+      const isConnectionError = 
+        error.message?.includes('fetch failed') || 
+        error.cause?.code === 'UND_ERR_SOCKET' || 
+        error.cause?.code === 'ECONNREFUSED';
+
+      if (isConnectionError && attempts < maxAttempts) {
+        console.warn(`[djangoFetch] Connection failed. Retrying... (${attempts}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 200 * attempts)); // Backoff
+        continue;
+      }
+      throw error;
     }
-    throw new Error(errorMsg);
   }
 
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return null as unknown as T;
-  }
-
-  return response.json();
+  return null as unknown as T; // Should not reach here
 }

@@ -8,6 +8,19 @@ import { isSameDay } from 'date-fns';
 export const useSalesFilters = (sales: Sale[]) => {
   // Load persisted state from localStorage
   const getPersistedState = () => {
+    // 🛡️ SSR Guard: Only run in the browser
+    if (typeof window === 'undefined') {
+      return {
+        searchQuery: '',
+        dateFilter: 'this-month',
+        paymentFilter: 'all',
+        cashTransactionFilter: 'all',
+        categoryFilter: 'all',
+        dateRange: { from: undefined, to: undefined },
+        specificDate: undefined
+      };
+    }
+
     try {
       const saved = localStorage.getItem('salesFilters');
       if (saved) {
@@ -50,6 +63,8 @@ export const useSalesFilters = (sales: Sale[]) => {
 
   // Persist state to localStorage whenever filters change
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const stateToSave = {
       searchQuery,
       dateFilter,

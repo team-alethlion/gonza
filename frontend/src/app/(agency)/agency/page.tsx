@@ -33,12 +33,10 @@ export default async function AgencyDashboard() {
       }
 
       if (activeBranchId) {
-        // 🚀 SSR: Parallel fetch for both sales and analytics
-        // This ensures the dashboard loads fully populated instantly
-        const [salesResult, analyticsResult] = await Promise.all([
-          getSalesAction(activeBranchId, 1, 20),
-          getAnalyticsSummaryAction(activeBranchId),
-        ]);
+        // 🛡️ DEV STABILITY: Fetch sequentially instead of using Promise.all
+        // This gives the single-threaded Django server room to breathe
+        const salesResult = await getSalesAction(activeBranchId, 1, 20);
+        const analyticsResult = await getAnalyticsSummaryAction(activeBranchId);
 
         const salesData = salesResult?.success ? salesResult.data?.sales : [];
 

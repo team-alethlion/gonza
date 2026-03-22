@@ -89,8 +89,8 @@ export async function getInitialAppDataAction() {
             }
         }
 
-        // 1. Fetch Locations & Account Status in parallel (Safe batch)
-        // These are relatively lightweight metadata requests
+        // 1. Fetch Locations & Account Status in parallel (Shell Essentials)
+        // These MUST be on the server so the sidebar and access guards work instantly.
         const [locationsData, accountStatusData] = await Promise.all([
             getBusinessLocationsAction(userId),
             getAccountStatusAction(userId)
@@ -103,30 +103,12 @@ export async function getInitialAppDataAction() {
             targetBranchId = locations.find((l: any) => l.is_default)?.id || locations[0].id;
         }
 
-        // 2. Fetch Profiles, Settings, and Analytics
-        let profiles: any[] = [];
-        let businessSettings = null;
-        let analyticsSummary = null;
-
-        if (targetBranchId) {
-            // Fetch Profiles and Settings in parallel (Group A)
-            const [profilesData, settingsData] = await Promise.all([
-                getProfilesAction(targetBranchId),
-                getBusinessSettingsAction(targetBranchId)
-            ]);
-            
-            profiles = profilesData;
-            businessSettings = settingsData;
-
-            // Fetch Analytics separately (Group B - heaviest request)
-            // Keeping this separate prevents the "database connection closed" error
-            // by ensuring it doesn't fight for connections with the metadata requests.
-            const analyticsData = await getAnalyticsSummaryAction(targetBranchId);
-            analyticsSummary = analyticsData?.success ? analyticsData.data : null;
-        }
-
+        // 2. Heavy Data (Profiles, Settings, Analytics) is removed from SSR.
+        // These will be fetched by their respective components on the client.
+        // This ensures the page shell renders in < 1s instead of 30s.
+        
         const end = Date.now();
-        console.log(`[PERF] AppInit total took ${end - start}ms`);
+        console.log(`[PERF] AppInit (Shell Only) took ${end - start}ms`);
 
         return {
             success: true,
@@ -134,10 +116,10 @@ export async function getInitialAppDataAction() {
                 session: session,
                 locations: locations,
                 accountStatus: accountStatusData,
-                profiles: profiles,
+                profiles: [], // Client-side fetch
                 currentBranchId: targetBranchId,
-                businessSettings,
-                analyticsSummary,
+                businessSettings: null, // Client-side fetch
+                analyticsSummary: null, // Client-side fetch
                 isUnauthorized: false
             }
         };

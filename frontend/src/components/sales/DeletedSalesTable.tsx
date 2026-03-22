@@ -32,6 +32,17 @@ export const DeletedSalesTable: React.FC<DeletedSalesTableProps> = ({ sales, isL
         );
     }
 
+    const formatSafeDate = (dateStr: string) => {
+        try {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return 'N/A';
+            return format(date, 'MMM d, h:mm a');
+        } catch {
+            return 'N/A';
+        }
+    };
+
     return (
         <div className="border rounded-lg overflow-hidden bg-white">
             <Table>
@@ -74,7 +85,7 @@ export const DeletedSalesTable: React.FC<DeletedSalesTableProps> = ({ sales, isL
                             <TableCell>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <Clock className="h-3 w-3" />
-                                    {format(new Date(sale.deletedAt), 'MMM d, h:mm a')}
+                                    {formatSafeDate(sale.deletedAt)}
                                 </div>
                             </TableCell>
                             <TableCell>

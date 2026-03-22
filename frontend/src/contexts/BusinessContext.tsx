@@ -195,8 +195,12 @@ export const BusinessProvider: React.FC<{
   }, [user?.id, getStorageKey, user?.branchId, isUnauthorized]);
 
   useEffect(() => {
+    // Only fetch if we have a user, are authorized, and haven't loaded data from SSR yet.
     if (user?.id && !isUnauthorized && !hasLoadedInitial.current) {
+      console.log('[AppInit] SSR Data missing. Falling back to client-side fetch for locations.');
       loadBusinessLocations();
+    } else if (hasLoadedInitial.current) {
+      console.log('[AppInit] SSR Data detected. Skipping initial client-side fetch for locations.');
     }
   }, [user?.id, isUnauthorized, loadBusinessLocations]);
 

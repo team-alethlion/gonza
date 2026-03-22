@@ -6,6 +6,10 @@ import { authConfig } from "./auth.config";
 
 const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || "http://127.0.0.1:8000/api";
 
+// 🔐 REFRESH LOCK (Singleton Pattern)
+// This prevents multiple simultaneous requests from triggering a "Refresh Storm"
+let globalRefreshPromise: Promise<any> | null = null;
+
 const nextAuth = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
@@ -161,18 +165,30 @@ const nextAuth = NextAuth({
 
       // If the access token has expired, try to refresh it
       console.log("[Auth] Access Token expired, attempting refresh...");
+      
       try {
-        const response = await fetch(`${DJANGO_API_URL}/auth/token/refresh/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh: token.refreshToken }),
-        });
+        // Use the global lock to ensure only ONE fetch happens
+        if (!globalRefreshPromise) {
+          console.log("[Auth] Refresh lock acquired. Calling Django...");
+          globalRefreshPromise = fetch(`${DJANGO_API_URL}/auth/token/refresh/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh: token.refreshToken }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) throw data;
+            return data;
+          }).finally(() => {
+            // Important: Clear the promise so future expirations can trigger a new refresh
+            globalRefreshPromise = null;
+          });
+        } else {
+          console.log("[Auth] Refresh already in progress. Waiting for result...");
+        }
 
-        const refreshedTokens = await response.json();
+        const refreshedTokens = await globalRefreshPromise;
 
-        if (!response.ok) throw refreshedTokens;
-
-        console.log("[Auth] Access Token refreshed successfully");
+        console.log("[Auth] Access Token refreshed successfully (synchronized)");
         return {
           ...token,
           accessToken: refreshedTokens.access,

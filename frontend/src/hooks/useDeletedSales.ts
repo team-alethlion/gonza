@@ -47,10 +47,11 @@ export const useDeletedSales = () => {
                 const metadata = log.metadata || {};
                 const items = Array.isArray(metadata.items) ? metadata.items : [];
 
-                let amount = Number(metadata.totalAmount || 0);
+                // Support both new (camelCase) and legacy (snake_case) formats
+                let amount = Number(metadata.totalAmount || metadata.total_amount || 0);
                 if (amount === 0 && items.length > 0) {
                     amount = items.reduce((sum: number, item: any) => {
-                        const itemTotal = Number(item.total) || (Number(item.price || 0) * Number(item.quantity || 0));
+                        const itemTotal = Number(item.total) || (Number(item.price || item.unit_price || 0) * Number(item.quantity || 0));
                         return sum + itemTotal;
                     }, 0);
                 }
@@ -59,11 +60,11 @@ export const useDeletedSales = () => {
 
                 return {
                     id: log.id,
-                    receiptNumber: metadata.receiptNumber || 'N/A',
-                    customerName: metadata.customerName || 'Unknown',
+                    receiptNumber: metadata.receiptNumber || metadata.receipt_number || 'N/A',
+                    customerName: metadata.customerName || metadata.customer_name || 'Unknown',
                     amount,
                     totalQuantity,
-                    deletedAt: log.createdAt,
+                    deletedAt: log.created_at || log.createdAt,
                     deletedBy: log.profileName || 'Admin',
                     items,
                     fullMetadata: metadata
