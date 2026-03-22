@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight, Home, Receipt, Package, DollarSign, HelpCirc
 import { cn } from '@/lib/utils';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { useProfiles } from '@/contexts/ProfileContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface NavLink {
   name: string;
@@ -24,8 +25,12 @@ interface NavLinksProps {
 
 const NavLinks = ({ className = '', onClick, isSidebar = false, isCollapsed = false }: NavLinksProps) => {
   const pathname = usePathname();
-
+  const { user } = useAuth();
   const { hasPermission } = useProfiles();
+
+  // 🚀 INSTANT HYDRATION: Admins and Managers get immediate visibility
+  const userRole = user?.role?.toLowerCase() || 'user';
+  const isPowerUser = userRole === 'admin' || userRole === 'manager' || userRole === 'superadmin';
 
   // State for minimizable sections
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -46,7 +51,7 @@ const NavLinks = ({ className = '', onClick, isSidebar = false, isCollapsed = fa
     { name: 'Sales', path: '/agency/sales', icon: <Receipt className="w-4 h-4" />, module: 'sales' },
     { name: 'Inventory', path: '/agency/inventory', icon: <Package className="w-4 h-4" />, module: 'inventory' },
     { name: 'Customers', path: '/agency/customers', icon: <Users className="w-4 h-4" />, module: 'customers' },
-  ].filter(link => !link.module || hasPermission(link.module, 'view'));
+  ].filter(link => !link.module || isPowerUser || hasPermission(link.module, 'view'));
 
   const businessLinks: NavLink[] = [
     { name: 'Finance', path: '/agency/cash', icon: <Wallet className="w-4 h-4" />, module: 'finance' },
@@ -54,13 +59,13 @@ const NavLinks = ({ className = '', onClick, isSidebar = false, isCollapsed = fa
     { name: 'Messages', path: '/agency/messages', icon: <MessageSquare className="w-4 h-4" />, module: 'messages' },
     { name: 'Tasks', path: '/agency/tasks', icon: <CheckSquare className="w-4 h-4" />, module: 'tasks' },
     { name: 'History', path: '/agency/history', icon: <HistoryIcon className="w-4 h-4" /> },
-  ].filter(link => !link.module || hasPermission(link.module, 'view'));
+  ].filter(link => !link.module || isPowerUser || hasPermission(link.module, 'view'));
 
   const systemLinks: NavLink[] = [
     { name: 'Settings', path: '/agency/settings', icon: <Settings className="w-4 h-4" />, module: 'settings' },
     { name: 'Help', path: '/agency/help', icon: <HelpCircle className="w-4 h-4" /> },
     { name: 'Privacy Policy', path: '/agency/privacy-policy', icon: <HelpCircle className="w-4 h-4" /> },
-  ].filter(link => !link.module || hasPermission(link.module, 'view'));
+  ].filter(link => !link.module || isPowerUser || hasPermission(link.module, 'view'));
 
   const isActive = (path: string) => {
     if (path === '/agency' && pathname === '/agency') return true;

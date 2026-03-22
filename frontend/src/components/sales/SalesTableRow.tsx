@@ -18,7 +18,6 @@ import { useCashAccounts } from '@/hooks/useCashAccounts';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { canSendSMS } from '@/utils/smsUtils';
-import { useInstallmentPayments } from '@/hooks/useInstallmentPayments';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 
 interface SalesTableRowProps {
@@ -47,7 +46,6 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
   const { accounts } = useCashAccounts();
   const { transactions } = useCashTransactions();
   const isMobile = useIsMobile();
-  const { payments } = useInstallmentPayments(sale.id);
   const { hasPermission } = useProfiles();
   const { formatFinancial, canViewCostPrice, canViewProfit } = useFinancialVisibility();
 
@@ -130,14 +128,9 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
     }
   };
 
-  // Calculate actual amounts for installment sales based on payment history
-  const actualAmountPaid = sale.paymentStatus === 'Installment Sale'
-    ? payments.reduce((sum, payment) => sum + payment.amount, 0)
-    : sale.amountPaid || 0;
-
-  const actualAmountDue = sale.paymentStatus === 'Installment Sale'
-    ? Math.max(0, saleTotal - actualAmountPaid)
-    : sale.amountDue || 0;
+  // 🚀 PERFORMANCE FIX: Use pre-fetched amounts from the sale object instead of making new requests per row
+  const actualAmountPaid = sale.amountPaid || 0;
+  const actualAmountDue = sale.amountDue || 0;
 
   // Check if this is a credit sale that needs payment reminder (exclude installment sales)
   const isCreditSale = sale.paymentStatus === 'NOT PAID';
