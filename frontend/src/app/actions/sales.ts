@@ -409,6 +409,22 @@ export async function getTopCustomersAction(branchId: string) {
     }
 }
 
+export async function getSalesCategorySummaryAction(branchId: string, startDate?: string, endDate?: string) {
+    try {
+        await verifyBranchAccess(branchId);
+        
+        let queryParams = `branchId=${branchId}`;
+        if (startDate) queryParams += `&startDate=${startDate}`;
+        if (endDate) queryParams += `&endDate=${endDate}`;
+
+        const data = await djangoFetch(`sales/sales/category_summary/?${queryParams}`);
+        return { success: true, data: Array.isArray(data) ? data : [] };
+    } catch (error: any) {
+        console.error('Error in getSalesCategorySummaryAction:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
 export async function bulkSyncSalesAction(sales: { localId: string, saleData: any, branchId: string, userId: string }[]) {
     if (sales.length === 0) return { success: true, processed: [], errors: [] };
     

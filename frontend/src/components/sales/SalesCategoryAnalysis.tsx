@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 import { format, isAfter, isBefore, isEqual, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
+import { getSalesCategorySummaryAction } from '@/app/actions/sales';
+import { useQuery } from '@tanstack/react-query';
+import { useBusiness } from '@/contexts/BusinessContext';
 interface SalesCategoryAnalysisProps {
   sales: Sale[];
   formatCurrency: (amount: number) => string;
@@ -49,6 +52,7 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
   formatCurrency
 }) => {
   const { canViewProfit } = useFinancialVisibility();
+  const { currentBusiness } = useBusiness();
   const {
     categories,
     createCategory,
@@ -70,6 +74,7 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>();
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>();
   const [specificDate, setSpecificDate] = useState<Date | undefined>();
+
   const getDateRange = (filter: string) => {
     const now = new Date();
     switch (filter) {
@@ -144,54 +149,35 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
         return null;
     }
   };
-  const categoryPerformance = useMemo(() => {
-    // Filter sales by selected date range
-    let filteredSales = sales;
-    const dateRange = getDateRange(dateFilter);
-    if (dateRange) {
-      filteredSales = sales.filter(sale => {
-        const saleDate = new Date(sale.date);
-        return saleDate >= dateRange.start && saleDate <= dateRange.end;
-      });
-    }
-    const categoryData = categories.map(category => {
-      const categorySales = filteredSales.filter(sale => sale.categoryId === category.id);
-      const totalRevenue = categorySales.reduce((sum, sale) => {
-        const saleTotal = sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.price, 0);
-        return sum + saleTotal;
-      }, 0);
-      const totalProfit = categorySales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
-      const totalTransactions = categorySales.length;
-      const averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-      return {
-        name: category.name,
-        revenue: totalRevenue,
-        profit: totalProfit,
-        transactions: totalTransactions,
-        averageValue: averageTransactionValue
-      };
-    });
 
-    // Add uncategorized sales
-    const uncategorizedSales = filteredSales.filter(sale => !sale.categoryId);
-    if (uncategorizedSales.length > 0) {
-      const totalRevenue = uncategorizedSales.reduce((sum, sale) => {
-        const saleTotal = sale.items.reduce((itemSum, item) => itemSum + item.quantity * item.price, 0);
-        return sum + saleTotal;
-      }, 0);
-      const totalProfit = uncategorizedSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
-      const totalTransactions = uncategorizedSales.length;
-      const averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-      categoryData.push({
-        name: 'Uncategorized',
-        revenue: totalRevenue,
-        profit: totalProfit,
-        transactions: totalTransactions,
-        averageValue: averageTransactionValue
-      });
-    }
-    return categoryData.sort((a, b) => b.revenue - a.revenue);
-  }, [sales, categories, dateFilter, customDateFrom, customDateTo, specificDate]);
+  const dateRangeParams = useMemo(() => {
+    const range = getDateRange(dateFilter);
+    if (!range) return { start: undefined, end: undefined };
+    return {
+      start: range.start.toISOString(),
+      end: range.end.toISOString()
+    };
+  }, [dateFilter, customDateFrom, customDateTo, specificDate]);
+  // 🚀 SERVER-SIDE AGGREGATION: Fetch accurate totals from the backend
+  const { data: serverCategoryPerformance = [], isLoading: isAnalyticsLoading } = useQuery({
+    queryKey: ['sales-category-summary', currentBusiness?.id, dateFilter, dateRangeParams],
+    queryFn: async () => {
+      if (!currentBusiness?.id) return [];
+      const result = await getSalesCategorySummaryAction(
+        currentBusiness.id, 
+        dateRangeParams.start, 
+        dateRangeParams.end
+      );
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: !!currentBusiness?.id
+  });
+
+  const categoryPerformance = useMemo(() => {
+    return serverCategoryPerformance;
+  }, [serverCategoryPerformance]);
+
   const pieChartData = useMemo(() => {
     return categoryPerformance.filter(cat => cat.revenue > 0).map((category, index) => ({
       ...category,
@@ -458,7 +444,12 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {categoryPerformance.length > 0 ? isMobile ? <div className="space-y-3">
+        {isAnalyticsLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 space-y-4">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-muted-foreground">Calculating source performance...</p>
+          </div>
+        ) : categoryPerformance.length > 0 ? isMobile ? <div className="space-y-3">
           {categoryPerformance.map((category, index) => <Card key={category.name} className="border border-border bg-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
