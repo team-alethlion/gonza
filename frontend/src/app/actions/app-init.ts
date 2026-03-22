@@ -103,12 +103,15 @@ export async function getInitialAppDataAction() {
             targetBranchId = locations.find((l: any) => l.is_default)?.id || locations[0].id;
         }
 
-        // 2. Heavy Data (Profiles, Settings, Analytics) is removed from SSR.
-        // These will be fetched by their respective components on the client.
-        // This ensures the page shell renders in < 1s instead of 30s.
+        // 2. Fetch Settings (Lightweight) but keep heavy Analytics/Profiles deferred.
+        // This ensures receipts open instantly while the page shell stays fast.
+        let businessSettings = null;
+        if (targetBranchId) {
+            businessSettings = await getBusinessSettingsAction(targetBranchId);
+        }
         
         const end = Date.now();
-        console.log(`[PERF] AppInit (Shell Only) took ${end - start}ms`);
+        console.log(`[PERF] AppInit (Shell + Settings) took ${end - start}ms`);
 
         return {
             success: true,
@@ -116,10 +119,10 @@ export async function getInitialAppDataAction() {
                 session: session,
                 locations: locations,
                 accountStatus: accountStatusData,
-                profiles: [], // Client-side fetch
+                profiles: [], 
                 currentBranchId: targetBranchId,
-                businessSettings: null, // Client-side fetch
-                analyticsSummary: null, // Client-side fetch
+                businessSettings: businessSettings, 
+                analyticsSummary: null, 
                 isUnauthorized: false
             }
         };

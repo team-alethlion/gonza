@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
@@ -18,18 +19,24 @@ import { Printer, Download, Loader2 } from "lucide-react";
 import { formatNumber, getBaseUrl } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-import {
-  parsePaymentInfo,
-  useBusinessSettings,
-} from "@/hooks/useBusinessSettings";
+import { parsePaymentInfo } from "@/hooks/useBusinessSettings";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { numberToWords } from "@/utils/numberToWords";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import ThermalReceipt from "./ThermalReceipt";
 import { toast } from "sonner";
-import { useInstallmentPayments } from "@/hooks/useInstallmentPayments";
 import { print } from "@/utils/thermalPrinterPlug";
 import { generateThermalReceipt } from "@/utils/generateThermalReceipt";
+
+const DEFAULT_SETTINGS: any = {
+  businessName: "Business Name",
+  businessAddress: "Business Address",
+  businessPhone: "Business Phone",
+  businessEmail: "email@business.com",
+  currency: "UGX",
+  paymentInfo: "",
+};
 
 interface PrintableReceiptProps {
   sale: Sale;
@@ -48,8 +55,17 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 }) => {
   const receiptRef = useRef<HTMLDivElement>(null);
   const thermalReceiptRef = useRef<HTMLDivElement>(null);
-  const { settings, isLoading: settingsLoading } = useBusinessSettings();
-  const { payments } = useInstallmentPayments(sale.id);
+
+  // 🚀 OPTIMIZATION: Use pre-fetched settings from context to prevent "Loading..." lag
+  const { initialBusinessSettings: settings } = useBusiness();
+  const settingsLoading = !settings;
+
+  // 🛡️ SAFETY: Fallback to defaults if settings are not yet loaded
+  const activeSettings = settings || DEFAULT_SETTINGS;
+
+  // 🚀 PERFORMANCE FIX: Use data already available in the sale object instead of a second API call
+  const payments = sale.payments || [];
+
   const [receiptType, setReceiptType] = useState<ReceiptType>("standard");
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -59,12 +75,10 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
   // Update receipt type when settings are loaded
   useEffect(() => {
-    if (settings.defaultPrintFormat) {
-      setReceiptType(settings.defaultPrintFormat);
+    if (activeSettings.defaultPrintFormat) {
+      setReceiptType(activeSettings.defaultPrintFormat as ReceiptType);
     }
-
-    // No bridge check needed if not used
-  }, [settings.defaultPrintFormat]);
+  }, [activeSettings.defaultPrintFormat]);
 
   // Determine document title based on payment status
   const getDocumentTitle = () => {
@@ -100,7 +114,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
   // Helper to ensure we always have a valid number for math
   const toSafeNum = (val: any) => {
-    if (val === null || val === undefined || val === '') return 0;
+    if (val === null || val === undefined || val === "") return 0;
     const num = Number(val);
     return isNaN(num) ? 0 : num;
   };
@@ -110,7 +124,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     const itemPrice = toSafeNum(item.price);
     const itemQty = toSafeNum(item.quantity);
     const itemSubtotal = itemPrice * itemQty;
-    
+
     const discountAmount =
       item.discountType === "amount"
         ? toSafeNum(item.discountAmount)
@@ -150,8 +164,8 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   const isInstallmentSale = sale.paymentStatus === "Installment Sale";
 
   // Parse payment info into structured format
-  const paymentMethods = settings.paymentInfo
-    ? parsePaymentInfo(settings.paymentInfo)
+  const paymentMethods = activeSettings.paymentInfo
+    ? parsePaymentInfo(activeSettings.paymentInfo)
     : [];
   // Only show payment methods table if there are valid payment methods AND includePaymentInfo is true
   const hasPaymentInfo =
@@ -165,18 +179,17 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     );
 
   // Use the currency prop if provided, otherwise use the one from settings
-  const displayCurrency = currency || settings.currency;
+  const displayCurrency = currency || activeSettings.currency;
 
   // Check if device is iOS or Android
-
 
   const receiptDate = new Date(sale.date);
 
   // Helper function to create structured receipt data
   const createReceiptData = () => {
     const currentDateTime = new Date();
-    const paymentMethods = settings.paymentInfo
-      ? parsePaymentInfo(settings.paymentInfo)
+    const paymentMethods = activeSettings.paymentInfo
+      ? parsePaymentInfo(activeSettings.paymentInfo)
       : [];
     const hasPaymentInfo =
       includePaymentInfo &&
@@ -195,12 +208,12 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       date: format(receiptDate, "MMM dd, yyyy"),
       time: format(currentDateTime, "hh:mm a"),
       status: sale.paymentStatus,
-      businessName: settings.businessName,
-      businessAddress: settings.businessAddress,
-      businessPhone: settings.businessPhone,
-      businessEmail: settings.businessEmail,
-      businessLogo: settings.businessLogo,
-      signature: settings.signature,
+      businessName: activeSettings.businessName,
+      businessAddress: activeSettings.businessAddress,
+      businessPhone: activeSettings.businessPhone,
+      businessEmail: activeSettings.businessEmail,
+      businessLogo: activeSettings.businessLogo,
+      signature: activeSettings.signature,
       customerName: sale.customerName,
       customerAddress: sale.customerAddress,
       customerContact: sale.customerContact,
@@ -208,7 +221,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
         const itemPrice = toSafeNum(item.price);
         const itemQty = toSafeNum(item.quantity);
         const itemSubtotal = itemPrice * itemQty;
-        
+
         const discountAmount =
           item.discountType === "amount"
             ? toSafeNum(item.discountAmount)
@@ -353,12 +366,12 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
         const saleWithPayments = { ...sale, payments: payments || [] };
         const receiptData = await generateThermalReceipt(
           saleWithPayments,
-          settings,
+          activeSettings,
           displayCurrency,
         );
 
         // Always use public API (prefers bridge now)
-        await print(receiptData, settings.defaultPrinterName);
+        await print(receiptData, activeSettings.defaultPrinterName);
 
         if (isPrinting) return;
         return;
@@ -410,14 +423,14 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     } catch (error) {
       console.error("Error printing receipt:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to print receipt. Please try again.",
+        error instanceof Error
+          ? error.message
+          : "Failed to print receipt. Please try again.",
       );
     } finally {
       setIsPrinting(false);
     }
   };
-
-
 
   // Show loading state while business settings are loading
   if (settingsLoading) {
@@ -570,7 +583,11 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                     }
                   } catch (error) {
                     console.error("Unified Print Error:", error);
-                    toast.error(error instanceof Error ? error.message : "Failed to prepare receipt");
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Failed to prepare receipt",
+                    );
                   } finally {
                     setIsPrinting(false);
                     console.warn("--- MOBILE PRINT END ---");
@@ -625,17 +642,17 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
             <div className="flex flex-col items-center mb-4 gap-2 text-center w-full">
               <div className="w-full">
                 <div className="text-lg sm:text-2xl font-bold text-gray-900 mb-1">
-                  {settings.businessName?.toUpperCase()}
+                  {activeSettings.businessName?.toUpperCase()}
                 </div>
                 <div
                   className={`${
                     isMobile ? "text-xs" : "text-sm"
                   } text-gray-600 font-medium`}>
-                  {settings.businessAddress}
+                  {activeSettings.businessAddress}
                 </div>
                 <div className="text-xs sm:text-sm text-gray-600">
-                  Phone: {settings.businessPhone} | Email:{" "}
-                  {settings.businessEmail}
+                  Phone: {activeSettings.businessPhone} | Email:{" "}
+                  {activeSettings.businessEmail}
                 </div>
               </div>
             </div>
@@ -704,11 +721,12 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                       const itemPrice = toSafeNum(item.price);
                       const itemQty = toSafeNum(item.quantity);
                       const itemSubtotal = itemPrice * itemQty;
-                      
+
                       const discountAmount =
                         item.discountType === "amount"
                           ? toSafeNum(item.discountAmount)
-                          : (itemSubtotal * toSafeNum(item.discountPercentage)) /
+                          : (itemSubtotal *
+                              toSafeNum(item.discountPercentage)) /
                             100;
                       const finalAmount = itemSubtotal - discountAmount;
 
@@ -858,11 +876,12 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                   const itemPrice = toSafeNum(item.price);
                   const itemQty = toSafeNum(item.quantity);
                   const itemSubtotal = itemPrice * itemQty;
-                  
+
                   const discountAmount =
                     item.discountType === "amount"
                       ? toSafeNum(item.discountAmount)
-                      : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
+                      : (itemSubtotal * toSafeNum(item.discountPercentage)) /
+                        100;
                   const finalAmount = itemSubtotal - discountAmount;
 
                   return (

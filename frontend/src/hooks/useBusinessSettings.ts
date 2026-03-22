@@ -87,46 +87,8 @@ export const useBusinessSettings = () => {
 
     try {
       const data = await getBusinessSettingsAction(currentBusiness.id);
-
       if (data) {
-        // Extract payment info from metadata
-        const paymentInfo =
-          data.metadata && typeof data.metadata === "object"
-            ? ((data.metadata as Record<string, unknown>)
-                .payment_info as string) || ""
-            : "";
-
-        return {
-          id: data.id,
-          businessName: data.business_name || "",
-          businessAddress: data.business_address || "",
-          businessPhone: data.business_phone || "",
-          businessEmail: data.business_email || "",
-          businessLogo: data.business_logo || undefined,
-          currency: data.currency || "UGX",
-          signature: data.signature || undefined,
-          paymentInfo: paymentInfo,
-          defaultPrintFormat:
-            data.metadata && typeof data.metadata === "object"
-              ? ((data.metadata as Record<string, unknown>)
-                  .default_print_format as "standard" | "thermal") || "standard"
-              : "standard",
-          defaultPrinterName:
-            data.metadata && typeof data.metadata === "object"
-              ? ((data.metadata as Record<string, unknown>)
-                  .default_printer_name as string) || ""
-              : "",
-          defaultPrinterType:
-            data.metadata && typeof data.metadata === "object"
-              ? ((data.metadata as Record<string, unknown>)
-                  .default_printer_type as "USB" | "Bluetooth") || "USB"
-              : "USB",
-          printerPaperSize:
-            data.metadata && typeof data.metadata === "object"
-              ? ((data.metadata as Record<string, unknown>)
-                  .printer_paper_size as "58mm" | "80mm") || "58mm"
-              : "58mm",
-        };
+        return data as BusinessSettings;
       } else {
         return getDefaultSettings();
       }
@@ -139,30 +101,9 @@ export const useBusinessSettings = () => {
   // Transform initial data if available
   const memoizedInitialData = useMemo(() => {
     if (!initialBusinessSettings) return getDefaultSettings();
+    // 🚀 ALREADY MAPPED: The BusinessContext now provides settings in camelCase format
     return {
-      id: initialBusinessSettings.id,
-      businessName: initialBusinessSettings.business_name || "",
-      businessAddress: initialBusinessSettings.business_address || "",
-      businessPhone: initialBusinessSettings.business_phone || "",
-      businessEmail: initialBusinessSettings.business_email || "",
-      businessLogo: initialBusinessSettings.business_logo || undefined,
-      currency: initialBusinessSettings.currency || "UGX",
-      signature: initialBusinessSettings.signature || undefined,
-      paymentInfo:
-        (initialBusinessSettings.metadata as BusinessMetadata)?.payment_info ||
-        "",
-      defaultPrintFormat:
-        (initialBusinessSettings.metadata as BusinessMetadata)
-          ?.default_print_format || "standard",
-      defaultPrinterName:
-        (initialBusinessSettings.metadata as BusinessMetadata)
-          ?.default_printer_name || "",
-      defaultPrinterType:
-        (initialBusinessSettings.metadata as BusinessMetadata)
-          ?.default_printer_type || "USB",
-      printerPaperSize:
-        (initialBusinessSettings.metadata as BusinessMetadata)
-          ?.printer_paper_size || "58mm",
+      ...initialBusinessSettings
     };
   }, [initialBusinessSettings]);
 

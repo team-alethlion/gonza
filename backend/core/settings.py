@@ -98,6 +98,13 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 # Use a dedicated variable for the key to ensure it's loaded correctly
 JWT_KEY = os.environ.get('JWT_ACCESS_SECRET') or os.environ.get('SECRET_KEY') or 'gonza-hardcoded-dev-key-123'
 

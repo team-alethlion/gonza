@@ -16,14 +16,18 @@ export async function getBusinessSettingsAction(branchId: string) {
 
         return {
             id: settings.id,
-            business_name: settings.business_name,
-            business_address: settings.address,
-            business_phone: settings.phone,
-            business_email: settings.email,
-            business_logo: settings.logo,
-            currency: settings.currency,
-            signature: settings.signature_image,
-            metadata: settings.metadata || {}
+            businessName: settings.business_name || "",
+            businessAddress: settings.address || "",
+            businessPhone: settings.phone || "",
+            businessEmail: settings.email || "",
+            businessLogo: settings.logo || undefined,
+            currency: settings.currency || "UGX",
+            signature: settings.signature_image || undefined,
+            paymentInfo: settings.metadata?.payment_info || "",
+            defaultPrintFormat: settings.metadata?.default_print_format || "standard",
+            defaultPrinterName: settings.metadata?.default_printer_name || "",
+            defaultPrinterType: settings.metadata?.default_printer_type || "USB",
+            printerPaperSize: settings.metadata?.printer_paper_size || "58mm"
         };
     } catch (error) {
         console.error('Error fetching business settings:', error);
@@ -68,14 +72,18 @@ export async function upsertBusinessSettingsAction(branchId: string, userId: str
             success: true,
             data: {
                 id: result.id,
-                business_name: result.business_name,
-                business_address: result.address,
-                business_phone: result.phone,
-                business_email: result.email,
-                business_logo: result.logo,
+                businessName: result.business_name,
+                businessAddress: result.address,
+                businessPhone: result.phone,
+                businessEmail: result.email,
+                businessLogo: result.logo,
                 currency: result.currency,
                 signature: result.signature_image,
-                metadata: result.metadata
+                paymentInfo: result.metadata?.payment_info || "",
+                defaultPrintFormat: result.metadata?.default_print_format || "standard",
+                defaultPrinterName: result.metadata?.default_printer_name || "",
+                defaultPrinterType: result.metadata?.default_printer_type || "USB",
+                printerPaperSize: result.metadata?.printer_paper_size || "58mm"
             }
         };
     } catch (error: any) {

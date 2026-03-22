@@ -47,6 +47,7 @@ export interface Sale {
     date?: string | Date;
     amountPaid?: number;
   }>;
+  payments?: any[]; // For pre-fetched installment history
   createdAt: Date;
   updatedAt: Date;
 }

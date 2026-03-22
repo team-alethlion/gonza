@@ -76,7 +76,7 @@ class SaleCategoryViewSet(viewsets.ModelViewSet):
         return qs.order_by('-created_at')
 
 class SaleViewSet(viewsets.ModelViewSet):
-    queryset = Sale.objects.all()
+    queryset = Sale.objects.all().prefetch_related('items', 'installments')
     serializer_class = SaleSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = SaleFilter
@@ -387,35 +387,75 @@ class SaleViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         sale = self.get_object()
+        user_id = request.user.id
         
-        if sale.status != 'QUOTE':
-            for item in sale.items.all():
-                if item.product_id:
-                    try:
-                        product = Product.objects.select_for_update().get(id=item.product_id)
-                        old_stock = product.stock
-                        new_stock = old_stock + item.quantity
-                        product.stock = new_stock
-                        product.save(update_fields=['stock'])
-                        
-                        ProductHistory.objects.create(
-                            user_id=request.user.id,
-                            branch_id=sale.branch_id,
-                            product=product,
-                            old_stock=old_stock,
-                            new_stock=new_stock,
-                            type='RETURN_IN',
-                            change_reason='SALE_CANCELLED',
-                            reason=f"Cancelled Sale #{sale.receipt_number}",
-                            reference_id=sale.receipt_number,
-                            reference_type='SALE_CANCEL',
-                            created_at=datetime.now()
-                        )
-                    except Product.DoesNotExist:
-                        pass
-                        
-        sale.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        from .logic.deletion import process_sale_deletion
+        success, message = process_sale_deletion(sale.id, user_id)
+        
+        if success:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def category_summary(self, request):
+        branch_id = request.query_params.get('branchId')
+        start_date = request.query_params.get('startDate')
+        end_date = request.query_params.get('endDate')
+        
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        # 1. Base Queryset for Sales
+        sales_qs = self.get_queryset().filter(branch_id=branch_id).exclude(status='QUOTE')
+        if start_date:
+            sales_qs = sales_qs.filter(date__gte=start_date)
+        if end_date:
+            sales_qs = sales_qs.filter(date__lte=end_date)
+            
+        # 2. Get Aggregated Stats for existing sales
+        stats = sales_qs.values('category_id').annotate(
+            revenue=Sum('total_amount'),
+            profit=Sum('profit'),
+            transactions=Count('id')
+        )
+        
+        stats_map = {item['category_id']: item for item in stats}
+        
+        # 3. Get ALL defined categories for this branch
+        all_categories = SaleCategory.objects.filter(branch_id=branch_id)
+        
+        results = []
+        # Add all defined categories (even if 0 sales)
+        for cat in all_categories:
+            cat_stats = stats_map.get(cat.id, {
+                'revenue': 0,
+                'profit': 0,
+                'transactions': 0
+            })
+            results.append({
+                "id": cat.id,
+                "name": cat.name,
+                "revenue": float(cat_stats['revenue'] or 0),
+                "profit": float(cat_stats['profit'] or 0),
+                "transactions": cat_stats['transactions']
+            })
+            
+        # 4. Handle Uncategorized Sales (where category_id is None)
+        if None in stats_map:
+            uncat = stats_map[None]
+            results.append({
+                "id": "uncategorized",
+                "name": "Uncategorized",
+                "revenue": float(uncat['revenue'] or 0),
+                "profit": float(uncat['profit'] or 0),
+                "transactions": uncat['transactions']
+            })
+            
+        # Sort by revenue descending
+        results.sort(key=lambda x: x['revenue'], reverse=True)
+        
+        return Response(results)
 
     @action(detail=False, methods=['get'])
     def next_receipt_number(self, request):

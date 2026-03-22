@@ -48,6 +48,17 @@ class AnalyticsViewSet(viewsets.ViewSet):
         start_date = request.query_params.get('startDate')
         end_date = request.query_params.get('endDate')
         
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        # 🚀 CACHE: Use unique key based on params
+        from django.core.cache import cache
+        cache_key = f"analytics_summary_{branch_id}_{start_date}_{end_date}"
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            return Response(cached_data)
+
         from sales.models import Sale, SaleItem
         from finance.models import Expense
         from django.db.models import Sum, F
@@ -91,7 +102,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         recent_sales = sales_qs.order_by('-date')[:5]
         from sales.serializers import SaleSerializer
         
-        return Response({
+        data = {
             "totalSales": total_sales,
             "totalCost": total_cost,
             "totalProfit": total_profit,
@@ -99,7 +110,12 @@ class AnalyticsViewSet(viewsets.ViewSet):
             "pendingSalesCount": pending_count,
             "totalExpenses": expenses_stats['total'] or 0,
             "recentSales": SaleSerializer(recent_sales, many=True).data
-        })
+        }
+
+        # Cache for 5 minutes
+        cache.set(cache_key, data, 300)
+        
+        return Response(data)
 
 class SubscriptionTransactionSerializer(serializers.ModelSerializer):
     class Meta:

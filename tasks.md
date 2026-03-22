@@ -1,1 +1,1 @@
-- track deleted sales
+- proper recipt number generation function

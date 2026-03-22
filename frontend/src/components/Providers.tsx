@@ -55,6 +55,8 @@ export function Providers({
                     <BusinessProvider 
                         initialLocations={initialBusinessLocations}
                         initialAccountStatus={initialAccountStatus}
+                        initialBusinessSettings={initialBusinessSettings}
+                        initialAnalyticsSummary={initialAnalyticsSummary}
                     >
                         <ProfileProvider initialProfiles={initialProfiles}>
                             <SyncManager />
