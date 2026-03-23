@@ -14,21 +14,8 @@ export async function getBusinessSettingsAction(branchId: string) {
             return null;
         }
 
-        return {
-            id: settings.id,
-            businessName: settings.business_name || "",
-            businessAddress: settings.address || "",
-            businessPhone: settings.phone || "",
-            businessEmail: settings.email || "",
-            businessLogo: settings.logo || undefined,
-            currency: settings.currency || "UGX",
-            signature: settings.signature_image || undefined,
-            paymentInfo: settings.metadata?.payment_info || "",
-            defaultPrintFormat: settings.metadata?.default_print_format || "standard",
-            defaultPrinterName: settings.metadata?.default_printer_name || "",
-            defaultPrinterType: settings.metadata?.default_printer_type || "USB",
-            printerPaperSize: settings.metadata?.printer_paper_size || "58mm"
-        };
+        // Return raw database object (snake_case) to let the BusinessContext handle mapping
+        return settings;
     } catch (error) {
         console.error('Error fetching business settings:', error);
         return null;
@@ -68,23 +55,10 @@ export async function upsertBusinessSettingsAction(branchId: string, userId: str
             });
         }
 
+        // Return raw result to allow consistent mapping in hooks
         return {
             success: true,
-            data: {
-                id: result.id,
-                businessName: result.business_name,
-                businessAddress: result.address,
-                businessPhone: result.phone,
-                businessEmail: result.email,
-                businessLogo: result.logo,
-                currency: result.currency,
-                signature: result.signature_image,
-                paymentInfo: result.metadata?.payment_info || "",
-                defaultPrintFormat: result.metadata?.default_print_format || "standard",
-                defaultPrinterName: result.metadata?.default_printer_name || "",
-                defaultPrinterType: result.metadata?.default_printer_type || "USB",
-                printerPaperSize: result.metadata?.printer_paper_size || "58mm"
-            }
+            data: result
         };
     } catch (error: any) {
         console.error('Error upserting business settings:', error);
@@ -190,6 +164,8 @@ export async function getOnboardingStatusAction(locationId: string) {
             business_phone: settings.phone,
             business_email: settings.email,
             business_logo: settings.logo,
+            nature_of_business: settings.metadata?.natureOfBusiness || "",
+            business_size: settings.metadata?.businessSize || "",
             completed: !!settings.business_name && !!settings.phone, 
             is_frozen: false 
         };

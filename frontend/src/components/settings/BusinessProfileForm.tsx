@@ -9,6 +9,7 @@ import { ImagePlus, Building, Briefcase, Users } from 'lucide-react';
 import { BusinessSettings } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from 'sonner';
 
 const BUSINESS_SIZES = [
@@ -29,7 +30,8 @@ const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
   onSettingsChange,
   onLogoChange,
 }) => {
-  const { onboarding, saveOnboarding } = useOnboarding();
+  const { currentBusiness } = useBusiness();
+  const { onboarding, saveOnboarding } = useOnboarding(currentBusiness?.id);
 
   const [natureOfBusiness, setNatureOfBusiness] = React.useState(
     onboarding?.nature_of_business ?? ''

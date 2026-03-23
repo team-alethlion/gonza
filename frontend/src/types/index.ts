@@ -36,6 +36,8 @@ export interface Sale {
   subtotal: number;
   discount: number;
   taxAmount: number;
+  totalQuantity?: number;
+  itemDescription?: string;
   date: Date;
   taxRate?: number;
   cashTransactionId?: string;
@@ -185,12 +187,12 @@ export interface DbBusinessSettings {
   id?: string;
   user_id: string; // Make sure this is required, not optional
   business_name: string;
-  business_address: string;
-  business_phone: string;
-  business_email: string;
-  business_logo?: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo?: string;
   currency: string;
-  signature?: string;
+  signature_image?: string;
   metadata?: Json | null; // Add metadata field
   created_at?: string;
   updated_at?: string;
@@ -370,10 +372,10 @@ export interface CustomerFormData {
 }
 
 // Utility functions for database conversions
-export const mapDbSaleToSale = (dbSale: DbSale): Sale => {
+export const mapDbSaleToSale = (dbSale: any): Sale => {
   // Parse items and ensure numeric fields are numbers, not strings
-  // This is critical for discount calculations to work correctly
-  const items = (Array.isArray(dbSale.items) ? dbSale.items : []).map((item: any) => {
+  const rawItems = Array.isArray(dbSale.items) ? dbSale.items : [];
+  const items = rawItems.map((item: any) => {
     const discountPercentage = item.discountPercentage !== undefined ? Number(item.discountPercentage) : undefined;
     const discountAmount = item.discountAmount !== undefined ? Number(item.discountAmount) : undefined;
 
@@ -400,28 +402,42 @@ export const mapDbSaleToSale = (dbSale: DbSale): Sale => {
     };
   }) as SaleItem[];
 
+  // Calculate total quantity once
+  const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+
+  // Generate item description once
+  let itemDescription = "No items";
+  if (items.length > 0) {
+    itemDescription = items[0].description;
+    if (items.length > 1) {
+      itemDescription += ` (+${items.length - 1} more)`;
+    }
+  }
+
   return {
     id: dbSale.id,
     receiptNumber: dbSale.receipt_number,
     customerName: dbSale.customer_name,
     customerAddress: dbSale.customer_address || '',
-    customerContact: dbSale.customer_contact || '',
-    customerId: dbSale.customer_id || undefined,
+    customerContact: dbSale.customer_phone || dbSale.customer_contact || '',
+    customerId: dbSale.customer || dbSale.customer_id || undefined,
     items,
-    paymentStatus: dbSale.payment_status as 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale',
+    paymentStatus: dbSale.payment_status || dbSale.status || 'Paid',
     profit: Number(dbSale.profit) || 0,
-    total: Number(dbSale.total || dbSale.total_amount || 0),
+    total: Number(dbSale.total_amount || dbSale.total || 0),
     totalCost: Number(dbSale.total_cost || 0),
     subtotal: Number(dbSale.subtotal || 0),
-    discount: Number(dbSale.discount || dbSale.discount_amount || 0),
+    discount: Number(dbSale.discount_amount || dbSale.discount || 0),
     taxAmount: Number(dbSale.tax_amount || 0),
+    totalQuantity,
+    itemDescription,
     date: new Date(dbSale.date),
     taxRate: Number(dbSale.tax_rate) || 0,
-    cashTransactionId: dbSale.cash_transaction_id || undefined,
+    cashTransactionId: dbSale.cash_transaction || dbSale.cash_transaction_id || undefined,
     amountPaid: Number(dbSale.amount_paid) || 0,
-    amountDue: Number(dbSale.amount_due || dbSale.balance_due || 0),
+    amountDue: Number(dbSale.balance_due || dbSale.amount_due || 0),
     notes: dbSale.notes || '',
-    categoryId: dbSale.category_id || undefined,
+    categoryId: dbSale.category || dbSale.category_id || undefined,
     createdAt: new Date(dbSale.created_at),
     updatedAt: new Date(dbSale.updated_at),
   };
@@ -466,12 +482,12 @@ export const mapSaleToDbSale = (
 export const mapDbBusinessSettingsToBusinessSettings = (dbSettings: DbBusinessSettings): BusinessSettings => {
   return {
     businessName: dbSettings.business_name,
-    businessAddress: dbSettings.business_address,
-    businessPhone: dbSettings.business_phone,
-    businessEmail: dbSettings.business_email,
-    businessLogo: dbSettings.business_logo,
+    businessAddress: dbSettings.address,
+    businessPhone: dbSettings.phone,
+    businessEmail: dbSettings.email,
+    businessLogo: dbSettings.logo,
     currency: dbSettings.currency,
-    signature: dbSettings.signature,
+    signature: dbSettings.signature_image,
     paymentInfo: dbSettings.metadata && typeof dbSettings.metadata === 'object' ?
       (dbSettings.metadata as Record<string, unknown>).payment_info as string || '' : '',
     defaultPrintFormat: dbSettings.metadata && typeof dbSettings.metadata === 'object' ?
@@ -498,12 +514,12 @@ export const mapBusinessSettingsToDbBusinessSettings = (
   return {
     user_id: userId,
     business_name: settings.businessName,
-    business_address: settings.businessAddress,
-    business_phone: settings.businessPhone,
-    business_email: settings.businessEmail,
-    business_logo: settings.businessLogo,
+    address: settings.businessAddress,
+    phone: settings.businessPhone,
+    email: settings.businessEmail,
+    logo: settings.businessLogo,
     currency: settings.currency,
-    signature: settings.signature,
+    signature_image: settings.signature,
     metadata: metadata, // Include metadata in the return object
     updated_at: new Date().toISOString()
   };

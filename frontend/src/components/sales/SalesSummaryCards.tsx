@@ -16,30 +16,10 @@ export const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({ sales, cur
   const summary = useMemo(() => {
     return sales.reduce(
       (acc, sale) => {
-        // Calculate subtotal from items with discount considerations
-        // Logic must match SalesTableRow to ensure consistency
-        const subtotal = sale.items.reduce((total, item) => {
-          const itemSubtotal = item.price * item.quantity;
-          const discountAmount = item.discountType === 'amount'
-            ? (item.discountAmount || 0)
-            : (itemSubtotal * (item.discountPercentage || 0)) / 100;
-          return total + (itemSubtotal - discountAmount);
-        }, 0);
-
-        // Calculate tax amount
-        const taxRate = sale.taxRate || 0;
-        const taxAmount = subtotal * (taxRate / 100);
-
-        // Total including tax
-        const saleTotal = subtotal + taxAmount;
-
-        // Calculate total cost
-        const totalCost = sale.items.reduce((total, item) => total + (item.cost * item.quantity), 0);
-
         return {
-          totalSales: acc.totalSales + saleTotal,
-          totalCost: acc.totalCost + totalCost,
-          totalProfit: acc.totalProfit + (saleTotal - totalCost)
+          totalSales: acc.totalSales + (sale.total || 0),
+          totalCost: acc.totalCost + (sale.totalCost || 0),
+          totalProfit: acc.totalProfit + (sale.profit || 0)
         };
       },
       { totalSales: 0, totalCost: 0, totalProfit: 0 }

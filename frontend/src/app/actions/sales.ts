@@ -38,44 +38,8 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
         const results = data.results || [];
         const count = data.count || results.length;
 
-        // Map backend properties to frontend Sale type
-        const mappedSales = results.map((item: any) => ({
-            id: item.id,
-            user_id: item.user,
-            location_id: item.branch,
-            receipt_number: item.receipt_number,
-            customer_name: item.customer_name,
-            customer_address: item.customer_address,
-            customer_contact: item.customer_phone,
-            customer_id: item.customer,
-            items: (item.items || []).map((si: any) => ({
-                ...si,
-                price: toValidNum(si.unit_price || si.price),
-                cost: toValidNum(si.cost_price || si.cost),
-                quantity: toValidNum(si.quantity),
-                total: toValidNum(si.total || (toValidNum(si.unit_price || si.price) * toValidNum(si.quantity))),
-                description: si.product_name || si.description || 'Product'
-            })),
-            payment_status: item.status,
-            profit: toValidNum(item.profit),
-            date: item.date,
-            tax_rate: toValidNum(item.tax_rate), // assuming tax_rate or similar
-            created_at: item.created_at,
-            createdAt: item.created_at,
-            updatedAt: item.updated_at,
-            cash_transaction_id: item.cash_transaction,
-            amount_paid: toValidNum(item.amount_paid),
-            amount_due: toValidNum(item.balance_due),
-            category_id: item.category,
-            notes: item.notes,
-            total: toValidNum(item.total_amount),
-            total_cost: toValidNum(item.total_cost),
-            subtotal: toValidNum(item.subtotal),
-            discount: toValidNum(item.discount_amount),
-            tax_amount: toValidNum(item.tax_amount)
-        }));
-
-        return { success: true, data: { sales: mappedSales, count } };
+        // Return raw database objects to let mapDbSaleToSale handle mapping consistently
+        return { success: true, data: { sales: results, count } };
     } catch (error) {
         console.error('Error fetching sales:', error);
         return { success: false, data: { sales: [], count: 0 }, error: (error as Error).message };

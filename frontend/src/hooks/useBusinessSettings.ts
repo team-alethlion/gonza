@@ -7,7 +7,7 @@ import {
   getBusinessSettingsAction,
   upsertBusinessSettingsAction,
 } from "@/app/actions/business-settings";
-import { BusinessSettings } from "@/types";
+import { BusinessSettings, mapDbBusinessSettingsToBusinessSettings } from "@/types";
 
 interface BusinessMetadata {
   payment_info?: string;
@@ -88,7 +88,7 @@ export const useBusinessSettings = () => {
     try {
       const data = await getBusinessSettingsAction(currentBusiness.id);
       if (data) {
-        return data as BusinessSettings;
+        return mapDbBusinessSettingsToBusinessSettings(data);
       } else {
         return getDefaultSettings();
       }

@@ -60,13 +60,7 @@ export const useSalesData = (
       const salesData = result?.success ? result.data?.sales : [];
 
       const formattedSales: Sale[] = Array.isArray(salesData) ? salesData.map((item: any) => {
-        // Data is already mapped in getSalesAction, just ensuring date objects
-        return {
-          ...item,
-          date: new Date(item.date),
-          createdAt: new Date(item.createdAt || item.created_at),
-          updatedAt: new Date(item.updatedAt || item.updated_at)
-        } as Sale;
+        return mapDbSaleToSale(item);
       }) : [];
 
       // Update Dexie cache in the background

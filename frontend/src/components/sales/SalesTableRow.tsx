@@ -49,14 +49,13 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
   const { hasPermission } = useProfiles();
   const { formatFinancial, canViewCostPrice, canViewProfit } = useFinancialVisibility();
 
-  const totalQuantity = sale.items.reduce((total, item) => total + item.quantity, 0);
+  const totalQuantity = sale.totalQuantity ?? 0;
   const averagePrice = totalQuantity > 0 ? (sale.subtotal + sale.discount) / totalQuantity : 0;
 
-  const subtotal = sale.subtotal;
-  const totalDiscount = sale.discount;
-  const taxAmount = sale.taxAmount;
-  const saleTotal = sale.total;
   const totalCost = sale.totalCost;
+  const saleTotal = sale.total;
+  const profit = sale.profit;
+  const totalDiscount = sale.discount;
 
   // Improved cash account name resolution with better logging
   const getCashAccountName = () => {
@@ -95,13 +94,7 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
     return linkedAccount.name;
   };
 
-  let itemsDescription = "No items";
-  if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
-    itemsDescription = sale.items[0].description;
-    if (sale.items.length > 1) {
-      itemsDescription += ` (+${sale.items.length - 1} more)`;
-    }
-  }
+  const itemsDescription = sale.itemDescription || "No items";
 
   const cashAccountName = getCashAccountName();
 
@@ -202,7 +195,7 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
       </TableCell>
       <TableCell className="text-right">
         <span className="text-green-600 font-medium">
-          {canViewProfit ? `${currency} ${formatNumber(saleTotal - totalCost)}` : '•••'}
+          {canViewProfit ? `${currency} ${formatNumber(profit)}` : '•••'}
         </span>
       </TableCell>
       <TableCell className="text-right">

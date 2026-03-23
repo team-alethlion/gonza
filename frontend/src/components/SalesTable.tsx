@@ -105,32 +105,17 @@ const MobileCard = React.memo(
       canViewTotalAmount,
     } = useFinancialVisibility();
 
-    const subtotal = sale.subtotal;
-    const totalDiscount = sale.discount;
-    const taxRate = sale.taxRate || 0;
-    const taxAmount = sale.taxAmount;
     const totalWithTax = sale.total;
     const totalCost = sale.totalCost;
+    const profit = sale.profit;
+    const totalDiscount = sale.discount;
+    const taxRate = sale.taxRate || 0;
 
-    // Calculate actual amounts for installment sales based on payment history
-    const actualAmountPaid =
-      sale.paymentStatus === "Installment Sale"
-        ? payments.reduce((sum, payment) => sum + payment.amount, 0)
-        : sale.amountPaid || 0;
+    // Use pre-calculated amounts from the sale object
+    const actualAmountPaid = sale.amountPaid || 0;
+    const actualAmountDue = sale.amountDue || 0;
 
-    const actualAmountDue =
-      sale.paymentStatus === "Installment Sale"
-        ? Math.max(0, totalWithTax - actualAmountPaid)
-        : sale.amountDue || 0;
-
-    // Get primary item description (or combination)
-    let itemDescription = "No items";
-    if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
-      itemDescription = sale.items[0].description;
-      if (sale.items.length > 1) {
-        itemDescription += ` (+${sale.items.length - 1} more)`;
-      }
-    }
+    const itemDescription = sale.itemDescription || "No items";
 
     // Determine status display and styling
     const getStatusDisplay = () => {
@@ -242,7 +227,7 @@ const MobileCard = React.memo(
                 <p className="font-semibold text-gray-900">
                   {canViewCostPrice
                     ? `${settings.currency} ${formatNumber(totalCost)}`
-                    : "•••"}
+                    : "NaN"}
                 </p>
               </div>
               {totalDiscount > 0 ? (
@@ -251,7 +236,7 @@ const MobileCard = React.memo(
                   <p className="font-semibold text-orange-600">
                     {canViewSellingPrice
                       ? `-${settings.currency} ${formatNumber(totalDiscount)}`
-                      : "•••"}
+                      : "NaN"}
                   </p>
                 </div>
               ) : (
@@ -269,7 +254,7 @@ const MobileCard = React.memo(
                 <p className="font-semibold text-gray-900">
                   {canViewTotalAmount || canViewSellingPrice
                     ? `${settings.currency} ${formatNumber(totalWithTax)}`
-                    : "•••"}
+                    : "NaN"}
                 </p>
                 {taxRate > 0 && (
                   <p className="text-xs text-gray-500">Tax incl.</p>
@@ -290,10 +275,8 @@ const MobileCard = React.memo(
                 <p className="text-xs text-gray-500">Profit</p>
                 <p className="font-semibold text-green-600">
                   {canViewProfit
-                    ? `${settings.currency} ${formatNumber(
-                        totalWithTax - totalCost,
-                      )}`
-                    : "•••"}
+                    ? `${settings.currency} ${formatNumber(profit)}`
+                    : "NaN"}
                 </p>
               </div>
             </div>
@@ -575,14 +558,6 @@ const SalesTable: React.FC<SalesTableProps> = ({
           tags: null,
           notes: null,
         };
-
-        // Calculate total amount due
-        const subtotal = sale.items.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0,
-        );
-        const taxAmount = subtotal * ((sale.taxRate || 0) / 100);
-        const totalAmountDue = subtotal + taxAmount;
 
         // Open the preview dialog instead of generating PDF directly
         setSelectedPreviewSale(sale);
