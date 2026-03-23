@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from 'react';
-import { StockHistoryEntry } from '@/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBusiness } from '@/contexts/BusinessContext';
 import {
   getStockHistoryAction,
@@ -37,48 +36,24 @@ export interface ChainRepairPreview {
 import { localDb } from '@/lib/dexie';
 
 export const useStockHistory = (userId: string | undefined, productId?: string) => {
-  const [stockHistory, setStockHistory] = useState<StockHistoryEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { currentBusiness } = useBusiness();
+  const queryClient = useQueryClient();
 
-  // Load from Dexie cache on mount
-  useEffect(() => {
-    const loadFromCache = async () => {
-      if (currentBusiness?.id && stockHistory.length === 0) {
-        const query = localDb.stockHistory.where('locationId').equals(currentBusiness.id);
-        
-        if (productId) {
-          const cached = await query.and(h => h.productId === productId).reverse().sortBy('createdAt');
-          setStockHistory(cached.map((h: any) => ({...h, createdAt: new Date(h.createdAt)})));
-        } else {
-          const cached = await query.reverse().sortBy('createdAt');
-          setStockHistory(cached.map((h: any) => ({...h, createdAt: new Date(h.createdAt)})));
-        }
-        setIsLoading(false);
-      }
-    };
-    loadFromCache();
-  }, [currentBusiness?.id, productId, stockHistory.length]);
+  const queryKey = productId 
+    ? ['stock_history', currentBusiness?.id, productId]
+    : ['stock_history', currentBusiness?.id];
 
-  const loadStockHistory = useCallback(async () => {
-    if (!userId || !currentBusiness) {
-      setStockHistory([]);
-      setIsLoading(false);
-      return;
-    }
+  // 🚀 REFACTORED: Use React Query for de-duplication and 5-minute caching
+  const { data: stockHistory = [], isLoading, refetch: loadStockHistory } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!userId || !currentBusiness) return [];
 
-    try {
-      setIsLoading(stockHistory.length === 0);
       const result = await getStockHistoryAction(currentBusiness.id, productId);
+      if (!result.success) throw new Error(result.error || 'Failed to fetch history');
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch stock history');
-      }
-
-      // Sanitize: Ensure data is an array
       const rawData = Array.isArray(result.data) ? result.data : [];
-
-      const formattedHistory: StockHistoryEntry[] = rawData.map((entry: any) => ({
+      const formatted = rawData.map((entry: any) => ({
         id: entry.id,
         productId: entry.productId,
         oldQuantity: entry.oldQuantity,
@@ -90,28 +65,19 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
         product: entry.product
       }));
 
-      // Update Dexie cache in background (only if it's a general list or first 50 items)
-      if (formattedHistory.length > 0 && !productId) {
-        const cacheData = formattedHistory.map((h: any) => ({
-          ...h,
-          locationId: currentBusiness.id as string,
-        }));
-        await localDb.stockHistory.where('locationId').equals(currentBusiness.id).delete();
-        await localDb.stockHistory.bulkPut(cacheData as any);
+      // Background Dexie sync
+      if (formatted.length > 0 && !productId) {
+        const cacheData = formatted.map(h => ({ ...h, locationId: currentBusiness.id }));
+        localDb.stockHistory.where('locationId').equals(currentBusiness.id as string).delete().then(() => {
+            localDb.stockHistory.bulkPut(cacheData as any);
+        });
       }
 
-      setStockHistory(formattedHistory);
-    } catch (error) {
-      console.error('Error loading stock history:', error);
-    } finally {
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, currentBusiness?.id, productId]);
-
-  useEffect(() => {
-    loadStockHistory();
-  }, [loadStockHistory]);
+      return formatted;
+    },
+    enabled: !!currentBusiness?.id && !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const createStockHistoryEntry = async (
     targetProductId: string,
@@ -142,15 +108,11 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
         createdAt: entryDate?.toISOString()
       });
 
-      if (!result.success) {
-        console.error('Error creating stock history entry:', result.error);
-        return false;
-      }
+      if (!result.success) return false;
 
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error creating stock history:', error);
       return false;
     }
   };
@@ -161,10 +123,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       const result = await deleteStockHistoryEntriesByReferenceAction(referenceId, currentBusiness.id);
       if (!result.success) throw new Error(result.error);
 
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error deleting stock history entries:', error);
       return false;
     }
   };
@@ -174,10 +135,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       if (!currentBusiness) return false;
       const result = await deleteMultipleStockHistoryEntriesAction(entryIds, currentBusiness.id);
       if (!result.success) throw new Error(result.error);
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error deleting multiple stock history entries:', error);
       return false;
     }
   }
@@ -191,10 +151,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
         createdAt: createdAt?.toISOString()
       });
       if (!result.success) throw new Error(result.error);
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error updating stock history entry:', error);
       return false;
     }
   }
@@ -204,10 +163,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       if (!currentBusiness) return false;
       const result = await deleteStockHistoryEntryAction(entryId, currentBusiness.id);
       if (!result.success) throw new Error(result.error);
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error deleting stock history entry:', error);
       return false;
     }
   }
@@ -218,10 +176,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       const result = await recalculateStockChainAction(targetProductId, currentBusiness.id);
       if (!result.success) throw new Error(result.error);
 
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error recalculating stock chain:', error);
       return false;
     }
   };
@@ -232,10 +189,9 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       const result = await updateStockHistoryDatesByReferenceAction(saleId, currentBusiness.id, newDate.toISOString());
       if (!result.success) throw new Error(result.error);
 
-      await loadStockHistory();
+      queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
       return true;
     } catch (error) {
-      console.error('Error updating stock history dates:', error);
       return false;
     }
   };
@@ -244,10 +200,12 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
     try {
       if (!currentBusiness) return { repaired: 0, failed: 0 };
       const result = await repairStockChainsAction(currentBusiness.id);
-      if (result.success && result.data) return result.data;
+      if (result.success && result.data) {
+        queryClient.invalidateQueries({ queryKey: ['stock_history', currentBusiness.id] });
+        return result.data;
+      }
       return { repaired: 0, failed: 0 };
     } catch (error) {
-      console.error('Error repairing all chains:', error);
       return { repaired: 0, failed: 0 };
     }
   }
@@ -259,7 +217,6 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
       if (result.success && result.data) return result.data;
       return [];
     } catch (error) {
-      console.error('Error previewing repairs:', error);
       return [];
     }
   }

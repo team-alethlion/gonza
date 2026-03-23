@@ -73,14 +73,30 @@ export const useProducts = (
     queryKey: ['products', currentBusiness?.id, page, pageSize, filters],
     queryFn: loadProducts,
     enabled: !!userId && !!currentBusiness?.id,
-    staleTime: 30_000,
-    gcTime: 30 * 60_000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    initialData: (page === 1 && filters.search === '' && filters.category === 'all' && filters.stockStatus === 'all' && initialData?.products.length) ? initialData : undefined
+    initialData: (page === 1 && filters.search === '' && filters.category === 'all' && filters.stockStatus === 'all') ? initialData : undefined
   });
 
-  const products = useMemo(() => queriedData?.products || EMPTY_ARRAY, [queriedData?.products]);
+  // 🚀 PERFORMANCE FIX: Filter products locally as the user types
+  // Only hit the database when they press Enter or the typing timer finishes.
+  const products = useMemo(() => {
+    const rawProducts = queriedData?.products || EMPTY_ARRAY;
+    
+    if (isTyping && filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      return rawProducts.filter(p => 
+        p.name.toLowerCase().includes(searchLower) || 
+        p.itemNumber?.toLowerCase().includes(searchLower) ||
+        p.barcode?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return rawProducts;
+  }, [queriedData?.products, isTyping, filters.search]);
+
   const totalCount = queriedData?.count || 0;
 
   const isLoading = (isQueryLoading && !queriedData) && !isTyping;

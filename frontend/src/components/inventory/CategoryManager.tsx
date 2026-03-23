@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from 'react';
-import { useCategories } from '@/hooks/useCategories';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Pencil, Trash2, Plus, Tag } from 'lucide-react';
+import React, { useState } from "react";
+import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Pencil, Trash2, Plus, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogTrigger,
   DialogFooter,
   DialogClose,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,40 +25,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { ProductCategory } from '@/types';
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ProductCategory } from "@/types";
 
 interface CategoryManagerProps {
   onCategoryCreated?: (category: ProductCategory) => void;
 }
 
-const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) => {
+const CategoryManager: React.FC<CategoryManagerProps> = ({
+  onCategoryCreated,
+}) => {
   const { user } = useAuth();
-  const { categories, createCategory, updateCategory, deleteCategory } = useCategories(user?.id);
-  
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const { categories, createCategory, updateCategory, deleteCategory } =
+    useCategories(user?.id);
+
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
-  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryName, setEditCategoryName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('add');
+  const [activeTab, setActiveTab] = useState("add");
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
-      toast.error('Category name cannot be empty');
+      toast.error("Category name cannot be empty");
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       const result = await createCategory(newCategoryName.trim());
       if (result) {
-        toast.success('Category created successfully');
-        setNewCategoryName('');
-        
+        toast.success("Category created successfully");
+        setNewCategoryName("");
+
         // Call the callback if provided
         if (onCategoryCreated && result) {
           onCategoryCreated(result);
@@ -71,17 +74,20 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
 
   const handleUpdateCategory = async () => {
     if (!editCategoryId || !editCategoryName.trim()) {
-      toast.error('Category name cannot be empty');
+      toast.error("Category name cannot be empty");
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
-      const result = await updateCategory(editCategoryId, editCategoryName.trim());
+      const result = await updateCategory(
+        editCategoryId,
+        editCategoryName.trim(),
+      );
       if (result) {
-        toast.success('Category updated successfully');
+        toast.success("Category updated successfully");
         setEditCategoryId(null);
-        setEditCategoryName('');
+        setEditCategoryName("");
       }
     } finally {
       setIsSubmitting(false);
@@ -93,7 +99,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
     try {
       const result = await deleteCategory(id);
       if (result) {
-        toast.success('Category deleted successfully');
+        toast.success("Category deleted successfully");
       }
     } finally {
       setIsSubmitting(false);
@@ -116,16 +122,14 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Categories</DialogTitle>
-          <DialogDescription>
-            Manage your product categories
-          </DialogDescription>
+          <DialogDescription>Manage your product categories</DialogDescription>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="add">Add Category</TabsTrigger>
             <TabsTrigger value="manage">
-              View Categories 
+              View Categories
               {categories.length > 0 && (
                 <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
                   {categories.length}
@@ -133,7 +137,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
               )}
             </TabsTrigger>
           </TabsList>
-          
+
           {/* Add Category Tab */}
           <TabsContent value="add" className="space-y-4 py-4">
             <div className="flex gap-2">
@@ -143,36 +147,36 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 className="flex-grow"
               />
-              <Button 
-                onClick={handleCreateCategory} 
-                disabled={!newCategoryName.trim() || isSubmitting}
-              >
-                {isSubmitting ? 'Creating...' : 'Create'}
+              <Button
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim() || isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create"}
               </Button>
             </div>
           </TabsContent>
-          
+
           {/* View/Manage Categories Tab */}
           <TabsContent value="manage" className="py-4">
             {categories.length > 0 ? (
               <ScrollArea className="h-52 rounded-md border p-2">
                 <div className="space-y-2">
                   {categories.map((category) => (
-                    <div key={category.id} className="flex items-center justify-between p-2 border rounded-md">
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between p-2 border rounded-md">
                       <div className="flex items-center gap-2">
                         <Tag className="h-4 w-4 text-gray-500" />
                         <span>{category.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => startEdit(category.id, category.name)}
-                        >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEdit(category.id, category.name)}>
                           <Pencil className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
-                        
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -182,17 +186,22 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Delete Category
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete this category? Products using this category will need to be reassigned.
+                                Are you sure you want to delete this category?
+                                Products using this category will need to be
+                                reassigned.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteCategory(category.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
+                              <AlertDialogAction
+                                onClick={() =>
+                                  handleDeleteCategory(category.id)
+                                }
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -205,18 +214,18 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
               </ScrollArea>
             ) : (
               <div className="py-4 text-center text-sm text-muted-foreground">
-                No categories yet. Switch to "Add Category" tab to create your first category.
+                No categories yet. Switch to &quot;Add Category&quot; tab to
+                create your first category.
               </div>
             )}
           </TabsContent>
         </Tabs>
-        
+
         {/* Edit Category Dialog */}
         {editCategoryId !== null && (
-          <Dialog 
-            open={editCategoryId !== null} 
-            onOpenChange={(open) => !open && setEditCategoryId(null)}
-          >
+          <Dialog
+            open={editCategoryId !== null}
+            onOpenChange={(open) => !open && setEditCategoryId(null)}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Edit Category</DialogTitle>
@@ -224,7 +233,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
                   Update the name of this category.
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="py-4">
                 <Input
                   placeholder="Enter category name"
@@ -232,25 +241,23 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoryCreated }) 
                   onChange={(e) => setEditCategoryName(e.target.value)}
                 />
               </div>
-              
+
               <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setEditCategoryId(null)}
-                >
+                <Button
+                  variant="outline"
+                  onClick={() => setEditCategoryId(null)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleUpdateCategory} 
-                  disabled={!editCategoryName.trim() || isSubmitting}
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                <Button
+                  onClick={handleUpdateCategory}
+                  disabled={!editCategoryName.trim() || isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
-        
+
         <DialogFooter className="pt-4 sm:justify-end">
           <DialogClose asChild>
             <Button variant="outline">Close</Button>

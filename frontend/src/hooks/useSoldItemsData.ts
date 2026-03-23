@@ -21,7 +21,8 @@ export const useSoldItemsData = (
   dateFilter: string,
   dateRange: { from: Date | undefined; to: Date | undefined },
   specificDate: Date | undefined,
-  showOnlyNotInInventory: boolean
+  showOnlyNotInInventory: boolean,
+  initialData?: SoldItem[]
 ) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
@@ -63,11 +64,12 @@ export const useSoldItemsData = (
     return report;
   }, [currentBusiness, getDateRange, showOnlyNotInInventory]);
 
-  const { data: soldItems = [], isLoading, refetch } = useQuery({
+  const { data: soldItems = initialData || [], isLoading, refetch } = useQuery({
     queryKey: ['sold_items_report', currentBusiness?.id, dateFilter, dateRange, specificDate, showOnlyNotInInventory],
     queryFn: fetchSoldItems,
     enabled: !!currentBusiness?.id && !!user,
     staleTime: 60 * 1000,
+    initialData: initialData
   });
 
   return {

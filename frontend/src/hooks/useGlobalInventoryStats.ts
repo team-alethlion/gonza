@@ -3,7 +3,7 @@ import { getGlobalInventoryStatsAction, InventoryStats } from '@/app/actions/ana
 
 export type GlobalInventoryStats = InventoryStats;
 
-export const useGlobalInventoryStats = (businessId: string | undefined) => {
+export const useGlobalInventoryStats = (businessId: string | undefined, initialData?: GlobalInventoryStats) => {
     return useQuery<GlobalInventoryStats>({
         queryKey: ['inventory_global_stats', businessId],
         queryFn: async (): Promise<GlobalInventoryStats> => {
@@ -28,5 +28,6 @@ export const useGlobalInventoryStats = (businessId: string | undefined) => {
         enabled: !!businessId,
         staleTime: 30 * 1000, // 30 seconds
         gcTime: 5 * 60 * 1000, // Keep cache for 5 mins
+        initialData: initialData
     });
 };

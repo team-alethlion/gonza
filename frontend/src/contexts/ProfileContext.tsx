@@ -126,6 +126,15 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
       return;
     }
 
+    // 🚀 CACHE SYNC: Don't show loading if we already have initial profiles for this branch
+    const hasCorrectInitialData = initialProfiles.length > 0 && 
+                                 initialProfiles[0].business_location_id === currentBusiness.id;
+    
+    if (hasCorrectInitialData && profiles.length > 0) {
+        setIsLoading(false);
+        return;
+    }
+
     setIsLoading(true);
     try {
       const data = await getProfilesAction(currentBusiness.id);
@@ -342,10 +351,18 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
     }
 
     if (currentBusiness?.id) {
-      const needsLoad = !hasLoadedInitial.current || (profiles.length > 0 && profiles[0].business_location_id !== currentBusiness.id);
+      // 🚀 OPTIMIZATION: If we have profiles from SSR that match the current business, SKIP the fetch.
+      const hasCorrectInitialData = initialProfiles.length > 0 && 
+                                   initialProfiles[0].business_location_id === currentBusiness.id;
+      
+      const needsLoad = !hasLoadedInitial.current && !hasCorrectInitialData;
+      
       if (needsLoad) {
+        console.log('[Profiles] No SSR data found. Triggering client-side fetch.');
         loadProfiles();
       } else {
+        // If we have SSR data, mark as loaded so we don't trigger again
+        hasLoadedInitial.current = true;
         setIsLoading(false);
       }
     } else {
@@ -355,7 +372,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
       setIsFirstTimeSetupNeeded(false);
       setIsLoading(false);
     }
-  }, [currentBusiness?.id, businessLoading, userId, initialProfiles.length, loadProfiles]);
+  }, [currentBusiness?.id, businessLoading, userId, initialProfiles, loadProfiles]);
 
   // Save current profile to localStorage
   const handleSetCurrentProfile = React.useCallback((profile: BusinessProfile | null) => {

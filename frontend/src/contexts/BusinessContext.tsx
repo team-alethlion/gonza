@@ -216,6 +216,8 @@ export const BusinessProvider: React.FC<{
           ? localStorage.getItem(storageKey)
           : null;
 
+        // 🚀 OPTIMIZATION: Instead of making a new specific API call, 
+        // we find the branch directly in the list we just downloaded.
         let businessToSet = (data as BusinessLocation[]).find(
           (b: BusinessLocation) => b.id === user.branchId,
         );
@@ -234,14 +236,8 @@ export const BusinessProvider: React.FC<{
         }
 
         if (businessToSet) {
-          setCurrentBusiness((prev) => {
-            if (!prev || prev.id !== businessToSet!.id) {
-              if (storageKey)
-                localStorage.setItem(storageKey, businessToSet!.id);
-              return businessToSet!;
-            }
-            return prev;
-          });
+          setCurrentBusiness(businessToSet);
+          if (storageKey) localStorage.setItem(storageKey, businessToSet.id);
         }
       }
     } catch (error) {

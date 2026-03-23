@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ProductForm from "@/components/inventory/ProductForm";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { Product, ProductFormData } from "@/types";
@@ -17,6 +18,7 @@ import { formatNumber } from "@/lib/utils";
 import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { getProductAction } from "@/app/actions/products";
 
 const NewProduct = () => {
   const params = useParams();
@@ -24,6 +26,7 @@ const NewProduct = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { currentBusiness } = useBusiness();
   const {
     products,
     isLoading: productsLoading,
@@ -31,7 +34,7 @@ const NewProduct = () => {
     updateProduct,
     loadProducts,
     refetch,
-  } = useProducts(user?.id, 10000); // Load all products
+  } = useProducts(user?.id, 1); // Don't load full list on New/Edit page
   const { categories, isLoading: categoriesLoading } = useCategories(user?.id);
   const [product, setProduct] = useState<Product | undefined>(undefined);
 
@@ -48,18 +51,15 @@ const NewProduct = () => {
 
   const loadProductData = async () => {
     const targetId = id || duplicateId;
-    if (targetId) {
+    if (targetId && currentBusiness?.id) {
       // If refreshing or duplicating, set state
       setIsRefreshing(true);
 
       // Clear any previous error
       setLoadError(null);
 
-      // Load fresh product data
-      const { data: refetchedData } = await refetch();
-      const fetchedProducts = refetchedData?.products || [];
-
-      const foundProduct = fetchedProducts.find((p) => p.id === targetId);
+      // Load specific product data by ID (FAST)
+      const foundProduct = await getProductAction(targetId, currentBusiness.id);
 
       if (foundProduct) {
         if (id) {
@@ -95,37 +95,17 @@ const NewProduct = () => {
   };
 
   useEffect(() => {
-    if (duplicateId && !duplicateData && products.length > 0 && !dataLoaded) {
+    if ((id || duplicateId) && !dataLoaded && currentBusiness?.id) {
       loadProductData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duplicateId, products.length, dataLoaded]);
+  }, [id, duplicateId, dataLoaded, currentBusiness?.id]);
 
   useEffect(() => {
-    // Only load if we have an ID, haven't loaded yet, and products are available
-    if (id && products.length > 0 && !dataLoaded) {
-      const foundProduct = products.find((p) => p.id === id);
-
-      if (foundProduct) {
-        setProduct(foundProduct);
-        setDataLoaded(true);
-        // Clear any previous error
-        setLoadError(null);
-      } else if (products.length > 0) {
-        // Only set error if we have products loaded but didn't find the one we're looking for
-        setLoadError(
-          "Product not found. It may have been deleted or you may not have permission to view it.",
-        );
-        toast.error("Product not found");
-      }
-    } else if (!id) {
-      // New product or duplicate mode
-      if (!duplicateId || duplicateData) {
-        setDataLoaded(true);
-      }
+    if (!id && !duplicateId) {
+      setDataLoaded(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, products.length, dataLoaded, duplicateId, duplicateData]); // Use products.length instead of products array
+  }, [id, duplicateId]);
 
   const handleRefresh = async () => {
     toast.info("Refreshing product data...");

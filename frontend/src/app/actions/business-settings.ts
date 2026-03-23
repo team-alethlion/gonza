@@ -116,15 +116,12 @@ export async function completeInitialOnboardingAction(data: any) {
 export async function getAccountStatusAction(userId: string) {
     await verifyUserAccess(userId);
     try {
-        const user = await djangoFetch(`users/users/${userId}/`);
+        // 🚀 OPTIMIZATION: Fetch user, agency, and package in ONE call via optimized 'me' endpoint
+        const user = await djangoFetch(`users/users/me/`);
         if (!user || user.error) return null;
 
-        let agency = null;
-        if (user.agency) {
-            // Robust extraction: handles ID string or nested Agency object
-            const agencyId = typeof user.agency === 'object' ? user.agency.id : user.agency;
-            agency = await djangoFetch(`core/agencies/${agencyId}/`);
-        }
+        const agency = user.agency;
+        const pkg = agency?.package;
 
         const now = new Date();
         const isFrozen = user.status === 'SUSPENDED' || user.status === 'EXPIRED' || user.status === 'INACTIVE';
@@ -137,10 +134,7 @@ export async function getAccountStatusAction(userId: string) {
             if (expiryDate) {
                 const expiryDateObj = new Date(expiryDate);
                 daysRemaining = Math.max(0, Math.ceil((expiryDateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-                
-                if (expiryDateObj > now) {
-                    nextBillingDate = expiryDateObj.toISOString();
-                }
+                if (expiryDateObj > now) nextBillingDate = expiryDateObj.toISOString();
             }
         }
 
@@ -148,21 +142,11 @@ export async function getAccountStatusAction(userId: string) {
         let locationLimit = 1;
         const isTrial = agency?.subscription_status === 'trial';
 
-        if (agency && agency.package) {
-            // Robust extraction: handles ID string or nested Package object
-            const packageId = typeof agency.package === 'object' ? agency.package.id : agency.package;
-            const pkg = await djangoFetch(`core/packages/${packageId}/`);
-            if (pkg && !pkg.error) {
-                billingAmount = Number(pkg.monthly_price) || 50000;
-                
-                if (isTrial) {
-                    locationLimit = 1;
-                } else if (pkg.unlimited_locations) {
-                    locationLimit = 999;
-                } else {
-                    locationLimit = pkg.max_locations || 1;
-                }
-            }
+        if (pkg) {
+            billingAmount = Number(pkg.monthly_price) || 50000;
+            if (isTrial) locationLimit = 1;
+            else if (pkg.unlimited_locations) locationLimit = 999;
+            else locationLimit = pkg.max_locations || 1;
         }
 
         return {
@@ -172,7 +156,7 @@ export async function getAccountStatusAction(userId: string) {
             billing_duration: 'Monthly',
             days_remaining: daysRemaining,
             next_billing_date: nextBillingDate,
-            package_id: (typeof agency?.package === 'object' ? agency?.package.id : agency?.package) || null,
+            package_id: pkg?.id || null,
             subscription_status: agency?.subscription_status || 'trial',
             is_trial: isTrial
         };

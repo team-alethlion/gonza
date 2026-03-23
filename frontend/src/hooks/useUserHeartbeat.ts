@@ -27,8 +27,8 @@ export const useUserHeartbeat = (userId: string | undefined) => {
             }
         };
 
-        // Update immediately on mount
-        performUpdate();
+        // Update on mount with a small delay (3s) to prioritize layout and initial shell rendering
+        const initialDelay = setTimeout(performUpdate, 3000);
 
         // Setup interval for subsequent updates
         const interval = setInterval(() => {
@@ -38,6 +38,9 @@ export const useUserHeartbeat = (userId: string | undefined) => {
             }
         }, 60000); // Check every minute, but performUpdate throttles to 5m
 
-        return () => clearInterval(interval);
+        return () => {
+            clearTimeout(initialDelay);
+            clearInterval(interval);
+        };
     }, [userId]);
 };

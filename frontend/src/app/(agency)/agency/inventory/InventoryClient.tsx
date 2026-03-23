@@ -19,7 +19,7 @@ import CSVUploadDialog from '@/components/inventory/CSVUploadDialog';
 import { useBulkProducts } from '@/hooks/useBulkProducts';
 import { generateProductCSVTemplate } from '@/utils/csvTemplate';
 import { useCategories } from '@/hooks/useCategories';
-import { useProfiles } from '@/contexts/ProfileContext';
+import { useProfiles, ProfileProvider } from '@/contexts/ProfileContext';
 import BulkStockAddTab from '@/components/inventory/BulkStockAddTab';
 import StockCountTab from '@/components/inventory/StockCountTab';
 import RequisitionTab from '@/components/inventory/RequisitionTab';
@@ -36,7 +36,19 @@ import { useGlobalInventoryStats } from '@/hooks/useGlobalInventoryStats';
 
 
 
-const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: Product[], initialCount?: number }) => {
+const InventoryClient = ({ 
+  initialProducts, 
+  initialCount,
+  initialStats,
+  initialTopSelling,
+  initialProfiles
+}: { 
+  initialProducts?: Product[], 
+  initialCount?: number,
+  initialStats?: any,
+  initialTopSelling?: any[],
+  initialProfiles?: any[]
+}) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { toast } = useToast();
@@ -68,7 +80,7 @@ const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: 
   const [liveSearch, setLiveSearch] = React.useState(filters.search || '');
 
   // Global stats hook
-  const { data: globalStats, refetch: refetchGlobalStats } = useGlobalInventoryStats(currentBusiness?.id);
+  const { data: globalStats, refetch: refetchGlobalStats } = useGlobalInventoryStats(currentBusiness?.id, initialStats);
   const queryClient = useQueryClient();
 
   // Sync live search when filters change (e.g. on mount or from storage)
@@ -85,7 +97,8 @@ const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: 
     period,
     { from: undefined, to: undefined },
     undefined,
-    false
+    false,
+    initialTopSelling
   );
 
   // Product suggestions hook - uses liveSearch for zero lag
@@ -120,7 +133,8 @@ const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: 
     const searchValue = e.target.value;
     setLiveSearch(searchValue);
 
-    // Open suggestions panel as user types
+    // 🚀 PERFORMANCE: Don't trigger a database fetch while typing
+    // Just show suggestions from the products we already have
     if (searchValue.length >= 1) {
       openPanel();
     } else {
@@ -187,7 +201,8 @@ const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: 
   }
 
   return (
-    <div className="p-2 md:p-6 space-y-4 md:space-y-6 max-w-full">
+    <ProfileProvider initialProfiles={initialProfiles}>
+      <div className="p-2 md:p-6 space-y-4 md:space-y-6 max-w-full">
       {/* Header Section */}
       <InventoryHeader
         isLoading={isLoading}
@@ -340,8 +355,8 @@ const InventoryClient = ({ initialProducts, initialCount }: { initialProducts?: 
           isLoading={isFetching}
         />
       )}
-    </div>
-  );
-};
-
+      </div>
+      </ProfileProvider>
+      );
+      };
 export default InventoryClient;

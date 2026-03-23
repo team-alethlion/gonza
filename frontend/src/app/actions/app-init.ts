@@ -89,29 +89,35 @@ export async function getInitialAppDataAction() {
             }
         }
 
-        // 1. Fetch Locations & Account Status in parallel (Shell Essentials)
-        // These MUST be on the server so the sidebar and access guards work instantly.
-        const [locationsData, accountStatusData] = await Promise.all([
+        // 🚀 SSR: Parallel fetch for Shell Essentials
+        // If branchId is already in session, fetch settings in parallel to save time.
+        const promises: Promise<any>[] = [
             getBusinessLocationsAction(userId),
             getAccountStatusAction(userId)
-        ]);
+        ];
+
+        if (branchId) {
+            promises.push(getBusinessSettingsAction(branchId));
+        }
+
+        const [locationsData, accountStatusData, maybeSettings] = await Promise.all(promises);
 
         const locations = locationsData || [];
-
+        
+        // Finalize branch ID from fetched locations if not in session
         let targetBranchId = branchId;
         if (!targetBranchId && locations.length > 0) {
             targetBranchId = locations.find((l: any) => l.is_default)?.id || locations[0].id;
         }
 
-        // 2. Fetch Settings (Lightweight) but keep heavy Analytics/Profiles deferred.
-        // This ensures receipts open instantly while the page shell stays fast.
-        let businessSettings = null;
-        if (targetBranchId) {
+        // Now fetch settings if we didn't fetch them in parallel (due to missing branchId in session)
+        let businessSettings = maybeSettings || null;
+        if (targetBranchId && !businessSettings) {
             businessSettings = await getBusinessSettingsAction(targetBranchId);
         }
-        
+
         const end = Date.now();
-        console.log(`[PERF] AppInit (Shell + Settings) took ${end - start}ms`);
+        console.log(`[PERF] AppInit (Full Optimized Shell) took ${end - start}ms`);
 
         return {
             success: true,

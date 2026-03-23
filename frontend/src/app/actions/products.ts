@@ -59,7 +59,8 @@ export async function getProductsAction({
 
     // Ensure numeric values to prevent NaN
     const p = Math.max(1, Number(page) || 1);
-    const ps = Math.max(1, Number(pageSize) || 50);
+    // 🛡️ SAFETY CAP: Never allow more than 500 products in one single network call
+    const ps = Math.min(Math.max(1, Number(pageSize) || 50), 500);
     const offset = (p - 1) * ps;
 
     // Use backend filtering and pagination
@@ -104,6 +105,36 @@ export async function getProductsAction({
   } catch (error) {
     console.error('Error fetching products via API:', error);
     return { products: [], count: 0 };
+  }
+}
+
+export async function getProductAction(id: string, branchId: string) {
+  try {
+    await verifyBranchAccess(branchId);
+    const p = await djangoFetch<DjangoProduct>(`inventory/products/${id}/?branch_id=${branchId}`);
+    
+    if (!p || !p.id) return null;
+
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description || '',
+      category: p.category_name || p.category || 'Uncategorized',
+      quantity: Number(p.stock),
+      costPrice: Number(p.cost_price),
+      sellingPrice: Number(p.selling_price),
+      supplier: p.supplier_name || p.supplier || null,
+      imageUrl: p.image,
+      barcode: p.barcode,
+      manufacturerBarcode: p.manufacturer_barcode || null,
+      itemNumber: p.sku || '',
+      minimumStock: Number(p.min_stock),
+      createdAt: new Date(p.created_at),
+      updatedAt: new Date(p.updated_at),
+    } as Product;
+  } catch (error) {
+    console.error(`Error fetching product ${id}:`, error);
+    return null;
   }
 }
 

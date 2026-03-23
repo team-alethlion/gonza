@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileText, CalendarIcon, Search } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useSalesData } from '@/hooks/useSalesData';
 import { useSoldItemsData } from '@/hooks/useSoldItemsData';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -37,7 +36,6 @@ const SoldItemsTab = () => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
   const mobileConfig = useMobileOptimization();
-  const { sales } = useSalesData(user?.id, 'desc'); // Load all sales without pagination limit
   const { settings, isLoading: settingsLoading } = useBusinessSettings();
   const { canViewCostPrice, canViewProfit, canViewSellingPrice } = useFinancialVisibility();
   const { toast } = useToast();
@@ -528,7 +526,6 @@ const SoldItemsTab = () => {
           isOpen={isItemSalesDialogOpen}
           onOpenChange={setIsItemSalesDialogOpen}
           itemDescription={selectedItem || ''}
-          sales={sales}
           currency={settings.currency}
           dateFilter={dateFilter}
           dateRange={dateRange}
