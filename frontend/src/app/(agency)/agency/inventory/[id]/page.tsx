@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { useProducts } from "@/hooks/useProducts";
+import { getProductAction } from "@/app/actions/products";
 import { useStockHistory } from "@/hooks/useStockHistory";
 import { useStockSummaryData } from "@/hooks/useStockSummaryData";
 import { Product } from "@/types";
@@ -16,11 +18,14 @@ const ProductDetail = () => {
   const id = params?.id as string;
   const router = useRouter();
   const { user } = useAuth();
-  const { products, isLoading, loadProducts, refetch } = useProducts(
+  const { currentBusiness } = useBusiness();
+  const { products, isLoading: productsLoading } = useProducts(
     user?.id,
-    10000,
-  ); // Load all products
+    1, // Don't load full list here
+  );
   const [product, setProduct] = useState<Product | null>(null);
+  const [isProductLoading, setIsProductLoading] = useState(true);
+  const isFetchingRef = useRef(false);
   const {
     stockHistory,
     isLoading: isLoadingHistory,
@@ -35,27 +40,36 @@ const ProductDetail = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadProductData = React.useCallback(async () => {
-    if (id) {
-      setIsRefreshing(true);
-      const { data: refetchedData } = await refetch();
-      const fetchedProducts = refetchedData?.products || [];
+  const loadProductData = React.useCallback(
+    async (force = false) => {
+      if (id && currentBusiness?.id) {
+        if (isFetchingRef.current && !force) return;
 
-      const foundProduct = fetchedProducts.find((p: Product) => p.id === id);
-      if (foundProduct) {
-        setProduct(foundProduct);
-      } else {
-        toast.error("Product not found");
-        router.push("/inventory");
+        isFetchingRef.current = true;
+        setIsRefreshing(true);
+
+        try {
+          const foundProduct = await getProductAction(id, currentBusiness.id);
+
+          if (foundProduct) {
+            setProduct(foundProduct);
+          } else {
+            toast.error("Product not found");
+            router.push("/agency/inventory");
+          }
+        } finally {
+          setIsRefreshing(false);
+          setIsProductLoading(false);
+          isFetchingRef.current = false;
+        }
       }
-
-      setIsRefreshing(false);
-    }
-  }, [id, refetch, router]);
+    },
+    [id, currentBusiness, router],
+  );
 
   // Handle stock update callback - refresh both product and stock history
   const handleStockUpdate = React.useCallback(async () => {
-    await loadProductData();
+    await loadProductData(true);
     if (id && loadStockHistory) {
       await loadStockHistory();
     }
@@ -89,22 +103,10 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    if (!isLoading && products.length > 0 && id) {
-      const foundProduct = products.find((p) => p.id === id);
-
-      if (foundProduct) {
-        if (product?.id !== foundProduct.id) {
-          const timer = setTimeout(() => {
-            setProduct(foundProduct);
-          }, 0);
-          return () => clearTimeout(timer);
-        }
-      } else {
-        toast.error("Product not found");
-        router.push("/inventory");
-      }
+    if (id && currentBusiness?.id && !product && !isFetchingRef.current) {
+      loadProductData();
     }
-  }, [id, products, isLoading, router, product?.id]);
+  }, [id, currentBusiness, product, loadProductData]);
 
   // Listen for stock updates from other components
   useEffect(() => {
@@ -120,7 +122,7 @@ const ProductDetail = () => {
     };
   }, [handleStockUpdate]);
 
-  if (isLoading || isRefreshing || !product) {
+  if (isProductLoading || isRefreshing || !product) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <img

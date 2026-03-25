@@ -23,7 +23,20 @@ export interface StockSummaryData {
   revaluation: number;
 }
 
-const EMPTY_ARRAY: StockSummaryData[] = [];
+export interface StockSummaryReport {
+  items: StockSummaryData[];
+  summary: {
+    totalOpeningStock: number;
+    totalStockIn: number;
+    totalItemsSold: number;
+    totalAdjustmentsIn: number;
+    totalAdjustmentsOut: number;
+    totalClosingStock: number;
+    totalRevaluation: number;
+  } | null;
+}
+
+const EMPTY_REPORT: StockSummaryReport = { items: [], summary: null };
 
 export const useStockSummaryData = (
   dateRange: { from: Date | undefined; to: Date | undefined }
@@ -32,8 +45,8 @@ export const useStockSummaryData = (
   const { currentBusiness } = useBusiness();
   const queryClient = useQueryClient();
 
-  const fetchStockSummary = async (): Promise<StockSummaryData[]> => {
-    if (!user?.id || !currentBusiness?.id || !dateRange?.from || !dateRange?.to) return EMPTY_ARRAY;
+  const fetchStockSummary = async (): Promise<StockSummaryReport> => {
+    if (!user?.id || !currentBusiness?.id || !dateRange?.from || !dateRange?.to) return EMPTY_REPORT;
 
     try {
       const result = await getStockSummaryReportAction(
@@ -43,7 +56,7 @@ export const useStockSummaryData = (
       );
 
       if (result.success && result.data) {
-        return result.data as StockSummaryData[];
+        return result.data as StockSummaryReport;
       } else {
         throw new Error(result.error);
       }
@@ -61,10 +74,12 @@ export const useStockSummaryData = (
     gcTime: 30 * 60 * 1000,
   });
 
-  const stockSummaryData = data || EMPTY_ARRAY;
+  const stockSummaryData = data?.items || [];
+  const summary = data?.summary || null;
 
   return {
     stockSummaryData,
+    summary,
     isLoading,
     loadStockSummaryData: refetch,
     clearCache: () => {

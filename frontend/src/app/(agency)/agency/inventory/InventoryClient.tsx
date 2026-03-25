@@ -1,60 +1,57 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useCallback } from 'react';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useBusiness } from '@/contexts/BusinessContext';
-import { useProducts } from '@/hooks/useProducts';
-import { useToast } from '@/hooks/use-toast';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useRouter } from 'next/navigation';
-import InventoryStats from '@/components/inventory/InventoryStats';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ProductSuggestionsPanel from '@/components/inventory/ProductSuggestionsPanel';
-import { useProductSuggestions } from '@/hooks/useProductSuggestions';
-import { Product } from '@/types';
-import SoldItemsTab from '@/components/inventory/SoldItemsTab';
-import StockSummaryTab from '@/components/inventory/StockSummaryTab';
-import CSVUploadDialog from '@/components/inventory/CSVUploadDialog';
-import { useBulkProducts } from '@/hooks/useBulkProducts';
-import { generateProductCSVTemplate } from '@/utils/csvTemplate';
-import { useCategories } from '@/hooks/useCategories';
-import { useProfiles, ProfileProvider } from '@/contexts/ProfileContext';
-import BulkStockAddTab from '@/components/inventory/BulkStockAddTab';
-import StockCountTab from '@/components/inventory/StockCountTab';
-import RequisitionTab from '@/components/inventory/RequisitionTab';
-import StockTransferTab from '@/components/inventory/StockTransferTab';
-import InventoryPageSkeleton from '@/components/inventory/InventoryPageSkeleton';
-import InventoryHeader from '@/components/inventory/InventoryHeader';
-import InventorySearchBar from '@/components/inventory/InventorySearchBar';
-import TopSellingProductsCard from '@/components/inventory/TopSellingProductsCard';
-import StockLevelOverviewCard from '@/components/inventory/StockLevelOverviewCard';
-import { useSoldItemsData } from '@/hooks/useSoldItemsData';
-import { useQueryClient } from '@tanstack/react-query';
-import { useGlobalInventoryStats } from '@/hooks/useGlobalInventoryStats';
+import React, { useCallback } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useProducts } from "@/hooks/useProducts";
+import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+import InventoryStats from "@/components/inventory/InventoryStats";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Product } from "@/types";
+import SoldItemsTab from "@/components/inventory/SoldItemsTab";
+import StockSummaryTab from "@/components/inventory/StockSummaryTab";
+import CSVUploadDialog from "@/components/inventory/CSVUploadDialog";
+import { useBulkProducts } from "@/hooks/useBulkProducts";
+import { generateProductCSVTemplate } from "@/utils/csvTemplate";
+import { useCategories } from "@/hooks/useCategories";
+import { useProfiles, ProfileProvider } from "@/contexts/ProfileContext";
+import BulkStockAddTab from "@/components/inventory/BulkStockAddTab";
+import StockCountTab from "@/components/inventory/StockCountTab";
+import RequisitionTab from "@/components/inventory/RequisitionTab";
+import StockTransferTab from "@/components/inventory/StockTransferTab";
+import InventoryPageSkeleton from "@/components/inventory/InventoryPageSkeleton";
+import InventoryHeader from "@/components/inventory/InventoryHeader";
+import TopSellingProductsCard from "@/components/inventory/TopSellingProductsCard";
+import StockLevelOverviewCard from "@/components/inventory/StockLevelOverviewCard";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGlobalInventoryStats } from "@/hooks/useGlobalInventoryStats";
+import { useSoldItemsData } from "@/hooks/useSoldItemsData";
+import InventorySearchSection from "@/components/inventory/InventorySearchSection";
+import InventoryOverviewTab from "@/components/inventory/InventoryOverviewTab";
+import InventoryTabsList from "@/components/inventory/InventoryTabsList";
 
-
-
-
-const InventoryClient = ({ 
-  initialProducts, 
+const InventoryClient = ({
+  initialProducts,
   initialCount,
   initialStats,
   initialTopSelling,
-  initialProfiles
-}: { 
-  initialProducts?: Product[], 
-  initialCount?: number,
-  initialStats?: any,
-  initialTopSelling?: any[],
-  initialProfiles?: any[]
+  initialProfiles,
+}: {
+  initialProducts?: Product[];
+  initialCount?: number;
+  initialStats?: any;
+  initialTopSelling?: any[];
+  initialProfiles?: any[];
 }) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { hasPermission } = useProfiles();
-  const router = useRouter();
+
+  const [activeTab, setActiveTab] = React.useState("overview");
 
   const {
     products,
@@ -64,8 +61,11 @@ const InventoryClient = ({
     filters,
     setFilters,
     totalCount,
-    refetch
-  } = useProducts(user?.id, 50, { products: initialProducts || [], count: initialCount || 0 });
+    refetch,
+  } = useProducts(user?.id, 50, {
+    products: initialProducts || [],
+    count: initialCount || 0,
+  });
 
   const { categories } = useCategories(user?.id);
   const { bulkCreateProducts } = useBulkProducts();
@@ -74,102 +74,49 @@ const InventoryClient = ({
   const [csvUploadOpen, setCsvUploadOpen] = React.useState(false);
 
   // Add state for period filtering
-  const [period, setPeriod] = React.useState<'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time'>('this-month');
-
-  // Add live search state for instant suggestions without triggering DB fetches
-  const [liveSearch, setLiveSearch] = React.useState(filters.search || '');
+  const [period, setPeriod] = React.useState<
+    | "today"
+    | "yesterday"
+    | "this-week"
+    | "last-week"
+    | "this-month"
+    | "last-month"
+    | "all-time"
+  >("this-month");
 
   // Global stats hook
-  const { data: globalStats, refetch: refetchGlobalStats } = useGlobalInventoryStats(currentBusiness?.id, initialStats);
+  const { data: globalStats, refetch: refetchGlobalStats } =
+    useGlobalInventoryStats(currentBusiness?.id, initialStats);
   const queryClient = useQueryClient();
 
-  // Sync live search when filters change (e.g. on mount or from storage)
-  React.useEffect(() => {
-    setLiveSearch(filters.search || '');
-  }, [filters.search]);
-
-
-  // Realtime product sync removed (Supabase-specific). Stats refresh handled by
-  // manual refetch on handleRefresh and React Query stale-time settings.
-
-  // Replace useInventoryData with backend-driven useSoldItemsData
-  const { soldItems: topSellingProducts } = useSoldItemsData(
+  // Use the working sold items data hook for the Top Selling Products
+  const {
+    soldItems: topSellingProducts,
+    loadSoldItemsData: refetchSoldItems,
+    isLoading: soldItemsLoading,
+  } = useSoldItemsData(
     period,
     { from: undefined, to: undefined },
     undefined,
     false,
-    initialTopSelling
+    initialTopSelling,
   );
-
-  // Product suggestions hook - uses liveSearch for zero lag
-  const {
-    suggestions,
-    isOpen: panelOpen,
-    openPanel,
-    closePanel
-  } = useProductSuggestions(products, liveSearch);
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleRefresh = useCallback(async () => {
-    // Clear the specific new cache keys if we want to force EVERYTHING (optional with React Query but good for "Refresh" button)
-    queryClient.invalidateQueries({ queryKey: ['inventory_global_stats'] });
-    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ["inventory_global_stats"] });
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["sold_items_report"] });
 
-    // Force immediate reload of global stats
     await refetchGlobalStats();
-
-    // Reload products from server
     await refetch();
 
     toast({
       title: "Inventory refreshed",
-      description: "Your inventory data and stats have been updated with fresh server data.",
+      description:
+        "Your inventory data and stats have been updated with fresh server data.",
     });
   }, [refetch, toast, refetchGlobalStats, queryClient]);
-
-
-  // Memoize search input changes handler - updates only liveSearch for performance
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchValue = e.target.value;
-    setLiveSearch(searchValue);
-
-    // 🚀 PERFORMANCE: Don't trigger a database fetch while typing
-    // Just show suggestions from the products we already have
-    if (searchValue.length >= 1) {
-      openPanel();
-    } else {
-      closePanel();
-    }
-  }, [openPanel, closePanel]);
-
-  // Handle Enter key or final search submit
-  const handleSearchSubmit = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchValue = e.target.value;
-    setFilters({
-      ...filters,
-      search: searchValue
-    });
-
-    // Ensure panel is open if there's content
-    if (searchValue.length > 0) {
-      openPanel();
-    }
-  }, [filters, setFilters, openPanel]);
-
-  // Handle product selection from suggestions - navigate to product details
-  const handleProductSelect = (product: Product) => {
-    // Update live search too so the input stays in sync if it re-renders
-    setLiveSearch(product.name);
-    router.push(`/inventory/${product.id}`);
-    closePanel();
-  };
-
-  // Handle input focus for desktop search
-  const handleSearchFocus = useCallback(() => {
-    if (liveSearch) {
-      openPanel();
-    }
-  }, [liveSearch, openPanel]);
 
   // Add CSV template download handler
   const handleDownloadTemplate = React.useCallback(() => {
@@ -181,28 +128,36 @@ const InventoryClient = ({
   }, [toast]);
 
   // Add CSV upload handler
-  const handleCSVUpload = React.useCallback(async (products: any[]) => {
-    try {
-      await bulkCreateProducts(products);
-      setCsvUploadOpen(false);
-      await loadProducts();
-    } catch (error) {
-      console.error('CSV upload failed:', error);
-      toast({
-        title: "Upload failed",
-        description: "There was an error uploading your products. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [bulkCreateProducts, loadProducts, toast]);
+  const handleCSVUpload = React.useCallback(
+    async (products: any[]) => {
+      try {
+        await bulkCreateProducts(products);
+        setCsvUploadOpen(false);
+        await loadProducts();
+      } catch (error) {
+        console.error("CSV upload failed:", error);
+        toast({
+          title: "Upload failed",
+          description:
+            "There was an error uploading your products. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [bulkCreateProducts, loadProducts, toast],
+  );
+
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (businessLoading || !currentBusiness || isLoading) {
     return <InventoryPageSkeleton />;
   }
 
   return (
-    <ProfileProvider initialProfiles={initialProfiles}>
-      <div className="p-2 md:p-6 space-y-4 md:space-y-6 max-w-full">
+    <div className="p-2 md:p-6 space-y-4 md:space-y-6 max-w-full">
       {/* Header Section */}
       <InventoryHeader
         isLoading={isLoading}
@@ -216,147 +171,88 @@ const InventoryClient = ({
         open={csvUploadOpen}
         onOpenChange={setCsvUploadOpen}
         onUpload={handleCSVUpload}
-        categories={categories.map(cat => cat.name)}
+        categories={categories.map((cat) => cat.name)}
       />
 
       {/* Stats Cards */}
       <InventoryStats
         products={products}
-        totalCountOverride={totalCount}
+        totalCountOverride={globalStats?.totalCount !== undefined ? globalStats.totalCount : totalCount}
         totalCostValueOverride={globalStats?.totalCostValue}
         lowStockOverride={globalStats?.lowStockCount}
         outOfStockOverride={globalStats?.outOfStockCount}
         totalStockValueOverride={globalStats?.totalStockValue}
       />
 
-      {/* Main Content with Tabs */}
-      <Tabs defaultValue="overview" className="space-y-3 md:space-y-6">
-        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-4 gap-1' : 'grid-cols-6'} h-auto p-1`}>
-          <TabsTrigger value="overview" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-            {isMobile ? 'Overview' : 'Overview'}
-          </TabsTrigger>
-          <TabsTrigger value="requisition" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-            {isMobile ? 'Request' : 'Requisition'}
-          </TabsTrigger>
-          {hasPermission('inventory', 'stock_adjustment') && (
-            <>
-              <TabsTrigger value="add-stock" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-                {isMobile ? 'Restock' : 'Restock'}
-              </TabsTrigger>
-              <TabsTrigger value="stock-count" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-                {isMobile ? 'Count' : 'Stock Count'}
-              </TabsTrigger>
-              <TabsTrigger value="transfer" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-                {isMobile ? 'Transfer' : 'Stock Transfer'}
-              </TabsTrigger>
-            </>
-          )}
-          {!isMobile && (
-            <>
-              <TabsTrigger value="sold-items" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-                Items Sold
-              </TabsTrigger>
-              <TabsTrigger value="stock-summary" className="text-xs md:text-sm px-1 md:px-2 py-2 min-h-[44px]">
-                Stock Summary
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
+      {/* Main Content with Tabs - Only render content structure when mounted to fix Radix ID mismatch */}
+      {mounted ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 md:space-y-6">
+          <InventoryTabsList 
+            isMobile={isMobile}
+            hasPermission={hasPermission}
+          />
 
-        {/* Mobile: Additional tabs in dropdown or secondary row */}
-        {isMobile && (
-          <div className="flex gap-1 overflow-x-auto pb-2">
-            <TabsList className="grid grid-cols-2 gap-1 w-auto min-w-fit p-1">
-              <TabsTrigger value="sold-items" className="text-xs px-2 py-2 min-h-[44px] whitespace-nowrap">
-                Items Sold
-              </TabsTrigger>
-              <TabsTrigger value="stock-summary" className="text-xs px-2 py-2 min-h-[44px] whitespace-nowrap">
-                Stock Summary
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        )}
+          {/* 🚀 PERFORMANCE: Conditional Rendering (Lazy Loading) for each tab content */}
 
-        <TabsContent value="overview" className="space-y-4 md:space-y-6">
-          {/* Search Bar with Local Suggestions */}
-          <div className="relative">
-            <InventorySearchBar
+          {activeTab === "overview" && (
+            <InventoryOverviewTab
+              products={products}
               filters={filters}
               setFilters={setFilters}
-              products={products}
-              onSearchChange={handleSearchChange}
-              onSearchSubmit={handleSearchSubmit}
-              onSearchFocus={handleSearchFocus}
+              isMobile={isMobile}
+              isFetching={isFetching}
+              globalStats={globalStats}
+              topSellingProducts={topSellingProducts}
+              topSellingLoading={soldItemsLoading}
+              period={period}
+              setPeriod={setPeriod}
             />
+          )}
 
-            {/* Mobile Suggestions Dropdown - Uses liveSearch for zero lag */}
-            {isMobile && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1">
-                <ProductSuggestionsPanel
-                  suggestions={suggestions}
-                  isOpen={panelOpen}
-                  onClose={closePanel}
-                  onSelectProduct={handleProductSelect}
-                  searchTerm={liveSearch}
-                  isLoading={isFetching}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Stock Level Overview Chart */}
-          <StockLevelOverviewCard products={products} />
-
-          {/* Top Selling Products */}
-          <TopSellingProductsCard
-            topSellingProducts={topSellingProducts}
-            period={period}
-            onPeriodChange={setPeriod}
-          />
-        </TabsContent>
-
-        {hasPermission('inventory', 'stock_adjustment') && (
-          <>
+          {activeTab === "add-stock" && hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="add-stock">
               <BulkStockAddTab />
             </TabsContent>
+          )}
 
+          {activeTab === "stock-count" && hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="stock-count">
               <StockCountTab />
             </TabsContent>
+          )}
 
+          {activeTab === "transfer" && hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="transfer">
               <StockTransferTab />
             </TabsContent>
-          </>
-        )}
+          )}
 
-        <TabsContent value="requisition">
-          <RequisitionTab />
-        </TabsContent>
+          {activeTab === "requisition" && (
+            <TabsContent value="requisition">
+              <RequisitionTab />
+            </TabsContent>
+          )}
 
-        <TabsContent value="sold-items">
-          <SoldItemsTab />
-        </TabsContent>
+          {activeTab === "sold-items" && (
+            <TabsContent value="sold-items">
+              <SoldItemsTab />
+            </TabsContent>
+          )}
 
-        <TabsContent value="stock-summary">
-          <StockSummaryTab />
-        </TabsContent>
-      </Tabs>
-
-      {/* Desktop Product Suggestions Panel - Uses liveSearch for zero lag */}
-      {!isMobile && (
-        <ProductSuggestionsPanel
-          suggestions={suggestions}
-          isOpen={panelOpen}
-          onClose={closePanel}
-          onSelectProduct={handleProductSelect}
-          searchTerm={liveSearch}
-          isLoading={isFetching}
-        />
+          {activeTab === "stock-summary" && (
+            <TabsContent value="stock-summary">
+              <StockSummaryTab />
+            </TabsContent>
+          )}
+        </Tabs>
+      ) : (
+        <div className="space-y-6">
+           <div className="h-12 w-full bg-gray-50 animate-pulse rounded-md" />
+           <div className="h-64 w-full bg-gray-50 animate-pulse rounded-md" />
+        </div>
       )}
-      </div>
-      </ProfileProvider>
-      );
-      };
+    </div>
+  );
+
+};
 export default InventoryClient;

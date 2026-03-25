@@ -97,7 +97,7 @@ const CarriageInwards = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/inventory")}
+              onClick={() => router.push("/agency/inventory")}
               className="shrink-0 h-8 w-8"
               title="Back to inventory">
               <ArrowLeft className="h-4 w-4" />

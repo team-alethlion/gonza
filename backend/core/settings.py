@@ -65,11 +65,13 @@ TEMPLATES = [
 
 import dj_database_url
 
+db_url = os.environ.get('DATABASE_URL')
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
+        default=db_url,
         conn_max_age=0,
-        ssl_require=True
+        ssl_require=False if db_url and db_url.startswith('sqlite') else True
     )
 }
 

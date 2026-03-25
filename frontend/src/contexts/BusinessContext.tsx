@@ -191,6 +191,12 @@ export const BusinessProvider: React.FC<{
       return;
     }
 
+    // 🚀 CACHE SYNC: Skip fetch if we already have initial locations from SSR
+    if (initialLocations.length > 0 && hasLoadedInitial.current) {
+        setIsLoading(false);
+        return;
+    }
+
     const startTime = Date.now();
     console.log(
       `[PERF] BusinessContext: loadBusinessLocations starting for user ${user.id}`,

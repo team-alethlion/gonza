@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 
+import StockSummaryOverview from "./StockSummaryOverview";
+
 interface StockSummaryData {
   productId: string;
   productName: string;
@@ -31,9 +33,10 @@ interface StockSummaryData {
   itemsSold: number;
   stockIn: number;
   transferOut: number;
-      returnIn: number;
-      returnOut: number;
-      adjustmentsIn: number;  adjustmentsOut: number;
+  returnIn: number;
+  returnOut: number;
+  adjustmentsIn: number;
+  adjustmentsOut: number;
   closingStock: number;
   category?: string;
   revaluation: number;
@@ -41,9 +44,9 @@ interface StockSummaryData {
 
 interface StockSummaryTableProps {
   data: StockSummaryData[];
+  summary: any;
   isLoading: boolean;
   onProductClick: (productId: string) => void;
-  onFilteredDataChange?: (filteredData: StockSummaryData[]) => void;
   currentProducts?: Product[];
 }
 
@@ -58,12 +61,32 @@ interface TableFilters {
   sortOrder: SortOrder;
 }
 
+import { FileDown, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface StockSummaryTableProps {
+  data: StockSummaryData[];
+  summary: any;
+  isLoading: boolean;
+  onProductClick: (productId: string) => void;
+  currentProducts?: Product[];
+  onExportCSV?: (filteredData: StockSummaryData[]) => void;
+  onExportPDF?: (filteredData: StockSummaryData[]) => void;
+}
+
 const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
   data,
+  summary,
   isLoading,
   onProductClick,
-  onFilteredDataChange,
-  currentProducts = []
+  currentProducts = [],
+  onExportCSV,
+  onExportPDF
 }) => {
   const { currentBusiness } = useBusiness();
   const { canViewCostPrice } = useFinancialVisibility();
@@ -99,6 +122,12 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
   const [sortField, setSortField] = useState<SortField>(persistedFilters.sortField);
   const [sortOrder, setSortOrder] = useState<SortOrder>(persistedFilters.sortOrder);
 
+  // 🛡️ Math Hardening - Mandated by data-integrity.md
+  const toSafeNum = (val: any) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -117,25 +146,27 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
 
   // Check if closing stock matches current quantity
   const isStockMismatch = (item: StockSummaryData): boolean => {
-    const currentProduct = currentProducts.find(p => p.id === item.productId);
+    const currentProduct = (currentProducts || []).find(p => p.id === item.productId);
     return currentProduct ? currentProduct.quantity !== item.closingStock : false;
   };
 
   // Get unique categories from data
   const categories = useMemo(() => {
-    const uniqueCategories = Array.from(new Set(data.map(item => item.category).filter(Boolean)));
+    const safeData = Array.isArray(data) ? data : [];
+    const uniqueCategories = Array.from(new Set(safeData.map(item => item.category).filter(Boolean)));
     return uniqueCategories.sort();
   }, [data]);
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    const filtered = data.filter(item => {
+    const safeData = Array.isArray(data) ? data : [];
+    const filtered = safeData.filter(item => {
       // Search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch =
-          item.productName.toLowerCase().includes(searchLower) ||
-          item.itemNumber.toLowerCase().includes(searchLower) ||
+          (item.productName || '').toLowerCase().includes(searchLower) ||
+          (item.itemNumber || '').toLowerCase().includes(searchLower) ||
           (item.category && item.category.toLowerCase().includes(searchLower));
         if (!matchesSearch) return false;
       }
@@ -147,9 +178,10 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
 
       // Stock status filter
       if (stockStatusFilter !== 'all') {
-        if (stockStatusFilter === 'in-stock' && item.closingStock <= 0) return false;
-        if (stockStatusFilter === 'out-of-stock' && item.closingStock > 0) return false;
-        if (stockStatusFilter === 'low-stock' && (item.closingStock > 10 || item.closingStock <= 0)) return false;
+        const closingStock = toSafeNum(item.closingStock);
+        if (stockStatusFilter === 'in-stock' && closingStock <= 0) return false;
+        if (stockStatusFilter === 'out-of-stock' && closingStock > 0) return false;
+        if (stockStatusFilter === 'low-stock' && (closingStock > 10 || closingStock <= 0)) return false;
       }
 
       return true;
@@ -161,31 +193,31 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
 
       switch (sortField) {
         case 'productName':
-          comparison = a.productName.localeCompare(b.productName);
+          comparison = (a.productName || '').localeCompare(b.productName || '');
           break;
         case 'category':
           comparison = (a.category || '').localeCompare(b.category || '');
           break;
         case 'openingStock':
-          comparison = a.openingStock - b.openingStock;
+          comparison = toSafeNum(a.openingStock) - toSafeNum(b.openingStock);
           break;
         case 'itemsSold':
-          comparison = a.itemsSold - b.itemsSold;
+          comparison = toSafeNum(a.itemsSold) - toSafeNum(b.itemsSold);
           break;
         case 'stockIn':
-          comparison = a.stockIn - b.stockIn;
+          comparison = toSafeNum(a.stockIn) - toSafeNum(b.stockIn);
           break;
         case 'transferOut':
-          comparison = a.transferOut - b.transferOut;
+          comparison = toSafeNum(a.transferOut) - toSafeNum(b.transferOut);
           break;
         case 'returnIn':
-          comparison = a.returnIn - b.returnIn;
+          comparison = toSafeNum(a.returnIn) - toSafeNum(b.returnIn);
           break;
         case 'returnOut':
-          comparison = a.returnOut - b.returnOut;
+          comparison = toSafeNum(a.returnOut) - toSafeNum(b.returnOut);
           break;
         case 'closingStock':
-          comparison = a.closingStock - b.closingStock;
+          comparison = toSafeNum(a.closingStock) - toSafeNum(b.closingStock);
           break;
       }
 
@@ -199,26 +231,17 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedData = filteredAndSortedData.slice(startIndex, endIndex);
+  const paginatedData = Array.isArray(filteredAndSortedData) ? filteredAndSortedData.slice(startIndex, endIndex) : [];
 
   // Reset page when filters change
   useEffect(() => {
     if (currentPage !== 1) {
-      const timer = setTimeout(() => {
-        setCurrentPage(1);
-      }, 0);
-      return () => clearTimeout(timer);
+      setCurrentPage(1);
     }
-  }, [searchTerm, categoryFilter, stockStatusFilter, currentPage]);
-
-  // Notify parent component when filtered data changes
-  useEffect(() => {
-    if (onFilteredDataChange) {
-      onFilteredDataChange(filteredAndSortedData);
-    }
-  }, [filteredAndSortedData, onFilteredDataChange]);
+  }, [searchTerm, categoryFilter, stockStatusFilter]);
 
   const handleSort = (field: SortField) => {
+
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -235,15 +258,17 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
   };
 
   const totals = React.useMemo(() => {
-    return filteredAndSortedData.reduce((acc, item) => ({
-      openingStock: acc.openingStock + item.openingStock,
-      itemsSold: acc.itemsSold + item.itemsSold,
-      stockIn: acc.stockIn + item.stockIn,
-      transferOut: acc.transferOut + item.transferOut,
-              returnIn: acc.returnIn + item.returnIn,
-              returnOut: acc.returnOut + item.returnOut,
-              adjustmentsIn: acc.adjustmentsIn + (item.adjustmentsIn || 0),      adjustmentsOut: acc.adjustmentsOut + (item.adjustmentsOut || 0),
-      closingStock: acc.closingStock + item.closingStock
+    const safeData = Array.isArray(filteredAndSortedData) ? filteredAndSortedData : [];
+    return safeData.reduce((acc, item) => ({
+      openingStock: acc.openingStock + toSafeNum(item.openingStock),
+      itemsSold: acc.itemsSold + toSafeNum(item.itemsSold),
+      stockIn: acc.stockIn + toSafeNum(item.stockIn),
+      transferOut: acc.transferOut + toSafeNum(item.transferOut),
+      returnIn: acc.returnIn + toSafeNum(item.returnIn),
+      returnOut: acc.returnOut + toSafeNum(item.returnOut),
+      adjustmentsIn: acc.adjustmentsIn + toSafeNum(item.adjustmentsIn),
+      adjustmentsOut: acc.adjustmentsOut + toSafeNum(item.adjustmentsOut),
+      closingStock: acc.closingStock + toSafeNum(item.closingStock)
     }), {
       openingStock: 0,
       itemsSold: 0,
@@ -316,17 +341,37 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
           </Select>
         </div>
 
-        {/* Results count */}
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="text-xs">
-            {filteredAndSortedData.length} {filteredAndSortedData.length === 1 ? 'product' : 'products'} found
-          </Badge>
-          {totalPages > 1 && (
-            <div className="text-xs text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </div>
-          )}
+        {/* Export Buttons */}
+        <div className="flex items-center gap-2">
+           <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <FileDown size={16} />
+                  Export
+                  <ChevronDown size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onExportCSV?.(filteredAndSortedData)}>
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExportPDF?.(filteredAndSortedData)}>
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
+      </div>
+
+      <div className="flex items-center gap-4 py-2 border-b">
+        <Badge variant="secondary" className="text-xs">
+          {filteredAndSortedData.length} {filteredAndSortedData.length === 1 ? 'product' : 'products'} found
+        </Badge>
+        {totalPages > 1 && (
+          <div className="text-xs text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -504,6 +549,15 @@ const StockSummaryTable: React.FC<StockSummaryTableProps> = ({
             </Pagination>
           </div>
         )}
+
+        {/* Stock Summary Overview - Now inside table component to prevent re-render loops */}
+        <div className="mt-8">
+            <StockSummaryOverview 
+                data={filteredAndSortedData} 
+                summary={summary}
+                isFiltered={filteredAndSortedData.length !== (Array.isArray(data) ? data.length : 0)}
+            />
+        </div>
       </TooltipProvider>
     </div>
   );

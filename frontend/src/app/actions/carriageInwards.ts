@@ -53,7 +53,7 @@ export async function createCarriageInwardAction(
         });
         if (record && record.error) throw new Error(record.error);
         
-        revalidatePath('/inventory/carriage');
+        revalidatePath('/agency/inventory/carriage');
         return { success: true, data: record };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -79,7 +79,7 @@ export async function updateCarriageInwardAction(
         });
         if (result && result.error) throw new Error(result.error);
         
-        revalidatePath('/inventory/carriage');
+        revalidatePath('/agency/inventory/carriage');
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -94,7 +94,7 @@ export async function deleteCarriageInwardAction(id: string, branchId: string) {
         });
         if (result && result.error) throw new Error(result.error);
         
-        revalidatePath('/inventory/carriage');
+        revalidatePath('/agency/inventory/carriage');
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message };

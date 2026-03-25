@@ -88,6 +88,8 @@ export async function getProductsAction({
       name: p.name,
       description: p.description || '',
       category: p.category_name || p.category || 'Uncategorized',
+      categoryId: p.category_id,
+      categoryName: p.category_name || p.category || 'Uncategorized',
       quantity: Number(p.stock),
       costPrice: Number(p.cost_price),
       sellingPrice: Number(p.selling_price),
@@ -120,6 +122,8 @@ export async function getProductAction(id: string, branchId: string) {
       name: p.name,
       description: p.description || '',
       category: p.category_name || p.category || 'Uncategorized',
+      categoryId: p.category_id,
+      categoryName: p.category_name || p.category || 'Uncategorized',
       quantity: Number(p.stock),
       costPrice: Number(p.cost_price),
       sellingPrice: Number(p.selling_price),
@@ -205,6 +209,7 @@ export async function getProductsDeltaAction(businessId: string, since?: number)
 
 export async function createProductAction(data: {
   businessId: string;
+  agencyId: string;
   userId: string;
   name: string;
   description?: string | null;
@@ -224,10 +229,14 @@ export async function createProductAction(data: {
     const payload = {
       name: data.name,
       description: data.description,
+      agency: data.agencyId,
+      branch: data.businessId,
+      user: data.userId,
+      category: data.categoryId || null,
+      supplier: data.supplierId || null,
+      // Include _id versions for backend ViewSet logic
       branch_id: data.businessId,
       user_id: data.userId,
-      category_id: data.categoryId || null,
-      supplier_id: data.supplierId || null,
       barcode: data.barcode,
       image: data.imageUrl,
       cost_price: data.costPrice || 0,
@@ -280,8 +289,8 @@ export async function updateProductAction(id: string, branchId: string, updates:
     const payload = {
       name: updates.name,
       description: updates.description,
-      category_id: updates.categoryId !== undefined ? updates.categoryId : undefined,
-      supplier_id: updates.supplierId !== undefined ? updates.supplierId : undefined,
+      category: updates.categoryId !== undefined ? updates.categoryId : undefined,
+      supplier: updates.supplierId !== undefined ? updates.supplierId : undefined,
       sku: updates.itemNumber || updates.sku,
       barcode: updates.barcode,
       image: updates.imageUrl,
@@ -292,6 +301,7 @@ export async function updateProductAction(id: string, branchId: string, updates:
       customChangeReason: updates.customChangeReason,
       isFromSale: updates.isFromSale,
       referenceId: updates.referenceId,
+      user: updates.userId,
       user_id: updates.userId
     };
 

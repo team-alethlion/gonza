@@ -27,36 +27,44 @@ interface StockSummaryData {
 
 interface StockSummaryOverviewProps {
   data: StockSummaryData[];
+  summary: {
+    totalOpeningStock: number;
+    totalStockIn: number;
+    totalItemsSold: number;
+    totalAdjustmentsIn: number;
+    totalAdjustmentsOut: number;
+    totalClosingStock: number;
+    totalRevaluation: number;
+  } | null;
+  isFiltered?: boolean;
 }
 
-const StockSummaryOverview: React.FC<StockSummaryOverviewProps> = ({ data }) => {
+const StockSummaryOverview: React.FC<StockSummaryOverviewProps> = ({ data, summary, isFiltered }) => {
   const { canViewCostPrice } = useFinancialVisibility();
   const { settings } = useBusinessSettings();
   const currency = settings?.currency || 'UGX';
+
+  // 🛡️ Math Hardening
+  const toSafeNum = (val: any) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
 
   const formatCurrencyValue = (amount: number) => {
     return `${currency} ${formatNumber(amount)}`;
   };
 
   const financialTotals = React.useMemo(() => {
-    const totals = data.reduce((acc, item) => ({
-      openingStock: acc.openingStock + (item.openingStock * item.costPrice),
-      // Aggregate Stock In (Stock In + Return In + Adjustments In)
-      stockIn: acc.stockIn + ((item.stockIn + item.returnIn + (item.adjustmentsIn || 0)) * item.costPrice),
-      // Aggregate Stock Out (Items Sold + Transfer Out + Return Out + Adjustments Out)
-      stockOut: acc.stockOut + ((item.itemsSold + item.transferOut + item.returnOut + (item.adjustmentsOut || 0)) * item.costPrice)
-    }), {
-      openingStock: 0,
-      stockIn: 0,
-      stockOut: 0
-    });
-
-    // Calculate closing stock value derived from the aggregated totals
-    // Closing = Opening + StockIn - StockOut
-    const closingStock = totals.openingStock + totals.stockIn - totals.stockOut;
-
-    return { ...totals, closingStock };
-  }, [data]);
+    // 🚀 USE BACKEND TOTALS ONLY: Strictly use server-provided summary to ensure accuracy with full database
+    // We no longer fallback to client-side reduce which only sees paginated/filtered data
+    return {
+      openingStock: toSafeNum(summary?.totalOpeningStock),
+      stockIn: toSafeNum(summary?.totalStockIn),
+      stockOut: toSafeNum(summary?.totalItemsSold) + toSafeNum(summary?.totalAdjustmentsOut),
+      closingStock: toSafeNum(summary?.totalClosingStock),
+      revaluation: toSafeNum(summary?.totalRevaluation)
+    };
+  }, [summary]);
 
   if (data.length === 0) {
     return null;

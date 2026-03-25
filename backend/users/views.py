@@ -38,7 +38,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def me(self, request):
-        serializer = self.get_serializer(request.user)
+        # 🚀 OPTIMIZATION: One query to get everything (User + Agency + Package)
+        user = User.objects.select_related('agency', 'agency__package').get(id=request.user.id)
+        serializer = self.get_serializer(user)
         return Response(serializer.data)
 
     @transaction.atomic

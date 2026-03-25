@@ -755,7 +755,7 @@ const ProductsClient = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/inventory")}
+              onClick={() => router.push("/agency/inventory")}
               className="shrink-0 h-8 w-8"
               title="Back to inventory">
               <ArrowLeft className="h-4 w-4" />
@@ -776,7 +776,7 @@ const ProductsClient = () => {
               <div className="flex gap-2">
                 {canCreate && (
                   <Button
-                    onClick={() => router.push("/inventory/new")}
+                    onClick={() => router.push("/agency/inventory/new")}
                     className="flex-1 gap-2 h-9">
                     <Plus size={16} /> Add Product
                   </Button>
@@ -1021,7 +1021,7 @@ const ProductsClient = () => {
               )}
               {canCreate && (
                 <Button
-                  onClick={() => router.push("/inventory/new")}
+                  onClick={() => router.push("/agency/inventory/new")}
                   className="gap-2">
                   <Plus size={16} /> Add Product
                 </Button>

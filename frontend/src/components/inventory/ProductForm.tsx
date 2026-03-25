@@ -64,7 +64,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         barcode: productData.barcode || '',
         manufacturerBarcode: productData.manufacturerBarcode || '',
         description: productData.description || '',
-        category: productData.category,
+        category: productData.categoryId || productData.category || '',
         quantity: productData.quantity ?? 0,
         costPrice: productData.costPrice,
         sellingPrice: productData.sellingPrice,
@@ -547,7 +547,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   <SelectContent>
                     {categories.length > 0 ? (
                       categories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
+                        <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
                       ))

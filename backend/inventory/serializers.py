@@ -34,6 +34,11 @@ class StockAuditSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductHistorySerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='product.name')
+    product_cost = serializers.ReadOnlyField(source='product.cost_price')
+    product_price = serializers.ReadOnlyField(source='product.selling_price')
+    product_sku = serializers.ReadOnlyField(source='product.sku')
+
     class Meta:
         model = ProductHistory
         fields = '__all__'

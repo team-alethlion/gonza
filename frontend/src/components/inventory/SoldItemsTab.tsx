@@ -84,7 +84,7 @@ const SoldItemsTab = () => {
   const [showOnlyCostData, setShowOnlyCostData] = useState(persistedState.showOnlyCostData);
 
   // Use the new hook for sold items data
-  const { soldItems, isLoading } = useSoldItemsData(
+  const { soldItems, summary, isLoading } = useSoldItemsData(
     dateFilter,
     dateRange,
     specificDate,
@@ -454,18 +454,18 @@ const SoldItemsTab = () => {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Items</p>
-                    <p className="text-lg md:text-2xl font-bold">{filteredSoldItems.length}</p>
+                    <p className="text-lg md:text-2xl font-bold">{summary?.totalItems || filteredSoldItems.length}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Quantity</p>
                     <p className="text-lg md:text-2xl font-bold">
-                      {filteredSoldItems.reduce((sum, item) => sum + item.totalQuantity, 0)}
+                      {summary?.totalQuantity || 0}
                     </p>
                   </div>
                   <div className="flex flex-col items-center">
                     <p className="text-sm text-muted-foreground">Total Cost</p>
                     <p className="text-lg md:text-2xl font-bold">
-                      {canViewCostPrice ? formatCashCurrency(filteredSoldItems.reduce((sum, item) => sum + item.totalCost, 0), settings.currency) : '•••'}
+                      {canViewCostPrice ? formatCashCurrency(summary?.totalCost || 0, settings.currency) : '•••'}
                     </p>
                   </div>
                 </div>
@@ -475,18 +475,18 @@ const SoldItemsTab = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-sm text-muted-foreground">Items</p>
-                      <p className="text-base sm:text-lg md:text-xl font-bold truncate">{filteredSoldItems.length}</p>
+                      <p className="text-base sm:text-lg md:text-xl font-bold truncate">{summary?.totalItems || filteredSoldItems.length}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Quantity</p>
                       <p className="text-base sm:text-lg md:text-xl font-bold truncate">
-                        {filteredSoldItems.reduce((sum, item) => sum + item.totalQuantity, 0)}
+                        {summary?.totalQuantity || 0}
                       </p>
                     </div>
                     <div className="flex flex-col items-center">
                       <p className="text-sm text-muted-foreground">Revenue</p>
                       <p className="text-base sm:text-lg md:text-xl font-bold truncate">
-                        {canViewSellingPrice ? formatCashCurrency(filteredSoldItems.reduce((sum, item) => sum + item.totalAmount, 0), settings.currency) : '•••'}
+                        {canViewSellingPrice ? formatCashCurrency(summary?.totalAmount || 0, settings.currency) : '•••'}
                       </p>
                     </div>
                   </div>
@@ -495,14 +495,14 @@ const SoldItemsTab = () => {
                     <div>
                       <p className="text-sm text-muted-foreground">Discount</p>
                       <p className="text-base sm:text-lg md:text-xl font-bold truncate">
-                        {canViewSellingPrice ? formatCashCurrency(filteredSoldItems.reduce((sum, item) => sum + item.totalDiscount, 0), settings.currency) : '•••'}
+                        {canViewSellingPrice ? formatCashCurrency(summary?.totalDiscount || 0, settings.currency) : '•••'}
                       </p>
                     </div>
                     {canViewCostPrice && (
                       <div className="flex flex-col items-center">
                         <p className="text-sm text-muted-foreground">Cost</p>
                         <p className="text-base sm:text-lg md:text-xl font-bold truncate">
-                          {formatCashCurrency(filteredSoldItems.reduce((sum, item) => sum + item.totalCost, 0), settings.currency)}
+                          {formatCashCurrency(summary?.totalCost || 0, settings.currency)}
                         </p>
                       </div>
                     )}
@@ -510,7 +510,7 @@ const SoldItemsTab = () => {
                       <div className="flex flex-col items-center">
                         <p className="text-sm text-muted-foreground">Profit</p>
                         <p className="text-base sm:text-lg md:text-xl font-bold truncate">
-                          {formatCashCurrency(filteredSoldItems.reduce((sum, item) => sum + item.totalProfit, 0), settings.currency)}
+                          {formatCashCurrency(summary?.totalProfit || 0, settings.currency)}
                         </p>
                       </div>
                     )}

@@ -128,7 +128,7 @@ const NewProduct = () => {
         const updateData = {
           name: formData.name,
           description: formData.description || "",
-          category: formData.category || "",
+          categoryId: formData.category || null,
           quantity: formData.quantity,
           costPrice: formData.costPrice ?? 0,
           sellingPrice: formData.sellingPrice ?? 0,
@@ -144,7 +144,7 @@ const NewProduct = () => {
 
         if (result) {
           toast.success("Product updated successfully");
-          router.push(`/inventory/${id}`);
+          router.push(`/agency/inventory/${id}`);
         } else {
           toast.error("Failed to update product");
         }
@@ -159,7 +159,7 @@ const NewProduct = () => {
           id: "",
           name: formData.name,
           description: formData.description || "",
-          category: formData.category || "",
+          categoryId: formData.category || null,
           quantity: formData.quantity,
           costPrice: formData.costPrice ?? 0,
           sellingPrice: formData.sellingPrice ?? 0,
@@ -212,7 +212,7 @@ const NewProduct = () => {
             }
           }
 
-          router.push(`/inventory/${newProduct.id}`);
+          router.push(`/agency/inventory/${newProduct.id}`);
         } else {
           toast.error("Failed to create product");
         }
@@ -267,7 +267,9 @@ const NewProduct = () => {
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => router.push("/inventory")} variant="outline">
+          <Button
+            onClick={() => router.push("/agency/inventory")}
+            variant="outline">
             Back to Inventory
           </Button>
         </div>
@@ -283,7 +285,7 @@ const NewProduct = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push("/inventory")}
+            onClick={() => router.push("/agency/inventory")}
             className="flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Back to Inventory
           </Button>
@@ -304,7 +306,7 @@ const NewProduct = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push("/inventory")}
+          onClick={() => router.push("/agency/inventory")}
           className="flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Back to Inventory
         </Button>
@@ -331,7 +333,9 @@ const NewProduct = () => {
             Error Loading Product
           </h3>
           <p className="text-red-600">{loadError}</p>
-          <Button className="mt-4" onClick={() => router.push("/inventory")}>
+          <Button
+            className="mt-4"
+            onClick={() => router.push("/agency/inventory")}>
             Return to Inventory
           </Button>
         </div>

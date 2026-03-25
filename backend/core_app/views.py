@@ -6,7 +6,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db import transaction
 from django.contrib.auth.hashers import make_password, check_password
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count, F, DecimalField
+from django.db.models.functions import Cast
+from inventory.utils import get_inventory_stats
 
 from .models import (
     Agency, Branch, BranchSettings, Package, SubscriptionTransaction,
@@ -25,22 +27,11 @@ class AnalyticsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def inventory_stats(self, request):
         branch_id = request.query_params.get('branchId')
-        from inventory.models import Product
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
         
-        products = Product.objects.filter(branch_id=branch_id)
-        stats = products.aggregate(
-            total_stock_value=Sum(F('stock') * F('selling_price')),
-            total_cost_value=Sum(F('stock') * F('cost_price')),
-            out_of_stock_count=Count('id', filter=Q(stock__lte=0)),
-            low_stock_count=Count('id', filter=Q(stock__gt=0) & Q(stock__lte=F('min_stock')))
-        )
-        
-        return Response({
-            "totalCostValue": stats['total_cost_value'] or 0,
-            "totalStockValue": stats['total_stock_value'] or 0,
-            "outOfStockCount": stats['out_of_stock_count'] or 0,
-            "lowStockCount": stats['low_stock_count'] or 0
-        })
+        stats = get_inventory_stats(branch_id)
+        return Response(stats)
 
     @action(detail=False, methods=['get'])
     def summary(self, request):

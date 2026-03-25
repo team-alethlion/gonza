@@ -15,13 +15,36 @@ import { Product } from '@/types';
 
 interface StockLevelChartProps {
   products: Product[];
+  totalInStockQtyOverride?: number;
+  totalLowStockQtyOverride?: number;
+  totalMinLevelQtyOverride?: number;
 }
 
-const StockLevelChart: React.FC<StockLevelChartProps> = ({ products }) => {
+const StockLevelChart: React.FC<StockLevelChartProps> = ({ 
+  products,
+  totalInStockQtyOverride,
+  totalLowStockQtyOverride,
+  totalMinLevelQtyOverride
+}) => {
+  // 🛡️ Math Hardening
+  const toSafeNum = (val: any) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
   // Calculate aggregated stock data
-  const totalInStock = products.filter(p => p.quantity > p.minimumStock).reduce((sum, p) => sum + p.quantity, 0);
-  const totalLowStock = products.filter(p => p.quantity > 0 && p.quantity <= p.minimumStock).reduce((sum, p) => sum + p.quantity, 0);
-  const totalMinimumLevel = products.reduce((sum, p) => sum + p.minimumStock, 0);
+  // Fallback to client-side reduce if server didn't provide totals (inaccurate for large datasets)
+  const totalInStock = typeof totalInStockQtyOverride === 'number' 
+    ? totalInStockQtyOverride 
+    : products.filter(p => p.quantity > p.minimumStock).reduce((sum, p) => sum + toSafeNum(p.quantity), 0);
+  
+  const totalLowStock = typeof totalLowStockQtyOverride === 'number'
+    ? totalLowStockQtyOverride
+    : products.filter(p => p.quantity > 0 && p.quantity <= p.minimumStock).reduce((sum, p) => sum + toSafeNum(p.quantity), 0);
+  
+  const totalMinimumLevel = typeof totalMinLevelQtyOverride === 'number'
+    ? totalMinLevelQtyOverride
+    : products.reduce((sum, p) => sum + toSafeNum(p.minimumStock), 0);
   
   // Create data array with each stock category as a separate object
   const chartData = [

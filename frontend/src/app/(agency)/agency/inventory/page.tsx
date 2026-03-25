@@ -8,7 +8,7 @@ import { getSoldItemsReportAction } from "@/app/actions/inventory";
 import { getProfilesAction } from "@/app/actions/profiles";
 import InventoryClient from "./InventoryClient";
 import { Product } from "@/types";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 
 export default async function InventoryPage() {
   await enforceStrictAccess();
@@ -37,12 +37,11 @@ export default async function InventoryPage() {
       }
 
       if (activeBranchId) {
-        // 🚀 SSR: Parallel fetch for all inventory data
-        const now = new Date();
-        const start = startOfMonth(now).toISOString();
-        const end = endOfMonth(now).toISOString();
-
-        const [productsResult, statsResult, topSellingResult, profilesResult]: [any, any, any, any] = await Promise.all([
+        // 🚀 SSR: Parallel fetch for critical inventory data only
+        // We REMOVED getSoldItemsReportAction from SSR because it takes 29s+ for large datasets.
+        // The client-side useSoldItemsData hook will fetch it in the background after the page loads instantly.
+        
+        const [productsResult, statsResult, profilesResult]: [any, any, any] = await Promise.all([
           getProductsAction({
             userId,
             businessId: activeBranchId,
@@ -50,7 +49,6 @@ export default async function InventoryPage() {
             pageSize: 50,
           }),
           getGlobalInventoryStatsAction(activeBranchId),
-          getSoldItemsReportAction(activeBranchId, start, end),
           getProfilesAction(activeBranchId)
         ]);
 
@@ -63,10 +61,6 @@ export default async function InventoryPage() {
           initialStats = statsResult.data;
         }
 
-        if (topSellingResult?.success) {
-          initialTopSelling = topSellingResult.data;
-        }
-
         if (profilesResult) {
           initialProfiles = profilesResult;
         }
@@ -77,12 +71,14 @@ export default async function InventoryPage() {
   }
 
   return (
-    <InventoryClient
-      initialProducts={initialProducts}
-      initialCount={initialCount}
-      initialStats={initialStats}
-      initialTopSelling={initialTopSelling}
-      initialProfiles={initialProfiles}
-    />
+    <ProfileProvider initialProfiles={initialProfiles}>
+      <InventoryClient
+        initialProducts={initialProducts}
+        initialCount={initialCount}
+        initialStats={initialStats}
+        initialTopSelling={initialTopSelling}
+        initialProfiles={initialProfiles}
+      />
+    </ProfileProvider>
   );
 }

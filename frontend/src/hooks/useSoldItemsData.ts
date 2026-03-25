@@ -54,26 +54,31 @@ export const useSoldItemsData = (
       throw new Error(result.error || 'Failed to fetch sold items report');
     }
     
-    let report = result.data as SoldItem[];
+    // The backend now returns { items: [], summary: {} }
+    let report = result.data.items as SoldItem[];
+    const summary = result.data.summary;
 
     if (showOnlyNotInInventory) {
       // In this backend implementation, if productIds is empty, it's not in inventory
       report = report.filter(item => item.productIds.length === 0);
     }
 
-    return report;
+    return { items: report, summary };
   }, [currentBusiness, getDateRange, showOnlyNotInInventory]);
 
-  const { data: soldItems = initialData || [], isLoading, refetch } = useQuery({
-    queryKey: ['sold_items_report', currentBusiness?.id, dateFilter, dateRange, specificDate, showOnlyNotInInventory],
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['sold_items_report', currentBusiness?.id, dateFilter, dateRange.from?.toISOString(), dateRange.to?.toISOString(), specificDate?.toISOString(), showOnlyNotInInventory],
     queryFn: fetchSoldItems,
     enabled: !!currentBusiness?.id && !!user,
     staleTime: 60 * 1000,
-    initialData: initialData
+    // Only use initialData if we have actual items and are looking at the default period (this-month)
+    // to prevent showing stale data or empty state for other filters on first load
+    initialData: (initialData && initialData.length > 0 && dateFilter === 'this-month') ? { items: initialData, summary: null } : undefined
   });
 
   return {
-    soldItems,
+    soldItems: data?.items || [],
+    summary: data?.summary || null,
     isLoading,
     loadSoldItemsData: refetch
   };

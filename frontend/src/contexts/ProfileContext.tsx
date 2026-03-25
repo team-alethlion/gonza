@@ -62,63 +62,56 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
   const [profiles, setProfiles] = useState<BusinessProfile[]>(initialProfiles);
   const hasLoadedInitial = useRef(initialProfiles.length > 0);
   
-  // Initialize to null to avoid hydration mismatch
-  const [currentProfile, setCurrentProfile] = useState<BusinessProfile | null>(null);
+  // 🛡️ SECURITY & PERFORMANCE: Initialize state immediately from SSR data 
+  // to prevent layout shift and unnecessary permission handshakes
+  const [currentProfile, setCurrentProfile] = useState<BusinessProfile | null>(() => {
+    if (initialProfiles.length === 0) return null;
 
-  const [isProfileVerified, setIsProfileVerified] = useState(false);
-  const [isLoading, setIsLoading] = useState(initialProfiles.length === 0 && !!userId && !!currentBusiness?.id);
-  const [isFirstTimeSetupNeeded, setIsFirstTimeSetupNeeded] = useState(false);
-
-  // Sync with next-auth user and auto-select profile
-  useEffect(() => {
-    if (!currentBusiness?.id || profiles.length === 0 || isLoading) return;
-
-    setCurrentProfile(prev => {
-      if (prev && prev.business_location_id === currentBusiness.id) return prev;
-
-      // 1. Try local storage
+    // 1. Try local storage for last used profile (Client-only)
+    if (typeof window !== "undefined" && currentBusiness?.id) {
       const savedProfileId = localStorage.getItem(`currentProfile_${currentBusiness.id}`);
       if (savedProfileId) {
-        const profile = profiles.find(p => p.id === savedProfileId);
+        const profile = initialProfiles.find(p => p.id === savedProfileId);
         if (profile) return profile;
       }
-
-      // 2. Try email match (Strongest auto-selection for the logged in user)
-      if (user?.email) {
-        const matchingProfile = profiles.find(p => p.email.toLowerCase() === user.email?.toLowerCase());
-        if (matchingProfile) return matchingProfile;
-      }
-
-      // 3. Fallback to first profile
-      return profiles[0];
-    });
-  }, [currentBusiness?.id, profiles, user?.email, isLoading]);
-
-  // Restore verification state from sessionStorage when business and profile are loaded
-  useEffect(() => {
-    if (currentBusiness?.id && currentProfile?.id && !isProfileVerified) {
-      const role = (currentProfile.role || "").toLowerCase();
-      const businessRoleName = (currentProfile.business_role?.name || "").toLowerCase();
-      
-      // PIN Bypass for Admin (Agency Owner) and Manager roles
-      if (
-        role === 'admin' || 
-        role === 'manager' || 
-        role === 'owner' || 
-        businessRoleName === 'admin' || 
-        businessRoleName === 'owner'
-      ) {
-        setIsProfileVerified(true);
-        return;
-      }
-
-      const verifiedKey = `profileVerified_${currentBusiness.id}_${currentProfile.id}`;
-      const isVerified = sessionStorage.getItem(verifiedKey) === 'true';
-      if (isVerified) {
-        setIsProfileVerified(true);
-      }
     }
-  }, [currentBusiness?.id, currentProfile?.id, isProfileVerified]);
+
+    // 2. Try email match (Strongest auto-selection - works on Server and Client)
+    if (user?.email) {
+      const matchingProfile = initialProfiles.find(p => p.email.toLowerCase() === user.email?.toLowerCase());
+      if (matchingProfile) return matchingProfile;
+    }
+
+    // 3. Fallback to first profile
+    return initialProfiles[0];
+  });
+
+  const [isProfileVerified, setIsProfileVerified] = useState(() => {
+    if (!currentProfile) return false;
+    
+    const role = (currentProfile.role || "").toLowerCase();
+    const businessRoleName = (currentProfile.business_role?.name || "").toLowerCase();
+    
+    // PIN Bypass for Admin (Agency Owner) and Manager roles
+    if (
+      role === 'admin' || 
+      role === 'manager' || 
+      role === 'owner' || 
+      businessRoleName === 'admin' || 
+      businessRoleName === 'owner'
+    ) {
+      return true;
+    }
+
+    if (typeof window !== "undefined" && currentBusiness?.id) {
+      const verifiedKey = `profileVerified_${currentBusiness.id}_${currentProfile.id}`;
+      return sessionStorage.getItem(verifiedKey) === 'true';
+    }
+    return false;
+  });
+
+  const [isLoading, setIsLoading] = useState(initialProfiles.length === 0 && !!userId && !!currentBusiness?.id);
+  const [isFirstTimeSetupNeeded, setIsFirstTimeSetupNeeded] = useState(false);
 
   const loadProfiles = React.useCallback(async () => {
     if (!userId || !currentBusiness?.id) {

@@ -216,7 +216,9 @@ export interface Product {
   manufacturerBarcode: string | null; // Added manufacturer barcode field
   name: string;
   description: string | null;
-  category: string;
+  category: string; // Keep for legacy / display
+  categoryId?: string | null;
+  categoryName?: string | null;
   quantity: number;
   costPrice: number;
   sellingPrice: number;
@@ -252,6 +254,7 @@ export interface ProductFormData {
   manufacturerBarcode?: string; // Added manufacturer barcode field
   description?: string;
   category?: string;
+  categoryId?: string | null;
   quantity: number; // Always a number, never undefined
   costPrice?: number;
   sellingPrice?: number;
@@ -280,6 +283,8 @@ export interface StockHistoryEntry {
   productId: string;
   oldQuantity: number;
   newQuantity: number;
+  costPrice?: number;
+  sellingPrice?: number;
   changeReason: string;
   referenceId?: string | null;
   receiptNumber?: string;

@@ -9,6 +9,7 @@ class ProductFilter(filters.FilterSet):
     class Meta:
         model = Product
         fields = {
+            'branch': ['exact'],
             'branch_id': ['exact'],
             'category': ['exact'],
             'stock': ['exact', 'gt', 'lt', 'gte', 'lte'],

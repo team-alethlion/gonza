@@ -32,21 +32,20 @@ const InventoryStats: React.FC<InventoryStatsProps> = ({
   const { settings } = useBusinessSettings();
   const { canViewCostPrice, canViewSellingPrice } = useFinancialVisibility();
 
+  // 🛡️ Math Hardening (Anti-NaN) - Mandated by data-integrity.md
+  const toSafeNum = (val: any) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
 
-  // Calculate stats
-  const totalProducts = typeof totalCountOverride === 'number' ? totalCountOverride : products.length;
-  const lowStockProducts = typeof lowStockOverride === 'number' ? lowStockOverride : products.filter(p => p.quantity > 0 && p.quantity <= p.minimumStock).length;
-  const outOfStockProducts = typeof outOfStockOverride === 'number' ? outOfStockOverride : products.filter(p => p.quantity === 0).length;
-
-  const totalInventoryValue = typeof totalCostValueOverride === 'number'
-    ? totalCostValueOverride
-    : products.reduce((sum, product) => sum + (product.costPrice * product.quantity), 0);
-
-  const totalStockValue = typeof totalStockValueOverride === 'number'
-    ? totalStockValueOverride
-    : products.reduce((sum, product) => {
-      return sum + (product.sellingPrice * product.quantity);
-    }, 0);
+  // Calculate stats using server overrides as primary source
+  // 🚀 REMOVED: Inaccurate client-side reduce fallbacks for large datasets
+  // We now strictly use server-provided totals to ensure database accuracy
+  const totalProducts = toSafeNum(totalCountOverride);
+  const lowStockProducts = toSafeNum(lowStockOverride);
+  const outOfStockProducts = toSafeNum(outOfStockOverride);
+  const totalInventoryValue = toSafeNum(totalCostValueOverride);
+  const totalStockValue = toSafeNum(totalStockValueOverride);
 
   // Get dynamic font size based on text length
   const getDynamicFontSize = (text: string) => {

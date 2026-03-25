@@ -32,6 +32,9 @@ const InventoryHeader: React.FC<InventoryHeaderProps> = ({
   const isMobile = useIsMobile();
   const { hasPermission } = useProfiles();
 
+  // 🚀 PERFORMANCE: We removed the "!mounted" block to prevent the 1-2s delay.
+  // Instead, we use a stable initial render that matches between Server and Client.
+  
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

@@ -5,10 +5,14 @@ import { djangoFetch } from '@/lib/django-client';
 import { mapDbSaleToSale } from '@/types';
 
 export interface InventoryStats {
+    totalCount: number;
     totalCostValue: number;
     totalStockValue: number;
     lowStockCount: number;
     outOfStockCount: number;
+    totalInStockQty?: number;
+    totalLowStockQty?: number;
+    totalMinLevelQty?: number;
 }
 
 export async function getGlobalInventoryStatsAction(businessId: string) {
@@ -49,7 +53,8 @@ export async function getAnalyticsSummaryAction(branchId: string, startDate?: st
                 paidSalesCount: Number(result.paidSalesCount || 0),
                 pendingSalesCount: Number(result.pendingSalesCount || 0),
                 totalExpenses: Number(result.totalExpenses || 0),
-                recentSales: (result.recentSales || []).map((s: any) => mapDbSaleToSale(s))
+                recentSales: (result.recentSales || []).map((s: any) => mapDbSaleToSale(s)),
+                topSellingProducts: result.topSellingProducts || []
             }
         };
     } catch (error: any) {

@@ -17,8 +17,9 @@ interface StockSummaryFiltersProps {
   setDateRange: (range: { from: Date | undefined; to: Date | undefined }) => void;
   specificDay: Date | undefined;
   setSpecificDay: (date: Date | undefined) => void;
-  onExportCSV: () => void;
-  onExportPDF: () => void;
+  onExportCSV?: () => void;
+  onExportPDF?: () => void;
+  hideExport?: boolean;
 }
 
 const StockSummaryFilters: React.FC<StockSummaryFiltersProps> = ({
@@ -29,7 +30,8 @@ const StockSummaryFilters: React.FC<StockSummaryFiltersProps> = ({
   specificDay,
   setSpecificDay,
   onExportCSV,
-  onExportPDF
+  onExportPDF,
+  hideExport = false
 }) => {
   const getPeriodLabel = () => {
     switch (period) {
@@ -50,19 +52,21 @@ const StockSummaryFilters: React.FC<StockSummaryFiltersProps> = ({
   return (
     <div className="space-y-4">
       {/* Header with Export Buttons */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h3 className="text-lg font-semibold">Stock Summary</h3>
-        <div className="flex flex-col md:flex-row gap-2">
-          <Button onClick={onExportCSV} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            CSV
-          </Button>
-          <Button onClick={onExportPDF} variant="outline" size="sm">
-            <FileText className="h-4 w-4 mr-2" />
-            PDF
-          </Button>
+      {!hideExport && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h3 className="text-lg font-semibold">Stock Summary</h3>
+          <div className="flex flex-col md:flex-row gap-2">
+            <Button onClick={onExportCSV} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button onClick={onExportPDF} variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              PDF
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filter Controls */}
       <div className="flex flex-col md:flex-row gap-4">

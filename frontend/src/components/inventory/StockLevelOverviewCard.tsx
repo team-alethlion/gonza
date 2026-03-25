@@ -7,9 +7,17 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface StockLevelOverviewCardProps {
   products: Product[];
+  totalInStockQty?: number;
+  totalLowStockQty?: number;
+  totalMinLevelQty?: number;
 }
 
-const StockLevelOverviewCard: React.FC<StockLevelOverviewCardProps> = ({ products }) => {
+const StockLevelOverviewCard: React.FC<StockLevelOverviewCardProps> = ({ 
+  products, 
+  totalInStockQty, 
+  totalLowStockQty, 
+  totalMinLevelQty 
+}) => {
   const isMobile = useIsMobile();
 
   // Only show on desktop or if there are products
@@ -23,7 +31,12 @@ const StockLevelOverviewCard: React.FC<StockLevelOverviewCardProps> = ({ product
         <CardTitle className="text-base md:text-lg">Stock Level Overview</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <StockLevelChart products={products} />
+        <StockLevelChart 
+          products={products} 
+          totalInStockQtyOverride={totalInStockQty}
+          totalLowStockQtyOverride={totalLowStockQty}
+          totalMinLevelQtyOverride={totalMinLevelQty}
+        />
       </CardContent>
     </Card>
   );

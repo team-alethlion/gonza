@@ -164,7 +164,7 @@ const EditProduct = () => {
 
         if (result) {
           toast.success("Product updated successfully");
-          router.push(`/inventory/${id}`);
+          router.push(`/agency/inventory/${id}`);
         } else {
           toast.error("Failed to update product");
         }
@@ -232,7 +232,7 @@ const EditProduct = () => {
             }
           }
 
-          router.push(`/inventory/${newProduct.id}`);
+          router.push(`/agency/inventory/${newProduct.id}`);
         } else {
           toast.error("Failed to create product");
         }
@@ -287,7 +287,9 @@ const EditProduct = () => {
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => router.push("/inventory")} variant="outline">
+          <Button
+            onClick={() => router.push("/agency/inventory")}
+            variant="outline">
             Back to Inventory
           </Button>
         </div>
@@ -303,7 +305,7 @@ const EditProduct = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push("/inventory")}
+            onClick={() => router.push("/agency/inventory")}
             className="flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Back to Inventory
           </Button>
@@ -324,7 +326,7 @@ const EditProduct = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push("/inventory")}
+          onClick={() => router.push("/agency/inventory")}
           className="flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Back to Inventory
         </Button>
@@ -351,7 +353,9 @@ const EditProduct = () => {
             Error Loading Product
           </h3>
           <p className="text-red-600">{loadError}</p>
-          <Button className="mt-4" onClick={() => router.push("/inventory")}>
+          <Button
+            className="mt-4"
+            onClick={() => router.push("/agency/inventory")}>
             Return to Inventory
           </Button>
         </div>

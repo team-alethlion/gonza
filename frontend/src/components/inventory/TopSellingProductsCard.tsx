@@ -6,12 +6,14 @@ import { SoldItem } from '@/hooks/useSoldItemsData';
 
 interface TopSellingProductsCardProps {
   topSellingProducts: SoldItem[];
+  isLoading?: boolean;
   period: 'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time';
   onPeriodChange: (period: 'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time') => void;
 }
 
 const TopSellingProductsCard: React.FC<TopSellingProductsCardProps> = ({
   topSellingProducts,
+  isLoading,
   period,
   onPeriodChange
 }) => {
@@ -42,6 +44,7 @@ const TopSellingProductsCard: React.FC<TopSellingProductsCardProps> = ({
       <CardContent className="p-0">
         <TopSellingProductsTable
           products={topSellingProducts}
+          isLoading={isLoading}
           period={period}
         />
       </CardContent>

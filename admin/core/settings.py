@@ -58,12 +58,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 import dj_database_url
+from dotenv import load_dotenv
+
+# Load .env from project root or admin dir
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
+
+db_url = os.environ.get('DATABASE_URL', 'postgres://a7e4d5d28715a731de0fb1b564139f0cca5c4a21d4995598be8c079ef627589c:sk_PaMCHF_TjeZVhlvS8hR0l@db.prisma.io:5432/postgres?sslmode=verify-full')
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgres://a7e4d5d28715a731de0fb1b564139f0cca5c4a21d4995598be8c079ef627589c:sk_PaMCHF_TjeZVhlvS8hR0l@db.prisma.io:5432/postgres?sslmode=verify-full',
+        default=db_url,
         conn_max_age=0,
-        ssl_require=True
+        ssl_require=False if db_url.startswith('sqlite') else True
     )
 }
 
@@ -92,7 +99,7 @@ UNFOLD = {
         "show_all_applications": True,
     },
     "STYLES": [
-        lambda request: "css/admin.css",
+        lambda request: "/static/css/admin.css",
     ],
 }
 

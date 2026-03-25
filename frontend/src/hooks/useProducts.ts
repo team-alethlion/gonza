@@ -125,12 +125,13 @@ export const useProducts = (
 
   const createProduct = async (productData: ProductFormData): Promise<Product | null> => {
     try {
-      if (!userId || !currentBusiness) return null;
+      if (!userId || !currentBusiness || !user?.agencyId) return null;
 
       const result = await createProductAction({
         ...productData,
         userId,
-        businessId: currentBusiness.id
+        businessId: currentBusiness.id,
+        agencyId: user.agencyId
       });
 
       if (!result) return null;

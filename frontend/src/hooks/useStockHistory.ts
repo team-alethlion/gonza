@@ -58,6 +58,8 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
         productId: entry.productId,
         oldQuantity: entry.oldQuantity,
         newQuantity: entry.newQuantity,
+        costPrice: entry.costPrice,
+        sellingPrice: entry.sellingPrice,
         changeReason: entry.changeReason,
         createdAt: new Date(entry.createdAt),
         referenceId: entry.referenceId,

@@ -53,8 +53,21 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        branch_id = data.get('branch_id')
-        user_id = data.get('user_id')
+        branch_id = data.get('branch_id') or data.get('branch')
+        user_id = data.get('user_id') or data.get('user') or request.user.id
+        
+        # 🛡️ SAFETY: Ensure agency is assigned from branch if missing
+        if not data.get('agency'):
+            from core_app.models import Branch
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                data['agency'] = branch.agency_id
+            except:
+                pass
+
+        # 🛡️ SAFETY: Ensure user is assigned
+        if not data.get('user'):
+            data['user'] = user_id
         
         with transaction.atomic():
             if branch_id:
@@ -319,13 +332,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                 WHERE branch_id = %s AND created_at BETWEEN %s AND %s
                 GROUP BY "product_id"
             ),
-            ClosingStock AS (
-                SELECT DISTINCT ON ("product_id")
-                    "product_id",
-                    "new_stock" as "closingStock"
+            LastHistoryID AS (
+                SELECT "product_id", MAX(id) as max_id
                 FROM inventory_producthistory
                 WHERE branch_id = %s AND created_at <= %s
-                ORDER BY "product_id", created_at DESC, id DESC
+                GROUP BY "product_id"
+            ),
+            ClosingStock AS (
+                SELECT h."product_id", h."new_stock" as "closingStock"
+                FROM inventory_producthistory h
+                JOIN LastHistoryID lh ON h.id = lh.max_id
             )
             SELECT 
                 p.id as "productId",
@@ -348,27 +364,45 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         
         with connection.cursor() as cursor:
+            # Note: MaxHistoryID needs branch_id and end_date too
             cursor.execute(query, [branch_id, start_date, end_date, branch_id, end_date, branch_id])
             columns = [col[0] for col in cursor.description]
             results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
         formatted = []
+        summary = {
+            "totalOpeningStock": 0,
+            "totalStockIn": 0,
+            "totalItemsSold": 0,
+            "totalAdjustmentsIn": 0,
+            "totalAdjustmentsOut": 0,
+            "totalClosingStock": 0,
+            "totalRevaluation": 0
+        }
+
         for row in results:
-            closing_stock = float(row.get('closingStock') or 0)
-            items_sold = float(row.get('itemsSold') or 0)
-            stock_in = float(row.get('stockIn') or 0)
-            adj_in = float(row.get('adjustmentsIn') or 0)
-            adj_out = float(row.get('adjustmentsOut') or 0)
-            opening_stock = closing_stock - (stock_in + adj_in) + (items_sold + adj_out)
+            def safe_float(v):
+                try: return float(v or 0)
+                except: return 0.0
+
+            closing_stock = safe_float(row.get('closingStock'))
+            items_sold = safe_float(row.get('itemsSold'))
+            stock_in = safe_float(row.get('stockIn'))
+            adj_in = safe_float(row.get('adjustmentsIn'))
+            adj_out = safe_float(row.get('adjustmentsOut'))
+            cost_price = safe_float(row.get('costPrice'))
             
+            opening_stock = closing_stock - (stock_in + adj_in) + (items_sold + adj_out)
+            revaluation = closing_stock * cost_price
+
             formatted.append({
-                "productId": row['productId'],
-                "productName": row['productName'],
-                "itemNumber": row['itemNumber'] or row['productId'],
-                "imageUrl": row['imageUrl'],
-                "costPrice": float(row['costPrice']),
-                "sellingPrice": float(row['sellingPrice']),
-                "category": row['category'],
+                "productId": row.get('productId'),
+                "productName": row.get('productName'),
+                "itemNumber": row.get('itemNumber') or row.get('productId'),
+                "imageUrl": row.get('imageUrl'),
+                "costPrice": cost_price,
+                "sellingPrice": safe_float(row.get('sellingPrice')),
+                "category": row.get('category'),
                 "openingStock": opening_stock,
                 "itemsSold": items_sold,
                 "stockIn": stock_in,
@@ -378,10 +412,21 @@ class ProductViewSet(viewsets.ModelViewSet):
                 "adjustmentsIn": adj_in,
                 "adjustmentsOut": adj_out,
                 "closingStock": closing_stock,
-                "revaluation": closing_stock * float(row['costPrice'])
+                "revaluation": revaluation
             })
-        return Response(formatted)
 
+            summary["totalOpeningStock"] += opening_stock
+            summary["totalStockIn"] += stock_in
+            summary["totalItemsSold"] += items_sold
+            summary["totalAdjustmentsIn"] += adj_in
+            summary["totalAdjustmentsOut"] += adj_out
+            summary["totalClosingStock"] += closing_stock
+            summary["totalRevaluation"] += revaluation
+
+        return Response({
+            "items": formatted,
+            "summary": summary
+        })
     @action(detail=False, methods=['get'])
     def sold_items(self, request):
         branch_id = request.query_params.get('branchId')
@@ -397,22 +442,55 @@ class ProductViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response({"error": "Invalid dates"}, status=400)
 
-        from sales.models import SaleItem
+        from sales.models import Sale, SaleItem
+        from django.db.models import Sum, F, DecimalField
+        from django.db.models.functions import Cast
 
-        # Aggregate SaleItems
-        # We group by product_id and product_name (in case product was deleted)
-        items = SaleItem.objects.filter(
-            sale__branch_id=branch_id,
-            sale__date__range=[start_date, end_date]
-        ).exclude(sale__status='QUOTE')
+        from django.db.models import Case, When, Value, DecimalField, ExpressionWrapper
 
-        aggregates = items.values('product_id', 'product_name').annotate(
+        # 1. Get the SOURCE OF TRUTH from the Sale table (matching Sales Overview)
+        sales_qs = Sale.objects.filter(
+            branch_id=branch_id,
+            date__range=[start_date, end_date]
+        ).exclude(status='QUOTE')
+
+        sales_totals = sales_qs.aggregate(
+            total=Sum('total_amount'),
+            discount=Sum('discount_amount'),
+            profit=Sum('profit')
+        )
+
+        total_sales = float(sales_totals['total'] or 0)
+        total_discount = float(sales_totals['discount'] or 0)
+        total_profit = float(sales_totals['profit'] or 0)
+
+        # 2. Get the items and attribute the Sale-level discount and profit pro-rata
+        # This ensures the sum of items EXACTLY matches the Sale totals
+        item_qs = SaleItem.objects.filter(sale__in=sales_qs).annotate(
+            # Calculate item's share of the parent sale's subtotal to distribute discount/profit
+            sale_subtotal=F('sale__subtotal'),
+            sale_discount=F('sale__discount_amount'),
+            sale_profit=F('sale__profit'),
+            # Handle division by zero for sales with 0 subtotal
+            weight=Case(
+                When(sale_subtotal=0, then=Value(1.0)),
+                default=Cast(F('subtotal'), DecimalField()) / Cast(F('sale_subtotal'), DecimalField()),
+                output_field=DecimalField(max_digits=10, decimal_places=4)
+            )
+        ).annotate(
+            attributed_discount=ExpressionWrapper(F('weight') * F('sale_discount'), output_field=DecimalField()),
+            attributed_profit=ExpressionWrapper(F('weight') * F('sale_profit'), output_field=DecimalField()),
+            attributed_total=ExpressionWrapper(F('subtotal') - (F('weight') * F('sale_discount')), output_field=DecimalField())
+        )
+
+        # 3. Aggregate by Product using the attributed values
+        aggregates = item_qs.values('product_id', 'product_name').annotate(
             totalQuantity=Sum('quantity'),
-            totalAmount=Sum('total'),
+            totalAmount=Sum('attributed_total'),
             totalCost=Sum(F('cost_price') * F('quantity')),
-            totalProfit=Sum(F('total') - (F('cost_price') * F('quantity'))),
-            totalDiscount=Sum('discount'),
-            avgPrice=Cast(Sum('total') / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2)),
+            totalProfit=Sum('attributed_profit'),
+            totalDiscount=Sum('attributed_discount'),
+            avgPrice=Cast(Sum('attributed_total') / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2)),
             avgCost=Cast(Sum(F('cost_price') * F('quantity')) / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2))
         ).order_by('-totalAmount')
 
@@ -430,7 +508,18 @@ class ProductViewSet(viewsets.ModelViewSet):
                 "productIds": [row['product_id']] if row['product_id'] else []
             })
 
-        return Response(formatted)
+        summary = {
+            "totalQuantity": float(item_qs.aggregate(q=Sum('quantity'))['q'] or 0),
+            "totalAmount": total_sales,
+            "totalCost": float(item_qs.aggregate(c=Sum(F('cost_price') * F('quantity')))['c'] or 0),
+            "totalProfit": total_profit,
+            "totalDiscount": total_discount
+        }
+
+        return Response({
+            "items": formatted,
+            "summary": summary
+        })
 
     @action(detail=False, methods=['post'])
     def bulk_adjust(self, request):
@@ -482,7 +571,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                     quantity_change=delta,
                     reason=reason,
                     created_at=created_at or datetime.now(),
-                    new_cost=Decimal(str(new_price)) if new_price is not None else None
+                    old_cost=product.cost_price,
+                    new_cost=Decimal(str(new_price)) if new_price is not None else product.cost_price,
+                    old_price=product.selling_price,
+                    new_price=product.selling_price
                 )
         return Response({"status": "success"})
 
@@ -586,7 +678,11 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
                 type=data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT'),
                 change_reason=data.get('changeReason'),
                 reference_id=data.get('referenceId'),
-                created_at=data.get('createdAt') or datetime.now()
+                created_at=data.get('createdAt') or datetime.now(),
+                old_cost=product.cost_price,
+                new_cost=product.cost_price,
+                old_price=product.selling_price,
+                new_price=product.selling_price
             )
             
             product.stock = actual_new_stock

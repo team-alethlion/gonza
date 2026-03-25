@@ -1,1 +1,3 @@
 - proper recipt number generation function
+- check for relations
+- ensure that only data for that user, agency and branch is downloaded
