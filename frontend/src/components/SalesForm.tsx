@@ -48,6 +48,7 @@ interface SalesFormProps {
   onAddNewCustomer?: () => void;
   draftData?: any;
   onClearDraft?: () => void;
+  isReceiptOpen?: boolean;
 }
 
 const SalesForm: React.FC<SalesFormProps> = ({
@@ -59,6 +60,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
   onAddNewCustomer,
   draftData,
   onClearDraft,
+  isReceiptOpen = false,
 }) => {
   const router = useRouter();
 
@@ -184,6 +186,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     selectedDate,
     saveDraft,
     isClearingRef,
+    isReceiptOpen,
   });
 
   const { scannerBufferRef } = useBarcodeScanner({
@@ -244,10 +247,21 @@ const SalesForm: React.FC<SalesFormProps> = ({
   useEffect(() => { isClearingRef.current = false; });
 
   useEffect(() => {
+    // Only load draft if we have data, we are in a new sale, 
+    // AND the form is currently empty (not partially filled)
     if (draftData && !initialData) {
-      setFormData(draftData.formData);
-      setSelectedDate(draftData.selectedDate);
-      setTaxRateInput(draftData.formData.taxRate?.toString() || "");
+      const isFormEmpty = 
+        !formData.customerName.trim() && 
+        !formData.customerAddress.trim() && 
+        !formData.customerContact.trim() &&
+        formData.items.length === 1 &&
+        !formData.items[0].description.trim();
+
+      if (isFormEmpty) {
+        setFormData(draftData.formData);
+        setSelectedDate(draftData.selectedDate);
+        setTaxRateInput(draftData.formData.taxRate?.toString() || "");
+      }
     }
   }, [draftData, initialData, setFormData, setTaxRateInput, setSelectedDate]);
 
@@ -298,19 +312,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
         }}
       />
 
-      <CustomerInformation
-        customerName={formData.customerName || ''}
-        customerAddress={formData.customerAddress || ''}
-        customerContact={formData.customerContact || ''}
-        onCustomerInfoChange={handleChange}
-        errors={errors}
-        customers={customers}
-        onAddNewCustomer={onAddNewCustomer}
-        onSelectCustomer={handleSelectCustomer}
-        selectedCategoryId={selectedCustomerCategoryId}
-        onCategoryChange={handleCategoryChange}
-      />
-
       <SaleItemsManager
         items={formData.items}
         onAddItem={handleAddItem}
@@ -356,18 +357,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onNotesChange={handleChange}
         categoryId={formData.categoryId || ""}
         onCategoryChange={handleSalesCategoryChange}
-      />
-
-      <SaleSMSSection 
-        userId={user?.id}
-        customerName={formData.customerName}
-        customerContact={formData.customerContact}
-        businessName={currentBusiness?.name || ''}
-        businessPhone={settings.businessPhone || ''}
-        sendSMS={sendSMS}
-        onSendSMSChange={setSendSMS}
-        smsMessage={smsMessage}
-        onSMSMessageChange={setSMSMessage}
       />
 
       <SalesFormActions

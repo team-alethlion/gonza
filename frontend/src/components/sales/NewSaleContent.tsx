@@ -74,6 +74,7 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
         onAddNewCustomer={onAddNewCustomer}
         draftData={draftData}
         onClearDraft={onClearDraft}
+        isReceiptOpen={isReceiptOpen}
       />
 
       <ReceiptDialog

@@ -181,6 +181,8 @@ class SaleViewSet(viewsets.ModelViewSet):
             agency_id=data.get('agencyId'),
             receipt_number=receipt_number,
             customer_name=data.get('customerName', 'Valued Customer'),
+            customer_phone=data.get('customerContact'),
+            customer_address=data.get('customerAddress'),
             customer_id=data.get('customerId'),
             category_id=data.get('categoryId'),
             status=status_val,
@@ -199,6 +201,15 @@ class SaleViewSet(viewsets.ModelViewSet):
             qty = to_decimal(item.get('quantity', 0))
             price = to_decimal(item.get('price', 0))
             item_sub = price * qty
+            
+            discount_type = item.get('discountType', 'percentage')
+            if discount_type == 'amount':
+                discount_amt = to_decimal(item.get('discountAmount', 0))
+                discount_perc = Decimal('0')
+            else:
+                discount_perc = to_decimal(item.get('discountPercentage', 0))
+                discount_amt = (item_sub * discount_perc) / Decimal('100')
+                
             SaleItem.objects.create(
                 id=f"si_{uuid.uuid4().hex[:12]}",
                 sale=sale,
@@ -209,7 +220,10 @@ class SaleViewSet(viewsets.ModelViewSet):
                 quantity=qty,
                 unit_price=price,
                 subtotal=item_sub,
-                total=item_sub,
+                discount=discount_amt,
+                discount_type=discount_type,
+                discount_percentage=discount_perc,
+                total=item_sub - discount_amt,
                 cost_price=to_decimal(item.get('cost', 0))
             )
             
@@ -285,6 +299,16 @@ class SaleViewSet(viewsets.ModelViewSet):
             qty = to_decimal(item.get('quantity', 0))
             price = to_decimal(item.get('price', 0))
             item_sub = price * qty
+
+            discount_type = item.get('discountType', 'percentage')
+            if discount_type == 'amount':
+                discount_amt = to_decimal(item.get('discountAmount', 0))
+                discount_perc = Decimal('0')
+            else:
+                discount_perc = to_decimal(item.get('discountPercentage', 0))
+                discount_amt = (item_sub * discount_perc) / Decimal('100')
+
+            import uuid
             SaleItem.objects.create(
                 id=f"si_{uuid.uuid4().hex[:12]}",
                 sale=sale,
@@ -295,13 +319,19 @@ class SaleViewSet(viewsets.ModelViewSet):
                 quantity=qty,
                 unit_price=price,
                 subtotal=item_sub,
-                total=item_sub,
+                discount=discount_amt,
+                discount_type=discount_type,
+                discount_percentage=discount_perc,
+                total=item_sub - discount_amt,
                 cost_price=to_decimal(item.get('cost', 0))
             )
 
         sale.status = new_status
         sale.amount_paid = to_decimal(data.get('amountPaid', sale.amount_paid))
         sale.balance_due = to_decimal(data.get('amountDue', sale.balance_due))
+        if 'customerContact' in data: sale.customer_phone = data['customerContact']
+        if 'customerAddress' in data: sale.customer_address = data['customerAddress']
+        if 'customerName' in data: sale.customer_name = data['customerName']
         if 'customerId' in data: sale.customer_id = data['customerId']
         if 'categoryId' in data: sale.category_id = data['categoryId']
         sale.subtotal = financials['subtotal']

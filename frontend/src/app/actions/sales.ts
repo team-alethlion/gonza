@@ -74,8 +74,10 @@ export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updat
             userId: userId,
             branchId: saleDbData.location_id,
             agencyId: sessionUser.agencyId,
-            receiptNumber: saleDbData.receipt_number,
+            receipt_number: saleDbData.receipt_number,
             customerName: saleDbData.customer_name,
+            customerContact: saleDbData.customer_contact,
+            customerAddress: saleDbData.customer_address,
             customerId: saleDbData.customer_id,
             categoryId: saleDbData.category_id,
             items: saleDbData.items,
@@ -111,6 +113,8 @@ export async function createReceiptAction(saleData: {
     paymentStatus: string;
     receiptNumber: string;
     customerName: string;
+    customerContact?: string;
+    customerAddress?: string;
     customerId: string;
     items: unknown;
     taxRate: number;
@@ -134,6 +138,8 @@ export async function createReceiptAction(saleData: {
             agencyId: sessionUser.agencyId,
             receiptNumber: saleData.receiptNumber,
             customerName: saleData.customerName,
+            customerContact: saleData.customerContact,
+            customerAddress: saleData.customerAddress,
             customerId: saleData.customerId,
             items: saleData.items,
             paymentStatus: status,

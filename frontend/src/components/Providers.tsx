@@ -49,7 +49,7 @@ export function Providers({
     }, [isUnauthorized]);
 
     return (
-        <SessionProvider session={initialSession}>
+        <SessionProvider session={initialSession} refetchOnWindowFocus={false}>
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>
                     <BusinessProvider 

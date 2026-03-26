@@ -37,13 +37,11 @@ const InventoryClient = ({
   initialCount,
   initialStats,
   initialTopSelling,
-  initialProfiles,
 }: {
   initialProducts?: Product[];
   initialCount?: number;
   initialStats?: any;
   initialTopSelling?: any[];
-  initialProfiles?: any[];
 }) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();

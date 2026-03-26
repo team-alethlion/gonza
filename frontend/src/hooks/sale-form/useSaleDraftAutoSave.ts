@@ -9,6 +9,7 @@ interface UseSaleDraftAutoSaveProps {
   selectedDate: Date;
   saveDraft: (formData: any, date: Date, persistent: boolean) => void;
   isClearingRef: React.MutableRefObject<boolean>;
+  isReceiptOpen?: boolean;
 }
 
 export const useSaleDraftAutoSave = ({
@@ -20,13 +21,16 @@ export const useSaleDraftAutoSave = ({
   selectedDate,
   saveDraft,
   isClearingRef,
+  isReceiptOpen = false,
 }: UseSaleDraftAutoSaveProps) => {
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
+  const lastSavedDataRef = useRef<string>("");
+
   const autoSaveDraft = React.useCallback(
     (isPersistent = true) => {
-      // Check ref to prevent saving during clear operation
-      if (isClearingRef.current) return;
+      // Check ref to prevent saving during clear operation or if receipt is open
+      if (isClearingRef.current || isReceiptOpen) return;
 
       if (!initialData && !loading && !isSubmitted && !formRecentlyCleared) {
         const hasData =
@@ -41,7 +45,12 @@ export const useSaleDraftAutoSave = ({
           );
 
         if (hasData) {
-          saveDraft(formData, selectedDate, isPersistent);
+          // ⚡️ PERFORMANCE: Deep comparison to avoid redundant writes
+          const currentDataString = JSON.stringify({ formData, selectedDate: selectedDate.toISOString() });
+          if (currentDataString !== lastSavedDataRef.current) {
+            saveDraft(formData, selectedDate, isPersistent);
+            lastSavedDataRef.current = currentDataString;
+          }
         }
       }
     },
@@ -60,15 +69,15 @@ export const useSaleDraftAutoSave = ({
   useEffect(() => {
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
 
-    // ⚡️ SPEED: Immediate session save (no timeout) for critical data loss prevention
-    autoSaveDraft(false);
+    // ⚡️ SPEED: Debounced session save (1s) to prevent "keyboard lag"
+    const sessionTimer = setTimeout(() => autoSaveDraft(false), 1000);
 
-    // ⚡️ PERSISTENCE: Debounced persistent save (localStorage) every 2s
-    autoSaveTimeoutRef.current = setTimeout(() => autoSaveDraft(true), 2000);
+    // ⚡️ PERSISTENCE: Debounced persistent save (localStorage) every 5s
+    autoSaveTimeoutRef.current = setTimeout(() => autoSaveDraft(true), 5000);
 
     return () => {
+      clearTimeout(sessionTimer);
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-      autoSaveDraft(true); // Save on unmount
     };
   }, [autoSaveDraft]);
 

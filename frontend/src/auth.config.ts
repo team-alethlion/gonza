@@ -97,28 +97,6 @@ export const authConfig = {
         return Response.redirect(new URL("/subscription", nextUrl))
       }
 
-      // 5. Handle Subscription (Global check for non-superadmins)
-      if (role !== 'superadmin' && !isSubscriptionPath && !nextUrl.pathname.startsWith('/api/auth') && !nextUrl.pathname.startsWith('/verify-email')) {
-        const now = new Date();
-        const isTrialActive = subStatus === 'trial' && trialEnd && new Date(trialEnd) > now;
-        const isSubActive = subStatus === 'active' && subExpiry && new Date(subExpiry) > now;
-
-        console.log(`[Middleware] SubCheck: Status=${subStatus}, trialEnd=${trialEnd} (${isTrialActive}), subExpiry=${subExpiry} (${isSubActive})`);
-
-        if (!isTrialActive && !isSubActive) {
-          console.log(`[Middleware] Subscription Invalid (Status: ${subStatus}). Redirecting to /subscription`);
-          return Response.redirect(new URL("/subscription", nextUrl))
-        }
-      }
-
-      // 6. Handle Onboarding (Only after subscription is valid)
-      if (role !== 'superadmin' && !isOnboardedVal && !isOnboardingPath && !nextUrl.pathname.startsWith('/api/auth') && !nextUrl.pathname.startsWith('/verify-email')) {
-        console.log(`[Middleware] Not Onboarded. Redirecting to /onboarding`);
-        return Response.redirect(new URL("/onboarding", nextUrl))
-      }
-
-    
-
       if (nextUrl.pathname.startsWith("/agency")) {
         return agencyProxy(auth, nextUrl);
       }

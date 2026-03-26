@@ -52,8 +52,15 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
     }
   };
 
-  const subtotalBeforeDiscount = sale.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const totalDiscountAmount = sale.items.reduce((total, item) => {
+  const subtotalAfterDiscount = sale.subtotal !== undefined ? Number(sale.subtotal) : sale.items.reduce((total, item) => {
+    const itemSubtotal = item.price * item.quantity;
+    const discountAmount = item.discountType === 'amount'
+      ? (item.discountAmount || 0)
+      : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+    return total + (itemSubtotal - discountAmount);
+  }, 0);
+
+  const totalDiscountAmount = sale.discount !== undefined ? Number(sale.discount) : sale.items.reduce((total, item) => {
     const itemSubtotal = item.price * item.quantity;
     const discountAmount = item.discountType === 'amount'
       ? (item.discountAmount || 0)
@@ -61,7 +68,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
     return total + discountAmount;
   }, 0);
 
-  const subtotalAfterDiscount = subtotalBeforeDiscount - totalDiscountAmount;
+  const subtotalBeforeDiscount = subtotalAfterDiscount + totalDiscountAmount;
   const taxRate = sale.taxRate || 0;
   const taxAmount = subtotalAfterDiscount * (taxRate / 100);
   const totalAmount = subtotalAfterDiscount + taxAmount;

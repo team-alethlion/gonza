@@ -227,7 +227,7 @@ export const useNewSaleActions = (
     if (!editSale && onSaveSuccess) {
       onSaveSuccess();
     } else {
-      router.push("/sales");
+      router.push("/agency/sales");
     }
   }, [router, editSale, onSaveSuccess]);
 

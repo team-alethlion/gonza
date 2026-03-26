@@ -381,18 +381,9 @@ export const mapDbSaleToSale = (dbSale: any): Sale => {
   // Parse items and ensure numeric fields are numbers, not strings
   const rawItems = Array.isArray(dbSale.items) ? dbSale.items : [];
   const items = rawItems.map((item: any) => {
-    const discountPercentage = item.discountPercentage !== undefined ? Number(item.discountPercentage) : undefined;
-    const discountAmount = item.discountAmount !== undefined ? Number(item.discountAmount) : undefined;
-
-    // Infer discountType if missing (for legacy data)
-    let discountType = item.discountType as 'percentage' | 'amount' | undefined;
-    if (!discountType) {
-      if (discountPercentage && discountPercentage > 0) {
-        discountType = 'percentage';
-      } else if (discountAmount && discountAmount > 0) {
-        discountType = 'amount';
-      }
-    }
+    const discountPercentage = item.discount_percentage !== undefined ? Number(item.discount_percentage) : (item.discountPercentage !== undefined ? Number(item.discountPercentage) : undefined);
+    const discountAmount = item.discount !== undefined ? Number(item.discount) : (item.discountAmount !== undefined ? Number(item.discountAmount) : undefined);
+    const discountType = item.discount_type || item.discountType || undefined;
 
     return {
       description: item.description || item.product_name || 'Item',

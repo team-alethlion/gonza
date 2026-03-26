@@ -119,8 +119,8 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     return isNaN(num) ? 0 : num;
   };
 
-  // Calculate subtotal with discounts
-  const subtotal = sale.items.reduce((total, item) => {
+  // Calculate subtotal with discounts - using server values if available
+  const subtotal = sale.subtotal !== undefined ? toSafeNum(sale.subtotal) : sale.items.reduce((total, item) => {
     const itemPrice = toSafeNum(item.price);
     const itemQty = toSafeNum(item.quantity);
     const itemSubtotal = itemPrice * itemQty;
@@ -130,6 +130,16 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
         ? toSafeNum(item.discountAmount)
         : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
     return total + (itemSubtotal - discountAmount);
+  }, 0);
+
+  // Total discount from server or items
+  const totalDiscount = sale.discount !== undefined ? toSafeNum(sale.discount) : sale.items.reduce((total, item) => {
+    const itemSubtotal = toSafeNum(item.quantity) * toSafeNum(item.price);
+    const discountAmount =
+      item.discountType === "amount"
+        ? toSafeNum(item.discountAmount)
+        : (itemSubtotal * toSafeNum(item.discountPercentage)) / 100;
+    return total + discountAmount;
   }, 0);
 
   // Calculate tax amount based on taxRate (default to 0 if not present)
@@ -760,56 +770,41 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                     })}
                   </tbody>
                   <tfoot>
-                    {(() => {
-                      const totalDiscount = sale.items.reduce((total, item) => {
-                        const itemSubtotal = item.quantity * item.price;
-                        const discountAmount =
-                          item.discountType === "amount"
-                            ? item.discountAmount || 0
-                            : (itemSubtotal * (item.discountPercentage || 0)) /
-                              100;
-                        return total + discountAmount;
-                      }, 0);
-
-                      return (
-                        <>
-                          <tr className="border-black border-t-[1.5px]">
-                            <td
-                              colSpan={4}
-                              className="py-2 text-right font-medium bg-gray-200 px-2">
-                              Subtotal (before discount):
-                            </td>
-                            <td className="py-2 text-right bg-gray-200 px-2">
-                              {displayCurrency}{" "}
-                              {formatNumber(subtotal + totalDiscount)}
-                            </td>
-                          </tr>
-                          {totalDiscount > 0 && (
-                            <tr>
-                              <td
-                                colSpan={4}
-                                className="py-2 text-right font-medium bg-orange-100 px-2">
-                                Total Discount:
-                              </td>
-                              <td className="py-2 text-right bg-orange-100 px-2">
-                                -{displayCurrency} {formatNumber(totalDiscount)}
-                              </td>
-                            </tr>
-                          )}
-                          <tr>
-                            <td
-                              colSpan={4}
-                              className="py-2 text-right font-medium bg-gray-200 px-2">
-                              Subtotal:
-                            </td>
-                            <td className="py-2 text-right bg-gray-200 px-2">
-                              {displayCurrency} {formatNumber(subtotal)}
-                            </td>
-                          </tr>
-                        </>
-                      );
-                    })()}
-                    {showTaxRow && (
+                    <>
+                      <tr className="border-black border-t-[1.5px]">
+                        <td
+                          colSpan={4}
+                          className="py-2 text-right font-medium bg-gray-200 px-2">
+                          Subtotal (before discount):
+                        </td>
+                        <td className="py-2 text-right bg-gray-200 px-2">
+                          {displayCurrency}{" "}
+                          {formatNumber(subtotal + totalDiscount)}
+                        </td>
+                      </tr>
+                      {totalDiscount > 0 && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-2 text-right font-medium bg-orange-100 px-2">
+                            Total Discount:
+                          </td>
+                          <td className="py-2 text-right bg-orange-100 px-2">
+                            -{displayCurrency} {formatNumber(totalDiscount)}
+                          </td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="py-2 text-right font-medium bg-gray-200 px-2">
+                          Subtotal:
+                        </td>
+                        <td className="py-2 text-right bg-gray-200 px-2">
+                          {displayCurrency} {formatNumber(subtotal)}
+                        </td>
+                      </tr>
+                    </>                    {showTaxRow && (
                       <tr>
                         <td
                           colSpan={4}
@@ -919,45 +914,31 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
                 {/* Mobile Totals */}
                 <div className="mt-4 border-t-2 border-black pt-2 space-y-1">
-                  {(() => {
-                    const totalDiscount = sale.items.reduce((total, item) => {
-                      const itemSubtotal = item.quantity * item.price;
-                      const discountAmount =
-                        item.discountType === "amount"
-                          ? item.discountAmount || 0
-                          : (itemSubtotal * (item.discountPercentage || 0)) /
-                            100;
-                      return total + discountAmount;
-                    }, 0);
-
-                    return (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">
-                            Subtotal (before disc):
-                          </span>
-                          <span>
-                            {displayCurrency}{" "}
-                            {formatNumber(subtotal + totalDiscount)}
-                          </span>
-                        </div>
-                        {totalDiscount > 0 && (
-                          <div className="flex justify-between text-sm text-orange-600">
-                            <span className="font-medium">Total Discount:</span>
-                            <span>
-                              -{displayCurrency} {formatNumber(totalDiscount)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">Subtotal:</span>
-                          <span>
-                            {displayCurrency} {formatNumber(subtotal)}
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">
+                        Subtotal (before disc):
+                      </span>
+                      <span>
+                        {displayCurrency}{" "}
+                        {formatNumber(subtotal + totalDiscount)}
+                      </span>
+                    </div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-orange-600">
+                        <span className="font-medium">Total Discount:</span>
+                        <span>
+                          -{displayCurrency} {formatNumber(totalDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">Subtotal:</span>
+                      <span>
+                        {displayCurrency} {formatNumber(subtotal)}
+                      </span>
+                    </div>
+                  </>
 
                   {showTaxRow && (
                     <div className="flex justify-between text-sm">
