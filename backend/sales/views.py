@@ -75,6 +75,8 @@ class SaleCategoryViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-created_at')
 
+from .utils import generate_receipt_number
+
 class SaleViewSet(viewsets.ModelViewSet):
     queryset = Sale.objects.all().prefetch_related('items', 'installments')
     serializer_class = SaleSerializer
@@ -171,6 +173,11 @@ class SaleViewSet(viewsets.ModelViewSet):
         
         import uuid
         receipt_number = data.get('receiptNumber')
+        
+        # ⚡️ PROFESSIONAL RECEIPT GENERATION: Ensure server-side sequentiality
+        # Generate a new number if current one is missing, 'PREVIEW', or we want to enforce it
+        if not receipt_number or receipt_number == 'PREVIEW':
+            receipt_number = generate_receipt_number(branch_id)
         
         # Check for receipt number collision and handle it gracefully
         if receipt_number and Sale.objects.filter(receipt_number=receipt_number).exists():

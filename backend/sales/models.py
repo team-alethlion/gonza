@@ -97,6 +97,7 @@ class Sale(models.Model):
     
     customer_name = models.CharField(max_length=200, null=True, blank=True)
     customer_phone = models.CharField(max_length=50, null=True, blank=True)
+    customer_address = models.TextField(null=True, blank=True)
     
     user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='sales_created', null=True, blank=True)
     category = models.ForeignKey(SaleCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='sales')

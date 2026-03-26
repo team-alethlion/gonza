@@ -221,7 +221,15 @@ export const useNewSaleActions = (
   );
 
   const handleReceiptClose = useCallback(() => {
+    const isPreview = completedSale?.id === "preview";
     setIsReceiptOpen(false);
+
+    // If it was just a preview, don't reset the form or navigate
+    if (isPreview) {
+      setCompletedSale(null);
+      return;
+    }
+
     // If it's a new sale and we have a success callback, use it (to clear form)
     // Otherwise navigate to sales list
     if (!editSale && onSaveSuccess) {
@@ -229,7 +237,7 @@ export const useNewSaleActions = (
     } else {
       router.push("/agency/sales");
     }
-  }, [router, editSale, onSaveSuccess]);
+  }, [router, editSale, onSaveSuccess, completedSale]);
 
   const handleAddCustomer = useCallback(
     async (customerData: Omit<Customer, "id" | "createdAt" | "updatedAt">) => {

@@ -39,17 +39,19 @@ const NewSale = () => {
   // Use a key to force re-mounting of the form component to clear all state
   const [formKey, setFormKey] = useState(0);
 
-  const handleResetForm = useCallback(() => {
-    setFormKey((prev) => prev + 1);
-  }, []);
-
   const {
     showDraftNotification,
     draftData,
     handleLoadDraft,
     handleDismissDraft,
     clearDraft,
+    refreshDraft,
   } = useNewSaleDraft(editSale);
+
+  const handleResetForm = useCallback(() => {
+    refreshDraft(); // Get latest data from storage before remounting
+    setFormKey((prev) => prev + 1);
+  }, [refreshDraft]);
 
   const {
     isReceiptOpen,

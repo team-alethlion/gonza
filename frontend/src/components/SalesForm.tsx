@@ -201,20 +201,24 @@ const SalesForm: React.FC<SalesFormProps> = ({
       toast.error("Add at least one item to preview the receipt");
       return;
     }
+
+    // ⚡️ PERSISTENCE: Save draft before preview to ensure latest changes are in storage
+    saveDraft(formData, selectedDate, true);
+
     const subtotal = calculateTotalAmount(formData.items);
     const taxAmt = calculateTaxAmount(subtotal);
     const total = subtotal + taxAmt;
 
     const previewSale: Sale = {
-      id: initialData?.id || 'preview',
-      receiptNumber: initialData?.receiptNumber || 'PREVIEW',
-      customerName: formData.customerName || 'Valued Customer',
+      id: "preview",
+      receiptNumber: initialData?.receiptNumber || "PREVIEW",
+      customerName: formData.customerName || "Valued Customer",
       customerAddress: formData.customerAddress,
       customerContact: formData.customerContact,
       items: formData.items.map((item: any) => ({
         ...item,
         price: Number(item.price),
-        quantity: Number(item.quantity)
+        quantity: Number(item.quantity),
       })) as any,
       paymentStatus: formData.paymentStatus,
       profit: 0,
@@ -228,7 +232,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
       createdAt: new Date(),
       updatedAt: new Date(),
       amountPaid: formData.amountPaid,
-      amountDue: total - (formData.amountPaid || 0)
+      amountDue: total - (formData.amountPaid || 0),
     };
     onPreviewReceipt(previewSale);
   };

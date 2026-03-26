@@ -4,6 +4,7 @@ import { localDb } from '@/lib/dexie';
 import { getProductsDeltaAction } from '@/app/actions/products';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Product } from '@/types';
+import { matchProductSearch } from '@/utils/searchUtils';
 
 export const useProductSync = () => {
   const { currentBusiness } = useBusiness();
@@ -19,7 +20,12 @@ export const useProductSync = () => {
     try {
       // 1. Get last sync time from local metadata
       const metadata = await localDb.syncMetadata.get(currentBusiness.id);
-      const since = metadata?.lastSyncedAt || 0;
+      
+      // Check if we actually have any products locally for this business
+      const localCount = await localDb.products.where('locationId').equals(currentBusiness.id).count();
+      
+      // If we have no local products for this branch, ignore 'since' and do a full sync
+      const since = localCount > 0 ? (metadata?.lastSyncedAt || 0) : 0;
 
       // 2. Fetch changes from server
       const result = await getProductsDeltaAction(currentBusiness.id, since);
@@ -29,6 +35,7 @@ export const useProductSync = () => {
         if (result.products.length > 0) {
           const formattedProducts = result.products.map((p: any) => ({
             ...p,
+            locationId: currentBusiness.id, // ⚡️ ENSURE locationId is saved
             createdAt: new Date(p.createdAt),
             updatedAt: new Date(p.updatedAt)
           }));
@@ -49,7 +56,7 @@ export const useProductSync = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [currentBusiness?.id]);
+  }, [currentBusiness]); // Dependency on whole currentBusiness to be safe
 
   // Initial sync on mount or business change
   useEffect(() => {
@@ -68,19 +75,33 @@ export const useProductSync = () => {
 };
 
 export const useLocalProductSearch = (searchTerm: string) => {
+  const { currentBusiness } = useBusiness();
+
   return useLiveQuery(async () => {
-    if (!searchTerm || searchTerm.trim().length < 2) return [];
+    if (!searchTerm || searchTerm.trim().length < 1) return [];
     
-    const term = searchTerm.toLowerCase().trim();
-    
-    // Efficient search in local IndexedDB
-    // Note: Dexie startsWith is faster than a full scan
-    return await localDb.products
-      .where('name').startsWithIgnoreCase(term)
-      .or('barcode').equals(term)
-      .or('itemNumber').startsWithIgnoreCase(term)
-      .or('category').startsWithIgnoreCase(term)
-      .limit(20)
-      .toArray();
-  }, [searchTerm]);
+    try {
+      // 1. Try branch-specific search first
+      if (currentBusiness?.id) {
+        const branchProducts = await localDb.products
+          .where('locationId')
+          .equals(currentBusiness.id)
+          .toArray();
+        
+        const filtered = branchProducts
+          .filter(product => matchProductSearch(product, searchTerm));
+          
+        if (filtered.length > 0) return filtered.slice(0, 20);
+      }
+      
+      // 2. Fallback: Search ALL products (incase locationId isn't fully synced/migrated yet)
+      const allProducts = await localDb.products.toArray();
+      return allProducts
+        .filter(product => matchProductSearch(product, searchTerm))
+        .slice(0, 20);
+    } catch (err) {
+      console.error('Dexie Search Error:', err);
+      return [];
+    }
+  }, [searchTerm, currentBusiness?.id]);
 };

@@ -31,6 +31,7 @@ class InstallmentPaymentSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, read_only=True)
     installments = InstallmentPaymentSerializer(many=True, read_only=True)
+    receipt_url = serializers.SerializerMethodField()
     
     subtotal = serializers.FloatField()
     discount_amount = serializers.FloatField()
@@ -44,3 +45,18 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = '__all__'
+
+    def get_receipt_url(self, obj):
+        request = self.context.get('request')
+        if request and obj.id:
+            # We assume the standard DRF routing for the receipt_pdf action
+            # /api/sales/sales/{id}/receipt_pdf/
+            from django.urls import reverse
+            try:
+                return request.build_absolute_uri(
+                    reverse('sale-receipt-pdf', kwargs={'pk': obj.pk})
+                )
+            except:
+                # Fallback to manual string construction if reverse fails
+                return request.build_absolute_uri(f"/api/sales/sales/{obj.pk}/receipt_pdf/")
+        return None

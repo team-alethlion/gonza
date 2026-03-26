@@ -41,8 +41,8 @@ export class GonzaDatabase extends Dexie {
 
   constructor() {
     super("GonzaDatabase");
-    this.version(13).stores({
-      products: "id, name, barcode, itemNumber, category, updatedAt",
+    this.version(14).stores({
+      products: "id, name, barcode, itemNumber, category, locationId, updatedAt",
       customers: "id, fullName, phoneNumber, categoryId, locationId",
       expenses: "id, date, category, amount, locationId",
       sales: "id, date, customerName, receiptNumber, locationId",

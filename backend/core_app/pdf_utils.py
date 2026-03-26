@@ -95,46 +95,110 @@ def generate_pdf_response(elements, filename, buffer=None):
 
 class ReceiptGenerator(BaseReport):
     def generate(self, sale):
-        agency = sale.agency
-        elements = self._get_business_header(
-            agency_name=agency.name if agency else "Gonza System",
-            address=agency.address if agency else "",
-            phone=agency.phone if agency else ""
-        )
+        from core_app.models import BranchSettings
         
-        # Receipt Details
-        details_text = f"<b>Receipt #:</b> {sale.receipt_number}<br/>"
-        details_text += f"<b>Date:</b> {sale.date.strftime('%Y-%m-%d %H:%M')}<br/>"
-        details_text += f"<b>Customer:</b> {sale.customer_name}<br/>"
-        details_text += f"<b>Status:</b> {sale.status}"
+        branch = sale.branch
+        settings = BranchSettings.objects.filter(branch=branch).first()
         
-        elements.append(Paragraph(details_text, self.styles['Normal']))
-        elements.append(Spacer(1, 10))
+        agency_name = settings.business_name if settings and settings.business_name else (branch.name if branch else "Gonza System")
+        address = settings.address if settings and settings.address else (branch.location if branch else "")
+        phone = settings.phone if settings and settings.phone else (branch.phone if branch else "")
+        email = settings.email if settings and settings.email else (branch.email if branch else "")
+        website = settings.website if settings and settings.website else ""
+        currency = settings.currency if settings else "UGX"
+
+        elements = []
+        
+        # Logo and Header
+        if settings and settings.logo:
+            # Note: Handling remote URLs in ReportLab requires downloading or using a library like requests
+            # For now, we'll stick to text-based header if logo is a URL
+            pass
+
+        header_text = f"<font size=14><b>{agency_name}</b></font><br/>"
+        if address: header_text += f"{address}<br/>"
+        if phone: header_text += f"Tel: {phone}<br/>"
+        if email: header_text += f"Email: {email}<br/>"
+        if website: header_text += f"Web: {website}"
+            
+        elements.append(Paragraph(header_text, self.styles['Center']))
+        elements.append(Spacer(1, 5*mm))
+        
+        # Horizontal Line
+        elements.append(Table([['']], colWidths=[180*mm], style=[('LINEBELOW', (0,0), (-1,0), 1, colors.black)]))
+        elements.append(Spacer(1, 5*mm))
+
+        elements.append(Paragraph(self.title.upper(), self.styles['Heading1Center']))
+        elements.append(Spacer(1, 5*mm))
+        
+        # Receipt Details Table (Left: Customer, Right: Receipt Info)
+        date_str = sale.date.strftime('%d/%m/%Y %H:%M')
+        details_data = [
+            [Paragraph(f"<b>BILL TO:</b><br/>{sale.customer_name}<br/>{sale.customer_phone or ''}<br/>{sale.customer_address or ''}", self.styles['Normal']),
+             Paragraph(f"<b>Receipt #:</b> {sale.receipt_number}<br/><b>Date:</b> {date_str}<br/><b>Status:</b> {sale.status}", self.styles['Normal'])]
+        ]
+        details_table = Table(details_data, colWidths=[110*mm, 70*mm])
+        details_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ]))
+        elements.append(details_table)
+        elements.append(Spacer(1, 10*mm))
         
         # Items Table
-        table_data = [['Description', 'Qty', 'Unit Price', 'Total']]
+        table_data = [['Description', 'Qty', 'Price', 'Total']]
         for item in sale.items.all():
             table_data.append([
-                item.product_name,
+                Paragraph(item.product_name, self.styles['Normal']),
                 str(item.quantity),
                 f"{item.unit_price:,.2f}",
                 f"{item.total:,.2f}"
             ])
             
-        elements.append(self.draw_table(table_data, col_widths=[80*mm, 20*mm, 40*mm, 40*mm]))
-        elements.append(Spacer(1, 10))
+        elements.append(self.draw_table(table_data, col_widths=[90*mm, 20*mm, 35*mm, 35*mm]))
+        elements.append(Spacer(1, 5*mm))
         
         # Totals
-        totals_text = f"<b>Subtotal:</b> {sale.subtotal:,.2f}<br/>"
-        if sale.discount_amount > 0:
-            totals_text += f"<b>Discount:</b> -{sale.discount_amount:,.2f}<br/>"
-        if sale.tax_amount > 0:
-            totals_text += f"<b>Tax:</b> {sale.tax_amount:,.2f}<br/>"
-        totals_text += f"<b>TOTAL: {sale.total_amount:,.2f}</b><br/>"
-        totals_text += f"<b>Amount Paid:</b> {sale.amount_paid:,.2f}<br/>"
-        totals_text += f"<b>Balance Due:</b> {sale.balance_due:,.2f}"
+        summary_data = []
+        summary_data.append(['', 'Subtotal:', f"{currency} {sale.subtotal:,.2f}"])
         
-        elements.append(Paragraph(totals_text, self.styles['Right']))
+        if sale.discount_amount > 0:
+            summary_data.append(['', 'Discount:', f"-{currency} {sale.discount_amount:,.2f}"])
+            
+        if sale.tax_amount > 0:
+            summary_data.append(['', 'Tax:', f"{currency} {sale.tax_amount:,.2f}"])
+            
+        if sale.shipping_cost > 0:
+            summary_data.append(['', 'Shipping:', f"{currency} {sale.shipping_cost:,.2f}"])
+
+        summary_data.append(['', 'TOTAL:', f"<b>{currency} {sale.total_amount:,.2f}</b>"])
+        summary_data.append(['', 'Amount Paid:', f"{currency} {sale.amount_paid:,.2f}"])
+        
+        balance_style = colors.black
+        if sale.balance_due > 0:
+            balance_style = colors.red
+            
+        summary_data.append(['', 'Balance Due:', f"{currency} {sale.balance_due:,.2f}"])
+        
+        summary_table = Table(summary_data, colWidths=[100*mm, 40*mm, 40*mm])
+        summary_table.setStyle(TableStyle([
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('ALIGN', (2,0), (2,-1), 'RIGHT'),
+            ('FONTNAME', (1,-3), (2,-1), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (2, -1), (2, -1), balance_style),
+        ]))
+        elements.append(summary_table)
+        
+        # Footer
+        elements.append(Spacer(1, 20*mm))
+        elements.append(Paragraph("Thank you for your business!", self.styles['Center']))
+        
+        if sale.notes:
+            elements.append(Spacer(1, 10*mm))
+            elements.append(Paragraph(f"<b>Notes:</b> {sale.notes}", self.styles['Normal']))
+
+        elements.append(Spacer(1, 15*mm))
+        elements.append(Paragraph("<font size=8 color=grey>Powered by Gonza Systems</font>", self.styles['Center']))
+        
         return elements
 
 class StockSummaryGenerator(BaseReport):

@@ -779,8 +779,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                           {displayCurrency}{" "}
                           {formatNumber(subtotal + totalDiscount)}
                         </td>
-                      </tr>
-                      {totalDiscount > 0 && (
+                      </tr>{totalDiscount > 0 && (
                         <tr>
                           <td
                             colSpan={4}
@@ -791,8 +790,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                             -{displayCurrency} {formatNumber(totalDiscount)}
                           </td>
                         </tr>
-                      )}
-                      <tr>
+                      )}<tr>
                         <td
                           colSpan={4}
                           className="py-2 text-right font-medium bg-gray-200 px-2">
@@ -801,19 +799,18 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                         <td className="py-2 text-right bg-gray-200 px-2">
                           {displayCurrency} {formatNumber(subtotal)}
                         </td>
-                      </tr>                    {showTaxRow && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="py-2 text-right font-medium bg-gray-200 px-2">
-                          Tax ({taxRate}%):
-                        </td>
-                        <td className="py-2 text-right bg-gray-200 px-2">
-                          {displayCurrency} {formatNumber(taxAmount)}
-                        </td>
-                      </tr>
-                    )}
-                    <tr className="border-black border-t-[1.5px] font-bold">
+                      </tr>{showTaxRow && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-2 text-right font-medium bg-gray-200 px-2">
+                            Tax ({taxRate}%):
+                          </td>
+                          <td className="py-2 text-right bg-gray-200 px-2">
+                            {displayCurrency} {formatNumber(taxAmount)}
+                          </td>
+                        </tr>
+                      )}<tr className="border-black border-t-[1.5px] font-bold">
                       <td
                         colSpan={4}
                         className="py-2 sm:py-3 text-right bg-gray-300 px-2">
@@ -822,8 +819,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                       <td className="py-2 sm:py-3 text-right bg-gray-300 px-2">
                         {displayCurrency} {formatNumber(totalAmount)}
                       </td>
-                    </tr>
-                    {isInstallmentSale && (
+                    </tr>{isInstallmentSale && (
                       <>
                         <tr>
                           <td
@@ -846,8 +842,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                           </td>
                         </tr>
                       </>
-                    )}
-                    <tr>
+                    )}<tr>
                       <td
                         colSpan={5}
                         className="py-2 sm:py-3 text-left border-t border-black px-2 italic">

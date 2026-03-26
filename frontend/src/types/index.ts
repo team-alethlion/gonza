@@ -217,6 +217,7 @@ export interface UserProfile {
 // New interfaces for Product management - ADDED itemNumber
 export interface Product {
   id: string;
+  locationId?: string; // Added for branch filtering in local DB
   itemNumber: string; // Added item number field
   barcode: string | null; // Added barcode field
   manufacturerBarcode: string | null; // Added manufacturer barcode field
@@ -396,7 +397,7 @@ export const mapDbSaleToSale = (dbSale: any): Sale => {
       quantity: Number(item.quantity) || 0,
       price: Number(item.unit_price || item.price || 0),
       cost: Number(item.cost_price || item.cost || 0),
-      productId: item.productId || item.product || undefined,
+      productId: item.productId || item.product_id || item.product || undefined,
       discountType,
       discountPercentage,
       discountAmount,
@@ -454,6 +455,18 @@ export const mapSaleToDbSale = (
   locationId: string,
   cashTransactionId?: string | null
 ): Omit<DbSale, 'id' | 'created_at' | 'updated_at'> => {
+  // Map items and ensure productId is included for stock deduction
+  const mappedItems = saleData.items.map(item => ({
+    productId: item.productId,
+    description: item.description,
+    quantity: item.quantity,
+    price: item.price,
+    cost: item.cost,
+    discountType: item.discountType,
+    discountPercentage: item.discountPercentage,
+    discountAmount: item.discountAmount
+  }));
+
   return {
     user_id: userId,
     location_id: locationId,
@@ -462,7 +475,7 @@ export const mapSaleToDbSale = (
     customer_address: saleData.customerAddress || null,
     customer_contact: saleData.customerContact || null,
     customer_id: saleData.customerId || null, // Include customer_id
-    items: (saleData.items as unknown) as Json,
+    items: (mappedItems as unknown) as Json,
     payment_status: saleData.paymentStatus,
     profit: profit,
     date: selectedDate.toISOString().split('T')[0],
