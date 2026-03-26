@@ -47,7 +47,7 @@ export const useSoldItemsData = (
   }, [dateFilter, dateRange, specificDate]);
 
   const fetchSoldItems = useCallback(async () => {
-    if (!currentBusiness?.id) return [];
+    if (!currentBusiness?.id) return { items: [], summary: {} };
     const { from, to } = getDateRange();
     const result = await getSoldItemsReportAction(currentBusiness.id, from.toISOString(), to.toISOString());
     if (!result.success) {
@@ -73,7 +73,7 @@ export const useSoldItemsData = (
     staleTime: 60 * 1000,
     // Only use initialData if we have actual items and are looking at the default period (this-month)
     // to prevent showing stale data or empty state for other filters on first load
-    initialData: (initialData && initialData.length > 0 && dateFilter === 'this-month') ? { items: initialData, summary: null } : undefined
+    initialData: (initialData && initialData.length > 0 && dateFilter === 'this-month') ? { items: initialData, summary: {} } : undefined
   });
 
   return {

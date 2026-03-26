@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileText, CalendarIcon, Search } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useSoldItemsData } from '@/hooks/useSoldItemsData';
+import { useSoldItemsData, SoldItem } from '@/hooks/useSoldItemsData';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatNumber, formatCashCurrency } from '@/lib/utils';
@@ -113,7 +113,7 @@ const SoldItemsTab = () => {
     }
 
     const query = searchQuery.toLowerCase();
-    return soldItems.filter(item =>
+    return soldItems.filter((item: SoldItem) =>
       item.description.toLowerCase().includes(query)
     );
   }, [soldItems, searchQuery]);
@@ -386,7 +386,7 @@ const SoldItemsTab = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSoldItems.slice(0, mobileConfig.pageSize * 2).map((item, index) => (
+                    {filteredSoldItems.slice(0, mobileConfig.pageSize * 2).map((item: SoldItem, index: number) => (
                       <TableRow
                         key={index}
                         className="cursor-pointer hover:bg-muted/50 transition-colors"

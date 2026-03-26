@@ -20,11 +20,11 @@ export const useSalesActions = () => {
     setIsReceiptDialogOpen(true);
   }, []);
 
-  const handleDeleteSale = useCallback((deleteSale: (id: string) => Promise<boolean>) => {
-    return async (sale: Sale) => {
+  const handleDeleteSale = useCallback((deleteSale: (id: string, reason?: string) => Promise<boolean>) => {
+    return async (sale: Sale, reason?: string) => {
       setIsDeletingSale(true);
       try {
-        await deleteSale(sale.id);
+        await deleteSale(sale.id, reason);
       } finally {
         setIsDeletingSale(false);
       }

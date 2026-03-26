@@ -769,9 +769,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                       );
                     })}
                   </tbody>
-                  <tfoot>
-                    <>
-                      <tr className="border-black border-t-[1.5px]">
+                  <tfoot><tr className="border-black border-t-[1.5px]">
                         <td
                           colSpan={4}
                           className="py-2 text-right font-medium bg-gray-200 px-2">
@@ -803,8 +801,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                         <td className="py-2 text-right bg-gray-200 px-2">
                           {displayCurrency} {formatNumber(subtotal)}
                         </td>
-                      </tr>
-                    </>                    {showTaxRow && (
+                      </tr>                    {showTaxRow && (
                       <tr>
                         <td
                           colSpan={4}

@@ -78,6 +78,7 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
           ? item.discountAmount || 0
           : (subtotal * (item.discountPercentage || 0)) / 100;
       const effectiveRevenue = subtotal - discountAmount;
+      // Profit = Net Revenue (excluding tax) - Total Cost
       return total + (effectiveRevenue - item.cost * item.quantity);
     }, 0);
   };

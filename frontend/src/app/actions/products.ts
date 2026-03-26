@@ -330,7 +330,7 @@ export async function deleteProductAction(id: string, branchId: string) {
 }
 
 export async function updateProductsBulkAction(
-  updates: Array<{ id: string; updated: Partial<Product> & { quantity?: number; costPrice?: number; sellingPrice?: number; minimumStock?: number; categoryId?: string; supplierId?: string; sku?: string } }>,
+  updates: Array<{ id: string; updated: Partial<Product> & { quantity?: number; costPrice?: number; sellingPrice?: number; minimumStock?: number; categoryId?: string | null; supplierId?: string | null; sku?: string | null } }>,
   businessId: string
 ) {
   try {

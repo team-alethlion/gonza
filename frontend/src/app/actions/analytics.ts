@@ -23,6 +23,7 @@ export async function getGlobalInventoryStatsAction(businessId: string) {
         return {
             success: true,
             data: {
+                totalCount: Number(result.totalCount || 0),
                 totalCostValue: Number(result.totalCostValue || 0),
                 totalStockValue: Number(result.totalStockValue || 0),
                 outOfStockCount: Number(result.outOfStockCount || 0),

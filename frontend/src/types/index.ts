@@ -93,6 +93,9 @@ export interface DbSale {
   total_amount?: number;
   notes?: string | null;
   category_id?: string | null;
+  shipping_cost?: number;
+  discount_reason?: string | null;
+  payment_reference?: string | null;
 }
 
 // Expense interface - add cashTransactionId field
@@ -141,6 +144,9 @@ export interface SaleFormData {
   amountDue?: number;
   notes?: string;
   categoryId?: string;
+  shippingCost?: number;
+  discountReason?: string;
+  paymentReference?: string;
 }
 
 export interface AnalyticsData {
@@ -466,11 +472,29 @@ export const mapSaleToDbSale = (
     amount_due: saleData.amountDue || null,
     notes: saleData.notes || null,
     category_id: saleData.categoryId || null,
-    subtotal: saleData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    shipping_cost: saleData.shippingCost || 0,
+    discount_reason: saleData.discountReason || null,
+    payment_reference: saleData.paymentReference || null,
+    subtotal: saleData.items.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      const discountAmount = item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+      return sum + (itemSubtotal - discountAmount);
+    }, 0),
     total_cost: saleData.items.reduce((sum, item) => sum + (item.cost * item.quantity), 0),
-    tax_amount: saleData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) * (saleData.taxRate || 0) / 100,
-    total: saleData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) * (1 + (saleData.taxRate || 0) / 100),
-    discount: 0,
+    tax_amount: saleData.items.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      const discountAmount = item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+      return sum + (itemSubtotal - discountAmount);
+    }, 0) * (saleData.taxRate || 0) / 100,
+    total: (saleData.items.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      const discountAmount = item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+      return sum + (itemSubtotal - discountAmount);
+    }, 0) * (1 + (saleData.taxRate || 0) / 100)) + (saleData.shippingCost || 0),
+    discount: saleData.items.reduce((sum, item) => {
+      const itemSubtotal = item.price * item.quantity;
+      return sum + (item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100);
+    }, 0),
   };
 };
 

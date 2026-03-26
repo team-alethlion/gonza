@@ -83,7 +83,7 @@ class SaleViewSet(viewsets.ModelViewSet):
     search_fields = ['receipt_number', 'customer_name', 'notes']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().filter(is_deleted=False)
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
@@ -113,7 +113,9 @@ class SaleViewSet(viewsets.ModelViewSet):
 
         tax_amt = subtotal * (to_decimal(tax_rate) / Decimal('100'))
         total = subtotal + tax_amt
-        profit = total - total_cost
+        # Corrected Profit Calculation: (Net Revenue - Total Cost)
+        # Tax is a liability, not part of business profit.
+        profit = subtotal - total_cost
 
         return {
             'subtotal': subtotal,
@@ -189,10 +191,14 @@ class SaleViewSet(viewsets.ModelViewSet):
             amount_paid=to_decimal(data.get('amountPaid', 0)),
             balance_due=to_decimal(data.get('amountDue', 0)),
             notes=data.get('notes'),
+            shipping_cost=to_decimal(data.get('shippingCost', 0)),
+            discount_reason=data.get('discountReason'),
+            payment_reference=data.get('paymentReference'),
+            cash_transaction_id=data.get('cashTransactionId'),
             tax_amount=financials['taxAmount'],
             subtotal=financials['subtotal'],
             discount_amount=financials['discount'],
-            total_amount=financials['total'],
+            total_amount=financials['total'] + to_decimal(data.get('shippingCost', 0)),
             total_cost=financials['totalCost'],
             profit=financials['profit'],
         )
@@ -334,8 +340,13 @@ class SaleViewSet(viewsets.ModelViewSet):
         if 'customerName' in data: sale.customer_name = data['customerName']
         if 'customerId' in data: sale.customer_id = data['customerId']
         if 'categoryId' in data: sale.category_id = data['categoryId']
+        if 'shippingCost' in data: sale.shipping_cost = to_decimal(data['shippingCost'])
+        if 'discountReason' in data: sale.discount_reason = data['discountReason']
+        if 'paymentReference' in data: sale.payment_reference = data['paymentReference']
+        if 'cashTransactionId' in data: sale.cash_transaction_id = data['cashTransactionId']
+        
         sale.subtotal = financials['subtotal']
-        sale.total_amount = financials['total']
+        sale.total_amount = financials['total'] + sale.shipping_cost
         sale.discount_amount = financials['discount']
         sale.tax_amount = financials['taxAmount']
         sale.save()
@@ -418,15 +429,16 @@ class SaleViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         sale = self.get_object()
         user_id = request.user.id
-        
+        # Extract deletedReason from query parameters or body
+        deleted_reason = request.query_params.get('deletedReason') or request.data.get('deletedReason')
+
         from .logic.deletion import process_sale_deletion
-        success, message = process_sale_deletion(sale.id, user_id)
-        
+        success, message = process_sale_deletion(sale.id, user_id, deleted_reason=deleted_reason)
+
         if success:
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({"error": message}, status=status.HTTP_400_BAD_REQUEST)
-
     @action(detail=False, methods=['get'])
     def category_summary(self, request):
         branch_id = request.query_params.get('branchId')

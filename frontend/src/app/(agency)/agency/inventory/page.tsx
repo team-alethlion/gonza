@@ -17,7 +17,7 @@ export default async function InventoryPage() {
   let initialProducts: Product[] = [];
   let initialCount = 0;
   let initialStats = null;
-  let initialTopSelling = [];
+  let initialTopSelling: any[] = [];
 
   if (userId) {
     try {

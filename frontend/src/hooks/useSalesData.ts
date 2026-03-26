@@ -143,7 +143,7 @@ export const useSalesData = (
     localStorage.removeItem('soldItemsFilters');
   }, [currentBusiness?.id]);
 
-  const deleteSale = useCallback(async (id: string) => { // Changed to useCallback
+  const deleteSale = useCallback(async (id: string, reason?: string) => { // Changed to useCallback
     try {
       // First, find the sale to get its details for logging
       const saleToDelete = sales.find(sale => sale.id === id);
@@ -159,7 +159,7 @@ export const useSalesData = (
         throw new Error('Business context missing for deletion');
       }
 
-      const result = await deleteSaleAction(id, currentBusiness.id);
+      const result = await deleteSaleAction(id, currentBusiness.id, reason);
 
       if (!result.success) {
         throw new Error(result.error);

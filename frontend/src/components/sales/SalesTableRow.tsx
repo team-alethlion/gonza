@@ -25,8 +25,8 @@ interface SalesTableRowProps {
   currency: string;
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
-  onDeleteSale: (sale: Sale) => void;
-  onSendPaymentReminder?: (sale: Sale) => void;
+  onDeleteSale: (sale: Sale, reason?: string) => void;
+  onSendPaymentReminder: (sale: Sale) => void;
   onSendThankYouNotice?: (sale: Sale) => void;
   onSendPaymentReminderSMS?: (sale: Sale) => void;
   onSendThankYouSMS?: (sale: Sale) => void;

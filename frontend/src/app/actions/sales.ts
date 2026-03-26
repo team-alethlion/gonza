@@ -46,10 +46,14 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
     }
 }
 
-export async function deleteSaleAction(id: string, businessId: string) {
+export async function deleteSaleAction(id: string, businessId: string, reason?: string) {
     try {
         await verifyBranchAccess(businessId);
-        await djangoFetch(`sales/sales/${id}/`, { method: 'DELETE' });
+        let url = `sales/sales/${id}/`;
+        if (reason) {
+            url += `?deletedReason=${encodeURIComponent(reason)}`;
+        }
+        await djangoFetch(url, { method: 'DELETE' });
         revalidatePath('/sales');
         return { success: true };
     } catch (error: unknown) {
@@ -85,7 +89,11 @@ export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updat
             taxRate: saleDbData.tax_rate,
             amountPaid: saleDbData.amount_paid,
             amountDue: saleDbData.amount_due,
-            notes: saleDbData.notes
+            cashTransactionId: saleDbData.cash_transaction_id,
+            notes: saleDbData.notes,
+            shippingCost: saleDbData.shipping_cost,
+            discountReason: saleDbData.discount_reason,
+            paymentReference: saleDbData.payment_reference
         };
 
         let result;
@@ -120,7 +128,11 @@ export async function createReceiptAction(saleData: {
     taxRate: number;
     amountPaid: number;
     amountDue: number;
+    cashTransactionId?: string;
     notes: string;
+    shippingCost?: number;
+    discountReason?: string;
+    paymentReference?: string;
 }, businessId: string) {
     try {
         const sessionUser = await verifyBranchAccess(businessId);
@@ -146,7 +158,11 @@ export async function createReceiptAction(saleData: {
             taxRate: saleData.taxRate,
             amountPaid: saleData.amountPaid,
             amountDue: saleData.amountDue,
-            notes: saleData.notes
+            cashTransactionId: saleData.cashTransactionId,
+            notes: saleData.notes,
+            shippingCost: saleData.shippingCost,
+            discountReason: saleData.discountReason,
+            paymentReference: saleData.paymentReference
         };
 
         const result = await djangoFetch(`sales/sales/`, {

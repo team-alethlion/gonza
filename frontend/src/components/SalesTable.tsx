@@ -55,7 +55,7 @@ interface SalesTableProps {
   sales: Sale[];
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
-  onDeleteSale: (sale: Sale) => void;
+  onDeleteSale: (sale: Sale, reason?: string) => void;
   currency?: string;
   onDateFilterChange?: (value: string) => void;
   onDateRangeChange?: (range: {
@@ -91,7 +91,7 @@ const MobileCard = React.memo(
     settings: BusinessSettings;
     onViewReceipt: (sale: Sale) => void;
     onEditSale: (sale: Sale) => void;
-    onDeleteSale: (sale: Sale) => void;
+    onDeleteSale: (sale: Sale, reason?: string) => void;
     onSendPaymentReminder: (sale: Sale) => void;
     onSendThankYouNotice: (sale: Sale) => void;
     cashAccountName?: string | null;
@@ -504,11 +504,11 @@ const SalesTable: React.FC<SalesTableProps> = ({
     setIsDeleteDialogOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = useCallback(async (reason: string) => {
     if (saleToDelete && !isDeletingSale) {
       setIsDeletingSale(true);
       try {
-        await onDeleteSale(saleToDelete);
+        await onDeleteSale(saleToDelete, reason);
         setIsDeleteDialogOpen(false);
         setSaleToDelete(null);
       } finally {

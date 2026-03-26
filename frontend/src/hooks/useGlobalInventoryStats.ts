@@ -9,6 +9,7 @@ export const useGlobalInventoryStats = (businessId: string | undefined, initialD
         queryFn: async (): Promise<GlobalInventoryStats> => {
             if (!businessId) {
                 return {
+                    totalCount: 0,
                     totalCostValue: 0,
                     totalStockValue: 0,
                     lowStockCount: 0,

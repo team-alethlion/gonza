@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Product, ProductFormData, ProductFilters } from '@/types';
 import { useBusinessSettings } from './useBusinessSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { clearInventoryCaches } from '@/utils/inventoryCacheUtils';
 
@@ -20,6 +21,7 @@ export const useProducts = (
   const [isTyping, setIsTyping] = useState(false);
   const { settings } = useBusinessSettings();
   const { currentBusiness } = useBusiness();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [filters, setFilters] = useState<ProductFilters>({
@@ -227,7 +229,7 @@ export const useProducts = (
       if (!userId || !currentBusiness) return false;
 
       const success = await updateProductsBulkAction(
-        updates.map(u => ({ id: u.id, updated: u.updated })),
+        updates.map(u => ({ id: u.id, updated: u.updated })) as any,
         currentBusiness.id
       );
 
