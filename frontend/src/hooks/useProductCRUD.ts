@@ -49,12 +49,12 @@ export const useProductCRUD = (
         businessId: currentBusiness.id
       } as any);
 
-      if (result) {
+      if (result.success && result.data) {
         // Correctly format dates before adding to state
         const newProduct: Product = {
-          ...result,
-          createdAt: new Date(result.createdAt),
-          updatedAt: new Date(result.updatedAt)
+          ...result.data,
+          createdAt: new Date(result.data.createdAt),
+          updatedAt: new Date(result.data.updatedAt)
         } as any;
         
         setProducts(prev => [newProduct, ...prev]);
@@ -85,11 +85,11 @@ export const useProductCRUD = (
       }
 
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating product:', error);
       toast({
         title: "Error",
-        description: "Failed to create product. Please try again.",
+        description: error.message || "Failed to create product. Please try again.",
         variant: "destructive"
       });
       return null;
@@ -116,7 +116,7 @@ export const useProductCRUD = (
         referenceId
       } as any);
 
-      if (result) {
+      if (result.success) {
         // Update local state
         setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...productData } as Product : p));
 
@@ -139,11 +139,11 @@ export const useProductCRUD = (
       }
 
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating product:', error);
       toast({
         title: "Error",
-        description: "Failed to update product. Please try again.",
+        description: error.message || "Failed to update product. Please try again.",
         variant: "destructive"
       });
       return false;

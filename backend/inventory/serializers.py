@@ -21,6 +21,30 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = '__all__'
 
+    def validate(self, data):
+        """
+        Check that the product name is unique within the branch.
+        """
+        name = data.get('name')
+        branch = data.get('branch')
+        
+        # When creating a new product or updating the name of an existing one
+        if name and branch:
+            from django.utils.text import slugify
+            slug = slugify(name)
+            
+            # Exclude the current instance if it's an update
+            queryset = Product.objects.filter(branch=branch, slug=slug)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+                
+            if queryset.exists():
+                raise serializers.ValidationError({
+                    "name": f"A product with the name '{name}' already exists in this branch."
+                })
+                
+        return data
+
         
 class StockAuditItemSerializer(serializers.ModelSerializer):
     class Meta:

@@ -105,3 +105,10 @@ export const useLocalProductSearch = (searchTerm: string) => {
     }
   }, [searchTerm, currentBusiness?.id]);
 };
+
+export const useLocalProduct = (productId: string | undefined) => {
+  return useLiveQuery(async () => {
+    if (!productId) return null;
+    return await localDb.products.get(productId);
+  }, [productId]);
+};

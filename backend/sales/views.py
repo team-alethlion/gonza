@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -129,25 +130,44 @@ class SaleViewSet(viewsets.ModelViewSet):
         }
 
     def _process_inventory(self, items, branch_id, user_id, receipt_number, date_obj):
+        print(f"DEBUG: Processing inventory for Sale #{receipt_number}. Items count: {len(items)}")
         if not date_obj:
-            date_obj = datetime.now()
+            date_obj = timezone.now()
             
-        for item in items:
+        for index, item in enumerate(items):
             product_id = item.get('productId')
+            print(f"DEBUG: Item {index} productId: {product_id}, quantity: {item.get('quantity')}")
+            
             if not product_id:
+                print(f"DEBUG: Item {index} has no productId. Skipping inventory.")
                 continue
                 
             try:
+                # Use select_for_update to handle concurrency safely
                 product = Product.objects.select_for_update().get(id=product_id)
+                print(f"DEBUG: Found product {product.name} (ID: {product.id}). Current stock: {product.stock}")
             except Product.DoesNotExist:
+                print(f"DEBUG: Product ID {product_id} not found in database. Skipping.")
                 continue
                 
-            qty_sold = to_decimal(item.get('quantity', 0))
-            old_stock = product.stock
+            qty_sold = int(to_decimal(item.get('quantity', 0)))
+            old_stock = int(product.stock)
+            
+            # ⚡️ FLEXIBLE INVENTORY: Allow selling more than available (negative stock)
+            # as per user's requirement (sourced externally or just-arrived items)
             new_stock = old_stock - qty_sold
             
             product.stock = new_stock
-            product.save(update_fields=['stock'])
+            # ⚡️ CRITICAL FIX: Save WITHOUT update_fields to ensure updated_at is triggered.
+            # This allows the frontend's syncProducts() to see the change in the delta API.
+            product.save() 
+            print(f"DEBUG: Updated {product.name} stock: {old_stock} -> {new_stock}")
+            
+            # Determine if it's an over-sale for better logging
+            oversale_note = ""
+            if qty_sold > old_stock:
+                deficit = qty_sold - old_stock
+                oversale_note = f" (Oversale of {deficit} units)"
             
             ProductHistory.objects.create(
                 user_id=user_id,
@@ -155,9 +175,10 @@ class SaleViewSet(viewsets.ModelViewSet):
                 product=product,
                 old_stock=old_stock,
                 new_stock=new_stock,
+                quantity_change=-qty_sold, # ⚡️ Record the negative change
                 type='SALE',
                 change_reason='SALE',
-                reason=f"Sale #{receipt_number}",
+                reason=f"Sale #{receipt_number}{oversale_note}",
                 reference_id=receipt_number,
                 reference_type='SALE',
                 created_at=date_obj
@@ -165,9 +186,11 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     def _create_sale_from_data(self, data, user_id):
         raw_items = data.get('items', [])
+        status_val = data.get('paymentStatus', 'PENDING')
+        print(f"DEBUG: Creating sale. Status: {status_val}, Items count: {len(raw_items)}")
+        
         tax_rate = to_decimal(data.get('taxRate', 0))
         branch_id = data.get('branchId')
-        status_val = data.get('paymentStatus', 'PENDING')
         
         financials = self.calculate_financials(raw_items, tax_rate)
         
@@ -242,7 +265,7 @@ class SaleViewSet(viewsets.ModelViewSet):
             
         if status_val != 'QUOTE':
             # Ensure we have a valid date even before commit
-            processed_date = getattr(sale, 'date', None) or datetime.now()
+            processed_date = getattr(sale, 'date', None) or timezone.now()
             self._process_inventory(raw_items, branch_id, user_id, sale.receipt_number, processed_date)
             
         return sale
@@ -300,12 +323,12 @@ class SaleViewSet(viewsets.ModelViewSet):
                         try:
                             prod = Product.objects.select_for_update().get(id=item.product_id)
                             prod.stock += item.quantity
-                            prod.save(update_fields=['stock'])
+                            prod.save() # Restore and update timestamp
                         except Product.DoesNotExist:
                             pass
             
             if new_status != 'QUOTE':
-                self._process_inventory(items, branch_id, user_id, sale.receipt_number, datetime.now())
+                self._process_inventory(items, branch_id, user_id, sale.receipt_number, timezone.now())
         
         sale.items.all().delete()
         for item in items:

@@ -125,9 +125,11 @@ export const useProducts = (
     }
   };
 
-  const createProduct = async (productData: ProductFormData): Promise<Product | null> => {
+  const createProduct = async (productData: ProductFormData): Promise<{ success: boolean; data?: Product; error?: string }> => {
     try {
-      if (!userId || !currentBusiness || !user?.agencyId) return null;
+      if (!userId || !currentBusiness || !user?.agencyId) {
+        return { success: false, error: 'User or business session not found' };
+      }
 
       const result = await createProductAction({
         ...productData,
@@ -136,21 +138,23 @@ export const useProducts = (
         agencyId: user.agencyId
       });
 
-      if (!result) return null;
+      if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to create product data' };
+      }
 
       const newProduct: Product = {
-        ...result,
-        createdAt: new Date(result.createdAt),
-        updatedAt: new Date(result.updatedAt)
+        ...result.data,
+        createdAt: new Date(result.data.createdAt),
+        updatedAt: new Date(result.data.updatedAt)
       } as any;
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
 
-      return newProduct;
-    } catch (error) {
+      return { success: true, data: newProduct };
+    } catch (error: any) {
       console.error('Error creating product:', error);
-      return null;
+      return { success: false, error: error.message || 'An unknown error occurred' };
     }
   };
 
@@ -163,9 +167,11 @@ export const useProducts = (
     adjustmentDate?: Date,
     referenceId?: string,
     receiptNumber?: string
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; data?: Product; error?: string }> => {
     try {
-      if (!userId || !currentBusiness) return false;
+      if (!userId || !currentBusiness) {
+        return { success: false, error: 'User or business session not found' };
+      }
 
       let imageUrl = updates.imageUrl;
       if (imageFile) {
@@ -181,21 +187,23 @@ export const useProducts = (
         referenceId
       } as any);
 
-      if (!result) return false;
+      if (!result.success || !result.data) {
+        return { success: false, error: result.error || 'Failed to update product data' };
+      }
 
       // Type-safe conversion of dates
       const updatedProduct: Product = {
-        ...result,
-        createdAt: new Date(result.createdAt),
-        updatedAt: new Date(result.updatedAt)
+        ...result.data,
+        createdAt: new Date(result.data.createdAt),
+        updatedAt: new Date(result.data.updatedAt)
       } as any;
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
-      return true;
-    } catch (error) {
+      return { success: true, data: updatedProduct };
+    } catch (error: any) {
       console.error('Error updating product:', error);
-      return false;
+      return { success: false, error: error.message || 'An unknown error occurred' };
     }
   };
 

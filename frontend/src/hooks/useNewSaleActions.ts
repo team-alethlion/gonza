@@ -11,6 +11,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { generateThermalReceipt } from "@/utils/generateThermalReceipt";
 import { print } from "@/utils/thermalPrinterPlug";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useProductSync } from "@/hooks/useProductSync";
 import {
   getCustomerByNameAction,
   updateSaleCustomerAction,
@@ -28,6 +29,7 @@ export const useNewSaleActions = (
   const { logActivity } = useActivityLogger();
   const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
+  const { syncProducts } = useProductSync();
 
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -48,6 +50,12 @@ export const useNewSaleActions = (
       if (!editSale && clearDraft) {
         clearDraft();
       }
+
+      // ⚡️ SYNC INVENTORY: Trigger a background sync to update local stock counts
+      // after the server has processed the deductions.
+      setTimeout(() => {
+        syncProducts();
+      }, 500); // Small delay to let DB write complete
 
       // Only save customer to customers database if they don't exist already
       if (user?.id && sale.customerName && typeof sale.customerName === 'string' && sale.customerName.trim()) {

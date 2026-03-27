@@ -66,7 +66,9 @@ class SaleCategory(models.Model):
 class Sale(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'), ('PARTIAL', 'Partial'), 
-        ('COMPLETED', 'Completed'), ('CANCELLED', 'Cancelled'), ('REFUNDED', 'Refunded')
+        ('COMPLETED', 'Completed'), ('CANCELLED', 'Cancelled'), 
+        ('REFUNDED', 'Refunded'), ('UNPAID', 'Unpaid'),
+        ('INSTALLMENT', 'Installment'), ('QUOTE', 'Quote')
     )
     PAYMENT_METHODS = (
         ('CASH', 'Cash'), ('CARD', 'Card'), ('MOBILE_MONEY', 'Mobile Money'), 

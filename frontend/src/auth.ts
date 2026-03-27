@@ -86,7 +86,8 @@ const nextAuth = NextAuth({
             trialEndDate: agency.trial_end_date,
             status: user.status || "ACTIVE",
             accessToken: accessToken,
-            refreshToken: tokens.refresh
+            refreshToken: tokens.refresh,
+            accessTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 🛡️ Set initial expiry
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -159,13 +160,16 @@ const nextAuth = NextAuth({
 
       // 🔄 AUTOMATIC TOKEN REFRESH
       // If the token has not expired yet, return it
-      if (Date.now() < (token.accessTokenExpires as number)) {
+      const now = Date.now();
+      const expires = token.accessTokenExpires as number;
+
+      if (expires && now < expires) {
         return token;
       }
 
       // If the access token has expired, try to refresh it
-      console.log("[Auth] Access Token expired, attempting refresh...");
-      
+      console.log(`[Auth] Access Token expired (Now: ${now}, Expires: ${expires}). Attempting refresh...`);
+
       try {
         // Use the global lock to ensure only ONE fetch happens
         if (!globalRefreshPromise) {
@@ -176,11 +180,18 @@ const nextAuth = NextAuth({
             body: JSON.stringify({ refresh: token.refreshToken }),
           }).then(async (res) => {
             const data = await res.json();
-            if (!res.ok) throw data;
+            if (!res.ok) {
+              console.error("[Auth] Django refresh failed:", data);
+              throw data;
+            }
             return data;
           }).finally(() => {
-            // Important: Clear the promise so future expirations can trigger a new refresh
-            globalRefreshPromise = null;
+            // 🛡️ SAFETY: Wait a few seconds before clearing the lock
+            // This prevents concurrent requests that haven't received the new cookie yet
+            // from triggering another refresh storm.
+            setTimeout(() => {
+              globalRefreshPromise = null;
+            }, 5000); 
           });
         } else {
           console.log("[Auth] Refresh already in progress. Waiting for result...");

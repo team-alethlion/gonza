@@ -2,79 +2,58 @@
 - check for relations
 - ensure that only data for that user, agency and branch is downloaded
 
-without accidentally writing over code that you
-should not be editing
+- RCP-JAV-2026-00001
 
-I have completed my investigation into the sale data handling, financial
-calculations, and data integrity. My findings reveal several critical flaws
-that impact accuracy, reporting, and long-term maintainability.
 
-  <!-- 1. Double Computation & Inconsistent Logic
-  There is significant redundancy and inconsistency between the frontend and
-  backend calculations:
-   * The Conflict: Both the frontend (useFormCalculations.ts) and the backend
-     (SaleViewSet.calculate_financials) perform their own math. However, the
-     backend is the ultimate "source of truth" and recalculates everything from
-     scratch, ignoring the final values sent by the frontend.
-   * Profit Calculation Flaw (Critical): 
-       * Frontend Logic: Correctly calculates profit as (Revenue - Discount) -
-         Cost.
-       * Backend Logic: Incorrectly calculates profit as (Revenue - Discount +
-         Tax) - Cost.
-       * Impact: This results in an inflated profit figure in your database and
-         admin dashboard, as tax (a liability) is being treated as income. -->
 
-  <!-- 2. Incomplete Data Mapping
-  The synchronization between the form and the database is missing several
-  fields:
-   * Hardcoded Zeros: The mapSaleToDbSale function on the frontend currently
-     hardcodes discount: 0, meaning even if you apply a discount in the form,
-     the database's discount field stays zero (though the total is correctly
-     adjusted by the backend).
-   * Missing Fields in Payload: Fields like shipping_cost, discount_reason, and
-     payment_reference exist in the database model but are neither captured by
-     the frontend form nor sent in the API payload.
-   * Mapping Gaps: During sale creation, customer_phone and customer_address
-     were being ignored (until my previous fix). However, other fields like
-     tax_amount and subtotal are being recalculated by the frontend using
-     outdated logic that doesn't account for item-level discounts, potentially
-     leading to discrepancies if the frontend uses these values for receipt
-     previews before the server responds. -->
 
-<!-- 3. Dead Model Fields & Hard Deletions
 
-- Soft Delete Flaw: Your Sale model includes is_deleted, deleted_at, and
-  deleted_reason fields, implying a "Soft Delete" strategy. However, the
-  actual deletion logic (process_sale_deletion.py) performs a Hard Delete
-  (sale.delete()), which permanently removes the record from the database.
-- Impact on Statistics: Because records are hard-deleted, you lose all audit
-  history of deleted sales. The is_deleted and deleted_at fields will always
-  be empty or False, making them "dead weight" in your database and
-  potentially leading to inaccurate historical reporting if you expected to
-  track why sales were cancelled. -->
 
-4. Accuracy of "Balance Due"
 
-- The system correctly handles partial payments (amount_paid and
-  balance_due), but there is a risk: if a user updates a sale and changes the
-  items (increasing the total), the balance_due is recalculated, but the link
-  to the original CashTransaction might not be updated to reflect the change
-  in the initial deposit, leading to a mismatch between your Sales records
-  and your Cash Account records.
 
-Summary of Potential Flaws
 
-┌─────────────┬───────────────────────────────┬────────────────────────┐
-│ Area │ Flaw │ Impact │
-├─────────────┼───────────────────────────────┼────────────────────────┤
-│ Profit │ Tax is added to profit │ Inflated earnings │
-│ │ │ reports │
-│ Discounts │ discount field hardcoded to 0 │ Inaccurate discount │
-│ │ in mapping │ reporting │
-│ Soft Delete │ Logic performs hard delete │ Loss of audit trail │
-│ │ instead │ │
-│ Redundancy │ Frontend and Backend both do │ Risk of UI/DB data │
-│ │ math │ mismatch │
-│ Missing │ Shipping, reasons, and refs │ Incomplete transaction │
-│ Data │ not captured │ records │
-└─────────────┴───────────────────────────────┴────────────────────────┘
+ Implementation Plan (Directive Ready)
+
+  1. Backend: Robust Stock Deduction & Validation
+   * Location: backend/sales/views.py in _process_inventory.
+   * Logic: 
+       * Implement a check to see if qty_sold > product.stock.
+       * If qty_sold > product.stock:
+           * Option A (Strict): Raise a validation error (prevents the sale).
+           * Option B (Flexible - User's Request): Deduct stock into negative OR
+             deduct only what is available and log the rest as "sourced
+             externally".
+           * Technical Note: The user mentioned "it's possible to sell an item
+             you do not have... get it from another person then sell it". This
+             suggests we should allow negative stock but log it clearly in
+             ProductHistory.
+       * Data Integrity: Ensure select_for_update() is used (already there) to
+         prevent race conditions during concurrent sales.
+
+  2. Frontend: User Awareness & Warnings
+   * Untracked Sales Warning:
+       * Location: frontend/src/components/ProductSaleItemInput.tsx.
+       * Action: If a user types a description but hasn't selected a product
+         from suggestions (i.e., !item.productId), show a subtle warning: "⚠️
+         This item is not linked to inventory. Stock will not be tracked."
+   * Over-selling Warning:
+       * Location: frontend/src/components/ProductSaleItemInput.tsx.
+       * Action: Compare item.quantity with product.quantity. If item.quantity >
+         product.quantity, show a warning: "⚠️ Selling more than available in
+         stock ({product.quantity})."
+   * Pre-Submit Validation:
+       * Location: frontend/src/hooks/sale-form/useSaleSubmit.ts.
+       * Action: Before calling the API, check if any items have !productId or
+         quantity > stock. If they do, show a confirmation dialog: "Some items
+         are not in stock or not linked to inventory. Do you want to proceed?"
+
+  3. Investigation of "Same Amount 13" Bug
+   * The backend logic _process_inventory looks correct. If it didn't reduce
+     from 13 to a lower number, it means:
+       1. The productId sent from the frontend didn't match any Product in the
+          database.
+       2. status_val was QUOTE.
+       3. The transaction.atomic failed and rolled back (but the user said the
+          sale was created).
+   * Action: I will add logging to the backend to track exactly which product_id
+     is being processed.

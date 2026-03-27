@@ -251,18 +251,24 @@ export async function createProductAction(data: {
     });
 
     return {
-      ...result,
-      itemNumber: result.sku,
-      manufacturerBarcode: result.manufacturer_barcode,
-      imageUrl: result.image,
-      quantity: Number(result.stock),
-      costPrice: Number(result.cost_price),
-      sellingPrice: Number(result.selling_price),
-      minimumStock: Number(result.min_stock),
-      createdAt: result.created_at,
-      updatedAt: result.updated_at,
+      success: true,
+      data: {
+        ...result,
+        itemNumber: result.sku,
+        manufacturerBarcode: result.manufacturer_barcode,
+        imageUrl: result.image,
+        quantity: Number(result.stock),
+        costPrice: Number(result.cost_price),
+        sellingPrice: Number(result.selling_price),
+        minimumStock: Number(result.min_stock),
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+      }
     };
-  } catch { return null; }
+  } catch (error: any) { 
+    console.error('Error creating product:', error);
+    return { success: false, error: error.message || 'Failed to create product' }; 
+  }
 }
 export async function updateProductAction(id: string, branchId: string, updates: {
   userId: string;
@@ -311,14 +317,20 @@ export async function updateProductAction(id: string, branchId: string, updates:
     });
 
     return {
-      ...result,
-      quantity: Number(result.stock),
-      costPrice: Number(result.cost_price),
-      sellingPrice: Number(result.selling_price),
-      minimumStock: Number(result.min_stock),
-      createdAt: new Date(result.created_at), updatedAt: new Date(result.updated_at),
+      success: true,
+      data: {
+        ...result,
+        quantity: Number(result.stock),
+        costPrice: Number(result.cost_price),
+        sellingPrice: Number(result.selling_price),
+        minimumStock: Number(result.min_stock),
+        createdAt: new Date(result.created_at), updatedAt: new Date(result.updated_at),
+      }
     };
-  } catch { return null; }
+  } catch (error: any) { 
+    console.error('Error updating product:', error);
+    return { success: false, error: error.message || 'Failed to update product' }; 
+  }
 }
 
 export async function deleteProductAction(id: string, branchId: string) {

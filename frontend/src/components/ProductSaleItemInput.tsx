@@ -18,11 +18,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { useLocalProductSearch } from '@/hooks/useProductSync';
+import { useLocalProductSearch, useLocalProduct } from '@/hooks/useProductSync';
 // Removed direct Supabase import
 
 import { matchProductSearch } from '@/utils/searchUtils';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
+import { AlertCircle } from 'lucide-react';
 
 interface ProductSaleItemInputProps {
   item: SaleItem;
@@ -72,6 +73,12 @@ const ProductSaleItemInput: React.FC<ProductSaleItemInputProps> = ({
 
   // Use Local Dexie search instead of React Query + allProducts
   const filteredProducts = useLocalProductSearch(debouncedSearchTerm) || [];
+  
+  // ⚡️ TRACKED PRODUCT: Get the currently selected product details from local DB
+  const matchedProduct = useLocalProduct(item.productId);
+  
+  const isUntied = !!newProductName.trim() && !item.productId;
+  const isOverselling = matchedProduct && item.quantity > matchedProduct.quantity;
 
   // Update state when item changes (important for edit mode or external updates)
   useEffect(() => {
@@ -316,6 +323,22 @@ const ProductSaleItemInput: React.FC<ProductSaleItemInputProps> = ({
               }}
               className={isMobile ? "min-h-16 text-base" : ""}
             />
+
+            {/* Warnings */}
+            <div className="mt-1 space-y-1">
+              {isUntied && (
+                <div className="flex items-center text-[10px] sm:text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">
+                  <AlertCircle className="h-3 w-3 mr-1 flex-shrink-0" />
+                  <span>Not linked to inventory. Stock will not be tracked.</span>
+                </div>
+              )}
+              {isOverselling && (
+                <div className="flex items-center text-[10px] sm:text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                  <AlertCircle className="h-3 w-3 mr-1 flex-shrink-0" />
+                  <span>Selling more than available ({matchedProduct?.quantity} in stock).</span>
+                </div>
+              )}
+            </div>
 
             {/* Display auto-suggestions when typing */}
             {showSuggestions && newProductName.trim() !== '' && filteredProducts.length > 0 && (

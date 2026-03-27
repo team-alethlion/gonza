@@ -162,11 +162,26 @@ const EditProduct = () => {
 
         const result = await updateProduct(id, updateData);
 
-        if (result) {
+        if (result.success && result.data) {
           toast.success("Product updated successfully");
           router.push(`/agency/inventory/${id}`);
         } else {
-          toast.error("Failed to update product");
+          // 🛡️ DATA INTEGRITY: Provide a clear error message from the backend
+          let errorMsg = result.error || "Failed to update product";
+          
+          if (errorMsg.includes("400: ")) {
+            try {
+              const jsonStr = errorMsg.split("400: ")[1];
+              const errorData = JSON.parse(jsonStr);
+              if (errorData.name) errorMsg = errorData.name[0];
+              else if (errorData.non_field_errors) errorMsg = errorData.non_field_errors[0];
+              else if (typeof errorData === 'object') errorMsg = Object.values(errorData)[0] as string;
+            } catch (e) {
+              console.warn("Failed to parse backend error details", e);
+            }
+          }
+          
+          toast.error(errorMsg);
         }
       } else {
         // Create new product
@@ -192,9 +207,10 @@ const EditProduct = () => {
           manufacturerBarcode: formData.manufacturerBarcode || "",
         };
 
-        const newProduct = await createProduct(createData);
+        const result = await createProduct(createData);
 
-        if (newProduct) {
+        if (result.success && result.data) {
+          const newProduct: Product = result.data;
           toast.success("Product created successfully");
 
           // Auto-print label if requested
@@ -234,7 +250,22 @@ const EditProduct = () => {
 
           router.push(`/agency/inventory/${newProduct.id}`);
         } else {
-          toast.error("Failed to create product");
+          // 🛡️ DATA INTEGRITY: Provide a clear error message from the backend
+          let errorMsg = result.error || "Failed to create product";
+          
+          if (errorMsg.includes("400: ")) {
+            try {
+              const jsonStr = errorMsg.split("400: ")[1];
+              const errorData = JSON.parse(jsonStr);
+              if (errorData.name) errorMsg = errorData.name[0];
+              else if (errorData.non_field_errors) errorMsg = errorData.non_field_errors[0];
+              else if (typeof errorData === 'object') errorMsg = Object.values(errorData)[0] as string;
+            } catch (e) {
+              console.warn("Failed to parse backend error details", e);
+            }
+          }
+          
+          toast.error(errorMsg);
         }
       }
     } catch (error) {

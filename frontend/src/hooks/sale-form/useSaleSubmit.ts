@@ -6,6 +6,7 @@ import { Sale, mapSaleToDbSale, SaleItem } from "@/types";
 import { upsertSaleAction } from "@/app/actions/sales";
 import { queueOfflineSale } from "@/hooks/useOfflineSync";
 import { updateSaleCashTransactionAction } from "@/app/actions/products";
+import { localDb } from "@/lib/dexie";
 
 interface UseSaleSubmitProps {
   initialData?: Sale;
@@ -93,6 +94,37 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
       if (props.errors.customerName) toast.error(props.errors.customerName);
       else toast.error("Please fill in all required fields correctly");
       return;
+    }
+
+    // ⚡️ INVENTORY AWARENESS: Pre-submit stock & link check
+    // We only do this for REAL sales (not Quotes)
+    if (props.formData.paymentStatus !== 'Quote') {
+      const untiedItems = props.formData.items.filter((i: any) => !i.productId && (i.description || '').trim());
+      
+      const oversoldItems = [];
+      for (const item of props.formData.items) {
+        if (item.productId) {
+          const p = await localDb.products.get(item.productId);
+          if (p && item.quantity > p.quantity) {
+            oversoldItems.push({ name: p.name, stock: p.quantity, sold: item.quantity });
+          }
+        }
+      }
+
+      if (untiedItems.length > 0 || oversoldItems.length > 0) {
+        let warningMsg = "Inventory Warning:\n\n";
+        if (untiedItems.length > 0) {
+          warningMsg += `• ${untiedItems.length} item(s) are NOT linked to inventory (stock will not be tracked).\n`;
+        }
+        if (oversoldItems.length > 0) {
+          warningMsg += `• ${oversoldItems.length} item(s) exceed current stock levels.\n`;
+        }
+        warningMsg += "\nAre you sure you want to proceed with this sale?";
+
+        if (typeof window !== 'undefined' && !window.confirm(warningMsg)) {
+          return; // Abort submission
+        }
+      }
     }
 
     setLoading(true);
