@@ -54,6 +54,20 @@ export interface Sale {
   updatedAt: Date;
 }
 
+export interface CustomerLedger {
+  id: string;
+  customer: string;
+  branch: string;
+  agency?: string;
+  user?: string;
+  amount: number;
+  type: 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT';
+  description: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Supabase database schema and Json type
 export type Json =
   | string
@@ -343,6 +357,7 @@ export interface Customer {
   branchId: string;
   lifetimeValue?: number;
   orderCount?: number;
+  creditLimit?: number;
   createdAt: Date;
   updatedAt: Date;
 }

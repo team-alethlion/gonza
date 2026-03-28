@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useSalesData } from "@/hooks/useSalesData";
+import { getSalesAction } from "@/app/actions/sales";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { Sale } from "@/types";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { Sale, mapDbSaleToSale } from "@/types";
 import {
   Table,
   TableBody,
@@ -17,8 +18,9 @@ import { format } from "date-fns";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import ReceiptDialog from "@/components/sales/ReceiptDialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface CustomerPurchaseHistoryProps {
   customerId: string;
@@ -27,68 +29,45 @@ interface CustomerPurchaseHistoryProps {
 
 const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
   customerId,
-  customerNameProp,
 }) => {
   const { user } = useAuth();
+  const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
-  const { sales, isLoading } = useSalesData(user?.id, "desc");
 
   const [customerSales, setCustomerSales] = useState<Sale[]>([]);
-  const [localLoading, setLocalLoading] = useState(true);
-  const [customerName, setCustomerName] = useState<string>(
-    customerNameProp || "",
-  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
 
-  // Fallback if not provided, though it normally should be
-  useEffect(() => {
-    if (customerNameProp && customerName !== customerNameProp) {
-      const timer = setTimeout(() => {
-        setCustomerName(customerNameProp);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [customerNameProp, customerName]);
+  const loadHistory = useCallback(async () => {
+    if (!currentBusiness?.id || !customerId) return;
 
-  useEffect(() => {
-    const syncSales = () => {
-      if (!sales || sales.length === 0 || !customerName) {
-        if (customerSales.length > 0) setCustomerSales([]);
-        if (localLoading) setLocalLoading(false);
-        return;
-      }
-
-      // PRIMARY: If sale has customerId, match it directly.
-      // FALLBACK: Use customerName matching for legacy sales.
-      const filtered = sales.filter((sale) => {
-        if (sale.customerId) {
-          return sale.customerId === customerId;
-        }
-
-        // Fallback for older sales without ID
-        const matchesCustomer =
-          (sale.customerName || '').toLowerCase().trim() ===
-          customerName.toLowerCase().trim();
-
-        // Filter out manual statement entries (Adjustments and Manual Payments)
-        const isManualEntry =
-          sale.receiptNumber?.startsWith("ADJ-") ||
-          sale.receiptNumber?.startsWith("PAY-");
-
-        return matchesCustomer && !isManualEntry;
+    setIsLoading(true);
+    try {
+      const result = await getSalesAction(currentBusiness.id, page, pageSize, {
+        customerId: customerId,
+        ordering: '-date'
       });
 
-      if (JSON.stringify(customerSales) !== JSON.stringify(filtered)) {
-        setCustomerSales(filtered);
+      if (result.success && result.data) {
+        const mapped = (result.data.sales || []).map((s: any) => mapDbSaleToSale(s));
+        setCustomerSales(mapped);
+        setTotalCount(result.data.count || 0);
       }
-      if (localLoading) setLocalLoading(false);
-    };
+    } catch (error) {
+      console.error("Error loading purchase history:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentBusiness?.id, customerId, page]);
 
-    const timer = setTimeout(syncSales, 0);
-    return () => clearTimeout(timer);
-  }, [sales, customerId, customerName, customerSales, localLoading]);
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const formatCurrency = (value: any) => {
     return `${settings.currency} ${formatNumber(value)}`;
@@ -97,17 +76,22 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status?.toUpperCase()) {
       case "PAID":
-        return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
+      case "COMPLETED":
+        return <Badge className="bg-green-100 text-green-800 border-none">Paid</Badge>;
       case "NOT PAID":
-        return <Badge className="bg-red-100 text-red-800">Unpaid</Badge>;
+      case "UNPAID":
+        return <Badge className="bg-red-100 text-red-800 border-none">Unpaid</Badge>;
+      case "PARTIAL":
+        return <Badge className="bg-amber-100 text-amber-800 border-none">Partial</Badge>;
       case "QUOTE":
-        return <Badge className="bg-blue-100 text-blue-800">Quote</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-none">Quote</Badge>;
+      case "INSTALLMENT":
       case "INSTALLMENT SALE":
         return (
-          <Badge className="bg-purple-100 text-purple-800">Installment</Badge>
+          <Badge className="bg-purple-100 text-purple-800 border-none">Installment</Badge>
         );
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -127,38 +111,43 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
     setIsReceiptDialogOpen(true);
   };
 
-  if (isLoading || localLoading) {
+  if (isLoading && page === 1) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
-  if (customerSales.length === 0) {
+  if (customerSales.length === 0 && !isLoading) {
     return (
-      <div className="text-center py-8 border rounded-md">
+      <div className="text-center py-12 border rounded-xl bg-gray-50/50 border-dashed">
+        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <ChevronRight className="h-8 w-8 text-gray-300" />
+        </div>
         <h3 className="text-lg font-medium text-gray-900">
           No purchase history found
         </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          This customer hasn&apos;t made any purchases yet
+        <p className="mt-1 text-sm text-gray-500 max-w-xs mx-auto">
+          This customer hasn&apos;t made any purchases yet or sales aren&apos;t linked to their profile.
         </p>
       </div>
     );
   }
 
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   return (
-    <>
-      <div className="rounded-md border">
+    <div className="space-y-4">
+      <div className="rounded-xl border shadow-sm overflow-hidden bg-white">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Receipt #</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
+            <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+              <TableHead className="font-semibold">Date</TableHead>
+              <TableHead className="font-semibold">Receipt #</TableHead>
+              <TableHead className="font-semibold">Amount</TableHead>
+              <TableHead className="font-semibold">Items</TableHead>
+              <TableHead className="font-semibold text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -166,38 +155,62 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
             {customerSales.map((sale) => (
               <TableRow
                 key={sale.id}
-                className="cursor-pointer hover:bg-gray-50"
+                className="cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => handleRowClick(sale)}>
-                <TableCell>{format(sale.date, "MMM d, yyyy")}</TableCell>
+                <TableCell className="py-4">{format(new Date(sale.date), "MMM d, yyyy")}</TableCell>
 
-                <TableCell>
-                  <Link
-                    href={`/sales?receipt=${sale.receiptNumber}`}
-                    className="text-blue-600 hover:underline"
-                    onClick={(e) => e.stopPropagation()}>
+                <TableCell className="py-4">
+                  <span className="font-mono text-xs font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">
                     {sale.receiptNumber}
-                  </Link>
+                  </span>
                 </TableCell>
 
-                <TableCell>
-                  {formatCurrency(
-                    sale.items.reduce(
-                      (sum, item) => sum + item.price * item.quantity,
-                      0,
-                    ),
-                  )}
+                <TableCell className="py-4 font-bold text-gray-900">
+                  {formatCurrency(sale.total)}
                 </TableCell>
 
-                <TableCell>
-                  <span className="text-sm">{getItemsDisplay(sale)}</span>
+                <TableCell className="py-4">
+                  <span className="text-sm text-gray-600">{getItemsDisplay(sale)}</span>
                 </TableCell>
 
-                <TableCell>{getStatusBadge(sale.paymentStatus)}</TableCell>
+                <TableCell className="py-4 text-right">{getStatusBadge(sale.paymentStatus)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {/* Local Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <p className="text-xs text-muted-foreground">
+            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} sales
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || isLoading}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center text-xs font-medium px-2">
+              Page {page} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || isLoading}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedSale && (
         <ReceiptDialog
@@ -210,7 +223,7 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
           }}
         />
       )}
-    </>
+    </div>
   );
 };
 

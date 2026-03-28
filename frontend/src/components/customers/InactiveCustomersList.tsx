@@ -1,15 +1,15 @@
-"use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Customer } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Eye, Loader2, Mail, Calendar, AlertCircle, Phone, MapPin, Tag, MessageCircleHeart } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { subDays, subMonths, subYears } from 'date-fns';
-import { useSalesData } from '@/hooks/useSalesData';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { getInactiveCustomersAction } from '@/app/actions/customers';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import WeMissYouDialog from './WeMissYouDialog';
 
 interface InactiveCustomersListProps {
@@ -22,79 +22,61 @@ interface InactiveCustomersListProps {
 
 type InactivityPeriod = '30days' | '60days' | '90days' | '6months' | '1year' | 'all';
 
+const InactivityDaysMap: Record<InactivityPeriod, number> = {
+  '30days': 30,
+  '60days': 60,
+  '90days': 90,
+  '6months': 180,
+  '1year': 365,
+  'all': 9999 // Large enough number
+};
+
 const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({ 
-  customers, 
-  isLoading, 
   onSelectCustomer,
   onSendEmail,
   selectedCategory = 'all'
 }) => {
-  const { user } = useAuth();
-  const { sales, isLoading: salesLoading } = useSalesData(user?.id);
+  const { currentBusiness } = useBusiness();
   const [inactivityPeriod, setInactivityPeriod] = useState<InactivityPeriod>('30days');
+  const [inactiveCustomers, setInactiveCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCustomerForMessage, setSelectedCustomerForMessage] = useState<Customer | null>(null);
 
   // Inactive customer email template
   const inactiveCustomerMessage = "We Miss You!\n\nIt's been a while since we last heard from you, and we just wanted to check in. We truly value you as a customer and would love to have you back. If there's anything you need or if we can assist in any way, we're here for you!\n\nHope to see you again soon,";
 
-  // Calculate the cutoff date based on the selected inactivity period
-  const cutoffDate = useMemo((): Date => {
-    const now = new Date();
+  const loadInactiveCustomers = useCallback(async () => {
+    if (!currentBusiness?.id) return;
     
-    switch(inactivityPeriod) {
-      case '30days': return subDays(now, 30);
-      case '60days': return subDays(now, 60);
-      case '90days': return subDays(now, 90);
-      case '6months': return subMonths(now, 6);
-      case '1year': return subYears(now, 1);
-      case 'all': return new Date(0); // Beginning of time
-      default: return subDays(now, 30);
-    }
-  }, [inactivityPeriod]);
+    setIsLoading(true);
+    try {
+      const result = await getInactiveCustomersAction(currentBusiness.id, {
+        days: InactivityDaysMap[inactivityPeriod],
+        categoryId: selectedCategory === 'all' ? undefined : selectedCategory
+      });
 
-  // Filter customers who haven't purchased since the cutoff date
-  const inactiveCustomers = useMemo(() => {
-    if (salesLoading || isLoading || customers.length === 0 || sales.length === 0) {
-      return [];
-    }
-
-    // Filter customers by category first if specified
-    let filteredCustomers = customers;
-    if (selectedCategory && selectedCategory !== 'all') {
-      filteredCustomers = customers.filter(customer => customer.categoryId === selectedCategory);
-    }
-    
-    // For each customer, find their most recent purchase
-    return filteredCustomers.filter(customer => {
-      const customerSales = sales.filter(sale =>
-        (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
-        sale.paymentStatus !== 'Quote'
-      );      
-      // If no sales records, they're inactive
-      if (customerSales.length === 0) {
-        return true;
+      if (result.success) {
+        setInactiveCustomers(result.data || []);
       }
-      
-      // Get the most recent sale date
-      const lastPurchaseDate = new Date(Math.max(...customerSales.map(sale => new Date(sale.date).getTime())));
-      
-      // Check if last purchase is before our cutoff date
-      return lastPurchaseDate < cutoffDate;
-    });
-  }, [customers, sales, salesLoading, isLoading, selectedCategory, cutoffDate]);
+    } catch (error) {
+      console.error("Failed to load inactive customers:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentBusiness?.id, inactivityPeriod, selectedCategory]);
+
+  useEffect(() => {
+    loadInactiveCustomers();
+  }, [loadInactiveCustomers]);
 
   // Format days since last purchase
-  const getDaysSinceLastPurchase = (customerName: string): string => {
-    const customerSales = sales.filter(sale =>
-      (sale.customerName || '').toLowerCase() === customerName.toLowerCase() &&
-      sale.paymentStatus !== 'Quote'
-    );    
-    if (customerSales.length === 0) {
+  const getDaysSinceLastPurchaseDisplay = (lastPurchaseDate: string | null): string => {
+    if (!lastPurchaseDate) {
       return "No purchases";
     }
     
-    const lastPurchaseDate = new Date(Math.max(...customerSales.map(sale => new Date(sale.date).getTime())));
-    const daysSince = Math.floor((new Date().getTime() - lastPurchaseDate.getTime()) / (1000 * 60 * 60 * 24));
+    const lastDate = new Date(lastPurchaseDate);
+    const daysSince = Math.floor((new Date().getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSince < 30) {
       return `${daysSince} days ago`;
@@ -121,7 +103,7 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
     }
   };
 
-  if (isLoading || salesLoading) {
+  if (isLoading) {
     return (
       <div className="w-full h-64 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -199,17 +181,16 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-gray-900 truncate">
-                      {customer.fullName}
-                    </h3>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Calendar className="h-4 w-4 text-amber-600" />
-                      <span className="text-sm font-medium text-amber-700">
-                        {getDaysSinceLastPurchase(customer.fullName)}
-                      </span>
-                    </div>
+                  <h3 className="font-semibold text-lg text-gray-900 truncate">
+                    {customer.fullName}
+                  </h3>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Calendar className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-medium text-amber-700">
+                      {getDaysSinceLastPurchaseDisplay(customer.lastPurchaseDate)}
+                    </span>
                   </div>
-                  <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+                  </div>                  <div className="flex gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -281,7 +262,7 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
                         <span>Tags</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {customer.tags.slice(0, 2).map((tag, i) => (
+                        {customer.tags.slice(0, 2).map((tag: string, i: number) => (
                           <Badge key={i} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
                             {tag}
                           </Badge>

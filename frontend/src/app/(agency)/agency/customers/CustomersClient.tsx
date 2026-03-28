@@ -215,34 +215,27 @@ const CustomersClient = ({
     setNewCustomerDialogOpen(true);
   }, []);
 
-  const findDuplicates = useCallback(() => {
-    // Group customers by normalized name (lowercase, trimmed)
-    const nameMap = new Map<string, Customer[]>();
-
-    customers.forEach((customer) => {
-      const normalizedName = customer.fullName.toLowerCase().trim();
-      if (!nameMap.has(normalizedName)) {
-        nameMap.set(normalizedName, []);
+  const findDuplicates = useCallback(async () => {
+    if (!currentBusiness?.id) return;
+    
+    try {
+      const { getDuplicateCustomersAction } = await import('@/app/actions/customers');
+      const result = await getDuplicateCustomersAction(currentBusiness.id);
+      
+      if (result.success && result.data) {
+        if (result.data.length === 0) {
+          toast.info("No duplicate customers found");
+          return;
+        }
+        setDuplicateGroups(result.data);
+        setShowDuplicatesDialog(true);
+      } else {
+        throw new Error(result.error);
       }
-      nameMap.get(normalizedName)!.push(customer);
-    });
-
-    // Filter groups with more than 1 customer (duplicates)
-    const duplicates: Customer[][] = [];
-    nameMap.forEach((group) => {
-      if (group.length > 1) {
-        duplicates.push(group);
-      }
-    });
-
-    if (duplicates.length === 0) {
-      toast.info("No duplicate customers found");
-      return;
+    } catch (error: any) {
+      toast.error(error.message || "Failed to scan for duplicates");
     }
-
-    setDuplicateGroups(duplicates);
-    setShowDuplicatesDialog(true);
-  }, [customers]);
+  }, [currentBusiness?.id]);
 
   const handleMergeGroup = (group: Customer[]) => {
     setSelectedDuplicateGroup(group);
@@ -333,39 +326,44 @@ const CustomersClient = ({
         canDelete={canDelete}
       />
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between p-3 md:p-4 border rounded">
-        <div className="text-xs md:text-sm text-muted-foreground">
-          Showing {(page - 1) * pageSize + 1}–
-          {Math.min(page * pageSize, totalCount)} of {totalCount}
+      {/* Pagination Controls - Only show for the main list tab */}
+      {activeTab === 'list' && (
+        <div className="flex items-center justify-between p-3 md:p-4 border rounded">
+          <div className="text-xs md:text-sm text-muted-foreground">
+            Showing {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}–
+            {Math.min(page * pageSize, totalCount)} of {totalCount}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="border rounded px-2 py-1 text-xs md:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1); // Reset to first page when changing page size
+              }}>
+              {[20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size} / page
+                </option>
+              ))}
+            </select>
+            <button
+              className="border rounded px-2 py-1 text-xs md:text-sm disabled:opacity-50"
+              disabled={page === 1 || isLoading}
+              onClick={() => setPage(page - 1)}
+              type="button">
+              Prev
+            </button>
+            <button
+              className="border rounded px-2 py-1 text-xs md:text-sm disabled:opacity-50"
+              disabled={page * pageSize >= totalCount || isLoading}
+              onClick={() => setPage(page + 1)}
+              type="button">
+              Next
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}>
-            {[20, 50, 100].map((size) => (
-              <option key={size} value={size}>
-                {size} / page
-              </option>
-            ))}
-          </select>
-          <button
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            disabled={page === 1 || isLoading}
-            onClick={() => setPage(Math.max(1, page - 1))}
-            type="button">
-            Prev
-          </button>
-          <button
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            disabled={page * pageSize >= totalCount || isLoading}
-            onClick={() => setPage(page + 1)}
-            type="button">
-            Next
-          </button>
-        </div>
-      </div>
+      )}
 
       <NewCustomerDialog
         open={newCustomerDialogOpen}

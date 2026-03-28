@@ -1,16 +1,16 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, User, TrendingUp, ShoppingBag } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
-import { useSalesData } from '@/hooks/useSalesData';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { getTopCustomersAction } from '@/app/actions/customers';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useRouter } from 'next/navigation';
-import { getDateRangeFromFilter } from '@/utils/dateFilters';
 
 interface TopCustomersListProps {
   selectedCategory?: string;
@@ -24,89 +24,58 @@ const TopCustomersList: React.FC<TopCustomersListProps> = ({
   dateRange = { from: undefined, to: undefined }
 }) => {
   const { user } = useAuth();
-  const { sales, isLoading } = useSalesData(user?.id || '');
+  const { currentBusiness } = useBusiness();
   const { customers } = useCustomers();
   const { settings } = useBusinessSettings();
   const router = useRouter();
 
+  const [topCustomers, setTopCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   // Pagination state
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // Calculate top customers from sales data
-  const getAllTopCustomers = () => {
-    // Apply date filter first
-    let filteredSales = sales;
-    if (dateFilter === 'custom' && dateRange.from && dateRange.to) {
-      // Use custom date range
-      filteredSales = sales.filter(sale => {
-        const saleDate = new Date(sale.date);
-        return saleDate >= dateRange.from! && saleDate <= dateRange.to!;
-      });
-    } else if (dateFilter !== 'all') {
-      // Use predefined date filter
-      const dateRangeFilter = getDateRangeFromFilter(dateFilter);
-      filteredSales = sales.filter(sale => {
-        const saleDate = new Date(sale.date);
-        return saleDate >= dateRangeFilter.from && saleDate <= dateRangeFilter.to;
-      });
-    }
+  const loadTopCustomers = useCallback(async () => {
+    if (!currentBusiness?.id) return;
+    
+    setIsLoading(true);
+    try {
+      let startDateStr: string | undefined;
+      let endDateStr: string | undefined;
 
-    // Skip quotes since they're not actual purchases
-    const nonQuoteSales = filteredSales.filter(sale => sale.paymentStatus !== "Quote");
-    
-    // Group sales by customer name
-    const customerMap = new Map<string, { total: number, count: number, customerId?: string }>();
-    
-    nonQuoteSales.forEach(sale => {
-      const customerName = sale.customerName;
-      const saleTotal = sale.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
-      if (!customerMap.has(customerName)) {
-        customerMap.set(customerName, { 
-          total: saleTotal, 
-          count: 1,
-          customerId: sale.customerId
-        });
-      } else {
-        const current = customerMap.get(customerName)!;
-        customerMap.set(customerName, { 
-          total: current.total + saleTotal, 
-          count: current.count + 1,
-          customerId: current.customerId || sale.customerId
-        });
+      if (dateFilter === 'custom' && dateRange.from && dateRange.to) {
+        startDateStr = dateRange.from.toISOString().split('T')[0];
+        endDateStr = dateRange.to.toISOString().split('T')[0];
+      } else if (dateFilter !== 'all') {
+        const { getDateRangeFromFilter } = await import('@/utils/dateFilters');
+        const range = getDateRangeFromFilter(dateFilter);
+        startDateStr = range.from.toISOString().split('T')[0];
+        endDateStr = range.to.toISOString().split('T')[0];
       }
-    });
-    
-    // Convert map to array and sort by total purchases
-    let topCustomers = Array.from(customerMap.entries())
-      .map(([name, data]) => ({
-        id: data.customerId,
-        name,
-        totalPurchases: data.total,
-        orderCount: data.count
-      }))
-      .sort((a, b) => b.totalPurchases - a.totalPurchases);
 
-    // Apply category filter if specified
-    if (selectedCategory && selectedCategory !== 'all') {
-      topCustomers = topCustomers.filter(customer => {
-        if (customer.id) {
-          const customerData = customers.find(c => c.id === customer.id);
-          return customerData?.categoryId === selectedCategory;
-        }
-        // Fallback to name matching if no ID
-        const customerData = customers.find(c => c.fullName === customer.name);
-        return customerData?.categoryId === selectedCategory;
+      const result = await getTopCustomersAction(currentBusiness.id, {
+        startDate: startDateStr,
+        endDate: endDateStr,
+        categoryId: selectedCategory === 'all' ? undefined : selectedCategory
       });
-    }
-    
-    return topCustomers;
-  };
 
-  const allTopCustomers = getAllTopCustomers();
-  const totalPages = Math.ceil(allTopCustomers.length / pageSize);
-  const paginatedCustomers = allTopCustomers.slice((page - 1) * pageSize, page * pageSize);
+      if (result.success) {
+        setTopCustomers(result.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to load top customers:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentBusiness?.id, dateFilter, dateRange, selectedCategory]);
+
+  useEffect(() => {
+    loadTopCustomers();
+  }, [loadTopCustomers]);
+
+  const totalPages = Math.ceil(topCustomers.length / pageSize);
+  const paginatedCustomers = topCustomers.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCustomerClick = (customerName: string, customerId?: string) => {
     // First try to find by customerId if available
@@ -211,9 +180,20 @@ const TopCustomersList: React.FC<TopCustomersListProps> = ({
                       <div className="flex flex-col gap-2">
                         {/* Header row with name and badge */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base leading-tight break-words flex-1">
-                            {customer.name}
-                          </h4>
+                          <div className="flex flex-col gap-1">
+                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base leading-tight break-words flex-1">
+                              {customer.name}
+                            </h4>
+                            {customer.id ? (
+                              <Badge variant="outline" className="w-fit h-5 text-[10px] uppercase tracking-wider bg-blue-50 text-blue-700 border-blue-100 font-bold px-1.5">
+                                Verified Member
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="w-fit h-5 text-[10px] uppercase tracking-wider bg-gray-50 text-gray-500 border-gray-200 font-medium px-1.5">
+                                Guest Customer
+                              </Badge>
+                            )}
+                          </div>
                           {/* Position Badge */}
                           <div className="flex-shrink-0">
                             {index === 0 && (

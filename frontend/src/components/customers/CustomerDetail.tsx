@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Customer, Sale, SaleItem } from '@/types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { Customer, Sale, SaleItem, CustomerLedger, mapDbSaleToSale } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,16 +33,18 @@ import { useToast } from '@/hooks/use-toast';
 import PaymentReminderNotice from './PaymentReminderNotice';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useCustomerLifetimeStats } from '@/hooks/useCustomerLifetimeStats';
-import { createReceiptAction } from '@/app/actions/sales';
+import { createReceiptAction, getSalesAction, deleteSaleAction } from '@/app/actions/sales';
+import { createLedgerEntryAction, getCustomerLedgerAction, deleteLedgerEntryAction } from '@/app/actions/customers';
 import { generateReceiptNumber } from '@/utils/generateReceiptNumber';
 
 interface LedgerEntry {
   date: Date;
   details: string;
   amount: number;
-  type: 'sale' | 'payment';
+  type: 'sale' | 'payment' | 'ledger_charge' | 'ledger_payment' | 'ledger_adjustment';
   id?: string;
   originalSale?: Sale;
+  originalLedger?: CustomerLedger;
   isInstallment?: boolean;
   isManualPayment?: boolean;
   createdAt?: Date;
@@ -62,6 +65,17 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   canEdit = true,
   canDelete = true
 }) => {
+  const { user } = useAuth();
+  const { currentBusiness } = useBusiness();
+  const { settings } = useBusinessSettings();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const router = useRouter();
+
+  // Only load recent sales for the purchase history list, not for lifetime totals
+  const { sales, isLoading, deleteSale, refetch } = useSalesData(user?.id, 'desc', 50);
+  const { data: lifetimeStats, isLoading: isLoadingLifetimeStats } = useCustomerLifetimeStats(customer.fullName);
+
   // Statement feature state and ref
   const statementTableRef = React.useRef<HTMLDivElement>(null);
   const [startDate, setStartDate] = useState<string>('');
@@ -70,17 +84,187 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   const [manualPaymentOpen, setManualPaymentOpen] = useState(false);
   const [isProcessingEntry, setIsProcessingEntry] = useState(false);
 
-  // Helper to get statement sales for this customer, excluding quotes
-  const getStatementSales = () => sales.filter(sale => {
-    const status = (sale.paymentStatus || '').toString().toUpperCase();
-    const saleDate = new Date(sale.date);
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(23, 59, 59, 999);
-    const isWithinRange = (!start || saleDate >= start) &&
-      (!end || saleDate <= end);
-    return (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() && status !== 'QUOTE' && isWithinRange;
-  });
+  // Statement data fetching
+  const [statementSales, setStatementSales] = useState<Sale[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<CustomerLedger[]>([]);
+  const [isLoadingStatement, setIsLoadingStatement] = useState(false);
+
+  const loadStatementData = useCallback(async () => {
+    if (!currentBusiness?.id || !customer.id) return;
+    
+    setIsLoadingStatement(true);
+    try {
+      // 🚀 PERFORMANCE: Load both sales and ledger entries in parallel
+      const [salesResult, ledgerResult] = await Promise.all([
+        getSalesAction(currentBusiness.id, 1, 1000, {
+          customerId: customer.id,
+          ordering: 'date'
+        }),
+        getCustomerLedgerAction(currentBusiness.id, customer.id)
+      ]);
+
+      if (salesResult.success && salesResult.data) {
+        const mapped = (salesResult.data.sales || []).map((s: any) => mapDbSaleToSale(s));
+        setStatementSales(mapped);
+      }
+
+      if (ledgerResult.success && ledgerResult.data) {
+        setLedgerEntries(ledgerResult.data);
+      }
+    } catch (error) {
+      console.error("Error loading statement data:", error);
+    } finally {
+      setIsLoadingStatement(false);
+    }
+  }, [currentBusiness?.id, customer.id]);
+
+  useEffect(() => {
+    loadStatementData();
+  }, [loadStatementData]);
+
+  // 🧮 MEMOIZED LEDGER CALCULATION: Shared across table and summary
+  const { displayEntries, openingBalance, currentBalance, startValue, endValue } = useMemo(() => {
+    const allCustomerSales = statementSales.filter(sale =>
+      (sale.paymentStatus || '').toString().toUpperCase() !== 'QUOTE'
+    );
+
+    const startV = startDate ? new Date(startDate) : null;
+    const endV = endDate ? new Date(endDate) : null;
+    if (endV) endV.setHours(23, 59, 59, 999);
+
+    // 1. Calculate opening balance (all history before selected range)
+    let opBal = 0;
+    if (startV) {
+      allCustomerSales.forEach(sale => {
+        if (sale.receiptNumber.startsWith('ADJ-') || sale.receiptNumber.startsWith('PAY-')) return;
+        const saleDate = new Date(sale.date);
+        if (saleDate < startV) {
+          opBal += sale.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0);
+          opBal -= getPaidAmount(sale);
+        }
+      });
+
+      ledgerEntries.forEach(entry => {
+        const entryDate = new Date(entry.date);
+        if (entryDate < startV) {
+          const amt = Number(entry.amount);
+          if (entry.type === 'CHARGE') opBal += amt;
+          else if (entry.type === 'PAYMENT') opBal -= amt;
+          else if (entry.type === 'ADJUSTMENT') opBal += amt;
+        }
+      });
+    }
+
+    // 2. Build display list for current range
+    const statementSalesInView = allCustomerSales.filter(sale => {
+      if (sale.receiptNumber.startsWith('ADJ-') || sale.receiptNumber.startsWith('PAY-')) return false;
+      const saleDate = new Date(sale.date);
+      return (!startV || saleDate >= startV) && (!endV || saleDate <= endV);
+    });
+
+    const ledgerEntriesInView = ledgerEntries.filter(entry => {
+      const entryDate = new Date(entry.date);
+      return (!startV || entryDate >= startV) && (!endV || entryDate <= endV);
+    });
+
+    const entries: LedgerEntry[] = [];
+
+    statementSalesInView.forEach(sale => {
+      const status = (sale.paymentStatus || '').toString().toUpperCase();
+      let label = 'Receipt #';
+      if (status === 'QUOTE') label = 'Quote #';
+      else if (status === 'NOT PAID' || status === 'PARTIAL' || status === 'UNPAID') label = 'Invoice #';
+
+      entries.push({
+        date: new Date(sale.date),
+        details: label + sale.receiptNumber,
+        amount: sale.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0),
+        type: 'sale',
+        id: sale.id,
+        originalSale: sale,
+        createdAt: new Date(sale.createdAt)
+      });
+
+      if ((status === 'INSTALLMENT' || status === 'INSTALLMENT SALE') && Array.isArray(sale.installments)) {
+        sale.installments.forEach((inst, iidx) => {
+          const pAmount = Number(inst.amountPaid || 0);
+          if (pAmount > 0) {
+            entries.push({
+              date: inst.date ? new Date(inst.date) : new Date(sale.date),
+              details: 'Payment',
+              amount: -pAmount,
+              type: 'payment',
+              id: `${sale.id}-inst-${iidx}`,
+              originalSale: sale,
+              isInstallment: true,
+              createdAt: new Date(sale.createdAt)
+            });
+          }
+        });
+      } else {
+        const paid = getPaidAmount(sale);
+        if (paid > 0) {
+          entries.push({
+            date: new Date(sale.date),
+            details: 'Payment',
+            amount: -paid,
+            type: 'payment',
+            id: `${sale.id}-payment`,
+            originalSale: sale,
+            createdAt: new Date(sale.createdAt)
+          });
+        }
+      }
+    });
+
+    ledgerEntriesInView.forEach(entry => {
+      const amt = Number(entry.amount);
+      let type: any = 'ledger_charge';
+      let label = 'Charge: ';
+      let displayAmt = amt;
+
+      if (entry.type === 'PAYMENT') {
+        type = 'ledger_payment';
+        label = 'Payment: ';
+        displayAmt = -amt;
+      } else if (entry.type === 'ADJUSTMENT') {
+        type = 'ledger_adjustment';
+        label = 'Adjustment: ';
+      }
+
+      entries.push({
+        date: new Date(entry.date),
+        details: label + entry.description,
+        amount: displayAmt,
+        type: type,
+        id: entry.id,
+        originalLedger: entry,
+        createdAt: new Date(entry.createdAt)
+      });
+    });
+
+    entries.sort((a, b) => {
+      const dateComparison = a.date.getTime() - b.date.getTime();
+      if (dateComparison !== 0) return dateComparison;
+      return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
+    });
+
+    // 3. Calculate absolute current balance (regardless of range)
+    let curBal = 0;
+    allCustomerSales.forEach(s => {
+      if (s.receiptNumber.startsWith('ADJ-') || s.receiptNumber.startsWith('PAY-')) return;
+      curBal += s.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0);
+      curBal -= getPaidAmount(s);
+    });
+    ledgerEntries.forEach(e => {
+      const a = Number(e.amount);
+      if (e.type === 'CHARGE') curBal += a;
+      else if (e.type === 'PAYMENT') curBal -= a;
+      else if (e.type === 'ADJUSTMENT') curBal += a;
+    });
+
+    return { displayEntries: entries, openingBalance: opBal, currentBalance: curBal, startValue: startV, endValue: endV };
+  }, [statementSales, ledgerEntries, startDate, endDate]);
 
   // Helper to get paid amount for a sale
   const getPaidAmount = (sale: Sale) => {
@@ -310,17 +494,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [noticeDialogOpen, setNoticeDialogOpen] = useState(false);
   const [smsDialogOpen, setSMSDialogOpen] = useState(false);
-  const { user } = useAuth();
-  
-  // Only load recent sales for the purchase history list, not for lifetime totals
-  const { sales, isLoading, deleteSale, refetch } = useSalesData(user?.id, 'desc', 50);
-  
-  const { data: lifetimeStats, isLoading: isLoadingLifetimeStats } = useCustomerLifetimeStats(customer.fullName);
-  
-  const { currentBusiness } = useBusiness();
-  const { settings } = useBusinessSettings();
-  const isMobile = useIsMobile();
-  const { toast } = useToast();
 
   const [creditSales, setCreditSales] = useState<{ total: number, count: number } | null>(null);
 
@@ -530,7 +703,14 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             <div>
               <CardTitle className="text-2xl">{customer.fullName}</CardTitle>
               <CardDescription>
-                Customer since {format(customer.createdAt, 'MMMM d, yyyy')}
+                Customer since {(() => {
+                  try {
+                    const date = customer.createdAt instanceof Date ? customer.createdAt : new Date(customer.createdAt);
+                    return isNaN(date.getTime()) ? 'Unknown' : format(date, 'MMMM d, yyyy');
+                  } catch {
+                    return 'Unknown';
+                  }
+                })()}
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -651,6 +831,18 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                         <strong>Total Credit Sales:</strong> {creditSales?.count || 0} unpaid orders totaling {formatCurrency(creditSales?.total || 0)}
                       </span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-400" />
+                      <span>
+                        <strong>Current Balance:</strong> {formatCurrency(Number(customer.lifetimeValue || 0))}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-purple-400" />
+                      <span>
+                        <strong>Credit Limit:</strong> {customer.creditLimit ? formatCurrency(customer.creditLimit) : 'No Limit'}
+                      </span>
+                    </div>
                     <div className="text-xs text-gray-500">
                       * Quotes are excluded from totals
                     </div>
@@ -700,7 +892,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
           />
         </TabsContent>
         <TabsContent value="statement">
-          <div ref={statementTableRef} className="bg-white rounded-xl shadow-lg p-6">
+          <div ref={statementTableRef} className="bg-white rounded-xl shadow-lg p-6 min-h-[400px]">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
                 <h3 className="font-bold text-xl text-gray-800">Customer Statement</h3>
@@ -741,211 +933,122 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-blue-600 text-white">
-                    <th className="px-4 py-3 text-left font-semibold first:rounded-tl-lg">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold">Details (Receipt/Invoice)</th>
-                    <th className="px-4 py-3 text-right font-semibold">Amount</th>
-                    <th className="px-4 py-3 text-right font-semibold">Balance</th>
-                    <th className="px-4 py-3 text-center font-semibold last:rounded-tr-lg">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {(() => {
-                    const allCustomerSales = sales.filter(sale =>
-                      (sale.customerName || '').toLowerCase() === customer.fullName.toLowerCase() &&
-                      (sale.paymentStatus || '').toString().toUpperCase() !== 'QUOTE'
-                    );
-
-                    const startValue = startDate ? new Date(startDate) : null;
-                    const endValue = endDate ? new Date(endDate) : null;
-                    if (endValue) endValue.setHours(23, 59, 59, 999);
-
-                    // Calculate opening balance (all transactions before start date)
-                    let openingBalance = 0;
-                    if (startValue) {
-                      allCustomerSales.forEach(sale => {
-                        const saleDate = new Date(sale.date);
-                        if (saleDate < startValue) {
-                          const amount = sale.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0);
-                          openingBalance += amount;
-                          openingBalance -= getPaidAmount(sale);
+            {isLoadingStatement ? (
+              <div className="flex flex-col items-center justify-center py-24">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
+                <p className="text-sm text-gray-500">Calculating ledger...</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-blue-600 text-white">
+                        <th className="px-4 py-3 text-left font-semibold first:rounded-tl-lg">Date</th>
+                        <th className="px-4 py-3 text-left font-semibold">Details (Receipt/Invoice)</th>
+                        <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                        <th className="px-4 py-3 text-right font-semibold">Balance</th>
+                        <th className="px-4 py-3 text-center font-semibold last:rounded-tr-lg">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {(() => {
+                        let runningBal = openingBalance;
+                        const rows = [];
+                        
+                        // Add opening balance row
+                        if (startValue) {
+                          rows.push(
+                            <tr key="opening-balance" className="bg-gray-50 italic">
+                              <td className="px-4 py-3 text-gray-500">{format(startValue, 'MMM d, yyyy')}</td>
+                              <td className="px-4 py-3 text-gray-500 font-medium">Opening Balance</td>
+                              <td className="px-4 py-3 text-right text-gray-500">-</td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-600">{settings.currency} {openingBalance.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-center">-</td>
+                            </tr>
+                          );
                         }
-                      });
-                    }
 
-                    const statementSales = allCustomerSales.filter(sale => {
-                      const saleDate = new Date(sale.date);
-                      return (!startValue || saleDate >= startValue) && (!endValue || saleDate <= endValue);
-                    });
+                        // Build rows from sorted displayEntries
+                        displayEntries.forEach((entry) => {
+                          runningBal += entry.amount;
 
-                    const sortedSales = [...statementSales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-                    let runningBalance = openingBalance;
-                    const ledgerEntries: LedgerEntry[] = [];
-
-                    // Add sales as entries
-                    sortedSales.forEach(sale => {
-                      const status = (sale.paymentStatus || '').toString().toUpperCase();
-                      let label = 'Receipt #';
-                      if (status === 'QUOTE') label = 'Quote #';
-                      else if (status === 'NOT PAID' || status === 'PARTIAL') label = 'Invoice #';
-                      else if (sale.receiptNumber.startsWith('ADJ-')) label = 'Adjustment #';
-
-                      if (!sale.receiptNumber.startsWith('PAY-')) {
-                        ledgerEntries.push({
-                          date: new Date(sale.date),
-                          details: label + sale.receiptNumber,
-                          amount: sale.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0),
-                          type: 'sale',
-                          id: sale.id,
-                          originalSale: sale,
-                          createdAt: sale.createdAt
-                        });
-                      }
-
-                      // Add payments from this sale as entries
-                      if (status === 'INSTALLMENT SALE' && Array.isArray(sale.installments)) {
-                        sale.installments.forEach((inst, iidx) => {
-                          const pAmount = inst.amountPaid || 0;
-                          if (pAmount > 0) {
-                            ledgerEntries.push({
-                              date: inst.date ? new Date(inst.date) : new Date(sale.date),
-                              details: 'Payment',
-                              amount: -pAmount,
-                              type: 'payment',
-                              id: `${sale.id}-inst-${iidx}`,
-                              originalSale: sale,
-                              isInstallment: true,
-                              createdAt: sale.createdAt // Using sale creation time as roughly correct for initial payment structure or fallback
-                            });
-                          }
-                        });
-                      } else {
-                        const paid = getPaidAmount(sale);
-                        if (paid > 0) {
-                          ledgerEntries.push({
-                            date: new Date(sale.date),
-                            details: 'Payment',
-                            amount: -paid,
-                            type: 'payment',
-                            id: `${sale.id}-payment`,
-                            originalSale: sale,
-                            // For non-installment sales, the payment is intrinsic to the sale, so we can't delete it separately easily unless it's a Manual Payment (which is a sale itself)
-                            isManualPayment: sale.receiptNumber.startsWith('PAY-'),
-                            createdAt: sale.createdAt
-                          });
-                        }
-                      }
-                    });
-
-                    // Sort all entries by date, then by creation time
-                    ledgerEntries.sort((a, b) => {
-                      const dateComparison = a.date.getTime() - b.date.getTime();
-                      if (dateComparison !== 0) return dateComparison;
-                      return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
-                    });
-
-                    const rows = [];
-                    // Add opening balance row
-                    if (startValue) {
-                      rows.push(
-                        <tr key="opening-balance" className="bg-gray-50 italic">
-                          <td className="px-4 py-3 text-gray-500">{format(startValue, 'MMM d, yyyy')}</td>
-                          <td className="px-4 py-3 text-gray-500 font-medium">Opening Balance</td>
-                          <td className="px-4 py-3 text-right text-gray-500">-</td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-600">{settings.currency} {openingBalance.toLocaleString()}</td>
-                        </tr>
-                      );
-                    }
-
-                    // Build rows from sorted ledger entries
-                    ledgerEntries.forEach((entry) => {
-                      const isWithinRange = (!startValue || entry.date >= startValue) && (!endValue || entry.date <= endValue);
-
-                      runningBalance += entry.amount;
-
-                      if (isWithinRange) {
-                        const isPayment = entry.type === 'payment';
-                        rows.push(
-                          <tr key={entry.id} className={isPayment ? "bg-green-50/50 hover:bg-green-50 transition-colors" : "hover:bg-blue-50 transition-colors"}>
-                            <td className={`px-4 py-3 ${isPayment ? 'text-green-700 italic' : 'text-gray-600'}`}>
-                              {format(entry.date, 'MMM d, yyyy')}
-                            </td>
-                            <td className={`px-4 py-3 font-medium ${isPayment ? 'text-green-700' : 'text-gray-900'}`}>
-                              {entry.details}
-                            </td>
-                            <td className={`px-4 py-3 text-right ${isPayment ? 'text-green-700' : 'text-gray-900'}`}>
-                              {isPayment ? '- ' : ''}{settings.currency} {Math.abs(entry.amount).toLocaleString()}
-                            </td>
-                            <td className={`px-4 py-3 text-right font-bold ${isPayment ? 'text-green-800' : 'text-gray-900'}`}>
-                              {settings.currency} {runningBalance.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={async () => {
-                                  if (confirm('Are you sure you want to delete this entry?')) {
-                                    try {
-                                      if (entry.isInstallment) {
-                                        toast({ title: "Notice", description: "Cannot delete installment payment from this view. Please go to the sale details." });
-                                      } else if ((entry.type === 'sale' || entry.isManualPayment) && entry.originalSale) {
-                                        await deleteSale(entry.originalSale.id);
-                                        toast({ title: "Success", description: "Entry deleted" });
-                                      } else {
-                                        toast({ title: "Notice", description: "Cannot delete this payment directly. Delete the sale instead." });
+                          const isPayment = entry.type === 'payment' || entry.type === 'ledger_payment';
+                          rows.push(
+                            <tr key={entry.id} className={isPayment ? "bg-green-50/50 hover:bg-green-50 transition-colors" : "hover:bg-blue-50 transition-colors"}>
+                              <td className={`px-4 py-3 ${isPayment ? 'text-green-700 italic' : 'text-gray-600'}`}>
+                                {format(entry.date, 'MMM d, yyyy')}
+                              </td>
+                              <td className={`px-4 py-3 font-medium ${isPayment ? 'text-green-700' : 'text-gray-900'}`}>
+                                {entry.details}
+                              </td>
+                              <td className={`px-4 py-3 text-right ${isPayment ? 'text-green-700' : 'text-gray-900'}`}>
+                                {isPayment ? '- ' : ''}{settings.currency} {Math.abs(entry.amount).toLocaleString()}
+                              </td>
+                              <td className={`px-4 py-3 text-right font-bold ${isPayment ? 'text-green-800' : 'text-gray-900'}`}>
+                                {settings.currency} {runningBal.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-center whitespace-nowrap">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this entry?')) {
+                                      try {
+                                        if (entry.isInstallment) {
+                                          toast({ title: "Notice", description: "Cannot delete installment payment from this view. Please go to the sale details." });
+                                        } else if (entry.type === 'sale' && entry.originalSale) {
+                                          await deleteSale(entry.originalSale.id);
+                                          toast({ title: "Success", description: "Sale deleted" });
+                                          await loadStatementData();
+                                        } else if ((entry.type === 'ledger_charge' || entry.type === 'ledger_payment' || entry.type === 'ledger_adjustment') && entry.originalLedger) {
+                                          const res = await deleteLedgerEntryAction(entry.originalLedger.id, currentBusiness?.id || '');
+                                          if (res.success) {
+                                            toast({ title: "Success", description: "Ledger entry deleted" });
+                                            await loadStatementData();
+                                          } else throw new Error(res.error);
+                                        } else {
+                                          toast({ title: "Notice", description: "Cannot delete this payment directly. Delete the sale instead." });
+                                        }
+                                      } catch (e: any) {
+                                        console.error(e);
+                                        toast({ title: "Error", description: e.message || "Failed to delete", variant: "destructive" });
                                       }
-                                    } catch (e) {
-                                      console.error(e);
-                                      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
                                     }
-                                  }
-                                }}
-                              >
-                                <Trash className="h-4 w-4" />
-                                <span className="sr-only">Delete</span>
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    });
+                                  }}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        });
 
-                    return rows;
-                  })()
-                  }
-                </tbody>
-              </table>
-            </div>
-            {getStatementSales().length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                <FileText className="h-12 w-12 mb-3 opacity-20" />
-                <p>No transactions found for the selected date range.</p>
-              </div>
-            )}
-
-            {getStatementSales().length > 0 && (
-              <div className="mt-6 flex justify-end">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 min-w-48">
-                  <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-1">Current Balance</p>
-                  <p className="text-2xl font-black text-blue-900">
-                    {settings.currency} {(() => {
-                      const salesInView = getStatementSales();
-                      let bal = 0;
-                      salesInView.forEach(s => {
-                        const amt = s.items.reduce((sum: number, item: SaleItem) => sum + item.price * item.quantity, 0);
-                        bal += amt;
-                        bal -= getPaidAmount(s);
-                      });
-                      return bal.toLocaleString();
-                    })()}
-                  </p>
+                        return rows;
+                      })()}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+                {statementSales.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <FileText className="h-12 w-12 mb-3 opacity-20" />
+                    <p>No transactions found for this customer.</p>
+                  </div>
+                )}
+
+                {displayEntries.length > 0 && (
+                  <div className="mt-6 flex justify-end">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 min-w-48">
+                      <p className="text-xs text-blue-600 font-medium uppercase tracking-wider mb-1">Current Balance</p>
+                      <p className="text-2xl font-black text-blue-900">
+                        {settings.currency} {currentBalance.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </TabsContent>
@@ -1008,38 +1111,24 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
             setIsProcessingEntry(true);
             try {
-              const receiptNumber = await generateReceiptNumber(currentBusiness?.id || '');
+              if (!currentBusiness?.id) throw new Error("No business selected");
 
-              const saleData = {
-                receiptNumber: `ADJ-${receiptNumber}`,
-                customerName: customer.fullName,
-                customerId: customer.id,
-                date: date.toISOString().split('T')[0],
-                items: [{
-                  description: description || 'Manual Charge',
-                  quantity: 1,
-                  price: amount,
-                  cost: 0
-                }],
-                paymentStatus: 'NOT PAID',
-                amountPaid: 0,
-                amountDue: amount,
-                profit: amount,
-                taxRate: 0,
-                notes: '',
-                cashAccountId: undefined,
-                paymentDetails: undefined,
-                installmentPlan: undefined
-              };
-
-              // Use server action to create receipt
-              const result = await createReceiptAction(saleData, currentBusiness?.id || '');
+              // 🛡️ ARCHITECTURAL FIX: Use dedicated Ledger model instead of fake sales
+              const result = await createLedgerEntryAction({
+                customer: customer.id,
+                branch: currentBusiness.id,
+                user: user?.id,
+                amount: amount,
+                type: 'CHARGE',
+                description: description || 'Manual Charge',
+                date: date.toISOString().split('T')[0]
+              });
 
               if (!result.success) throw new Error(result.error);
 
-              toast({ title: "Success", description: "Manual charge added successfully." });
+              toast({ title: "Success", description: "Manual charge added to ledger." });
               setManualChargeOpen(false);
-              await refetch();
+              await loadStatementData(); // Reload both sales and ledger
             } catch (err: unknown) {
               const error = err as Error;
               console.error(error);
@@ -1104,38 +1193,23 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
             setIsProcessingEntry(true);
             try {
-              const receiptNumber = await generateReceiptNumber(currentBusiness?.id || '');
+              if (!currentBusiness?.id) throw new Error("No business selected");
 
-              const saleData = {
-                receiptNumber: `PAY-${receiptNumber}`,
-                customerName: customer.fullName,
-                customerId: customer.id,
-                date: date.toISOString().split('T')[0],
-                items: [{
-                  description: description || 'Account Payment',
-                  quantity: 1,
-                  price: 0,
-                  cost: 0
-                }],
-                paymentStatus: 'PAID',
-                amountPaid: amount,
-                amountDue: 0,
-                profit: 0,
-                taxRate: 0,
-                notes: '',
-                cashAccountId: undefined, // Add logic here if payment is bound to an account later
-                paymentDetails: undefined,
-                installmentPlan: undefined
-              };
-
-              // Use server action to create receipt
-              const result = await createReceiptAction(saleData, currentBusiness?.id || '');
+              const result = await createLedgerEntryAction({
+                customer: customer.id,
+                branch: currentBusiness.id,
+                user: user?.id,
+                amount: amount,
+                type: 'PAYMENT',
+                description: description || 'Manual Payment',
+                date: date.toISOString().split('T')[0]
+              });
 
               if (!result.success) throw new Error(result.error);
 
-              toast({ title: "Success", description: "Manual payment recorded successfully." });
+              toast({ title: "Success", description: "Manual payment recorded in ledger." });
               setManualPaymentOpen(false);
-              await refetch();
+              await loadStatementData();
             } catch (err: unknown) {
               const error = err as Error;
               console.error(error);

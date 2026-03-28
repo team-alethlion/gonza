@@ -7,6 +7,7 @@ import { useCustomerSelection } from "./sale-form/useCustomerSelection";
 import { useFormValidation } from "./sale-form/useFormValidation";
 import { useFormCalculations } from "./sale-form/useFormCalculations";
 import { usePaymentOperations } from "./sale-form/usePaymentOperations";
+import { useBusinessSettings } from "./useBusinessSettings";
 
 interface UseSaleFormLogicProps {
   initialData?: any;
@@ -56,6 +57,8 @@ export const useSaleFormLogic = ({
     clearFormState,
   } = useFormState({ initialData, defaultPaymentStatus });
 
+  const { settings } = useBusinessSettings();
+
   // Alias for internal use
   const setLoading = setIsLoading;
 
@@ -86,6 +89,8 @@ export const useSaleFormLogic = ({
   const { handleSelectCustomer, handleCategoryChange } = useCustomerSelection({
     setFormData,
     setSelectedCustomerCategoryId,
+    formData,
+    settings
   });
 
   // Form validation

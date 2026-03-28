@@ -87,10 +87,9 @@ export const useCustomers = (
     }
 
     try {
-      const skip = (page - 1) * pageSize;
       const result = await getCustomersAction(
         currentBusiness.id,
-        skip,
+        page, // ⚡️ FIX: Pass page number, not skip/offset
         pageSize,
       );
 
@@ -116,6 +115,7 @@ export const useCustomers = (
           updatedAt: new Date(customer.updatedAt),
           lifetimeValue: customer.lifetimeValue || 0,
           orderCount: customer.orderCount || 0,
+          creditLimit: customer.creditLimit || 0,
         }),
       );
 
@@ -194,6 +194,7 @@ export const useCustomers = (
         notes: customerData.notes || null,
         tags: customerData.tags || null,
         socialMedia: customerData.socialMedia || null,
+        creditLimit: (customerData as any).creditLimit || 0
       };
 
       const result = await createCustomerAction(
@@ -293,6 +294,8 @@ export const useCustomers = (
       if (updates.tags !== undefined) updateData.tags = updates.tags;
       if (updates.socialMedia !== undefined)
         updateData.socialMedia = updates.socialMedia;
+      if ((updates as any).creditLimit !== undefined)
+        updateData.creditLimit = (updates as any).creditLimit;
 
       if (!currentBusiness) throw new Error("No business selected");
 
