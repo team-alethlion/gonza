@@ -66,14 +66,15 @@ export async function verifyBranchAccess(branchId: string) {
       }
     } catch (error) {
       console.warn(`[AuthGuard] Could not verify branch ${targetBranchId} ownership for admin:`, error);
-      if (!userBranchId) return sessionUser;
     }
   }
 
+  // Strict check: User must be assigned to the branch or own it via agency (checked above)
   if (userBranchId && userBranchId === targetBranchId) {
     return sessionUser;
   }
 
+  console.error(`[AuthGuard] Access Denied: User ${sessionUser.email} (Role: ${userRole}) attempted to access branch ${targetBranchId}`);
   throw new Error("Unauthorized: You do not have access to this branch");
 }
 

@@ -24,7 +24,7 @@ def process_sale_deletion(sale_id, user_id, deleted_reason=None):
                 product = item.product
                 old_stock = product.stock
                 product.stock += item.quantity
-                product.save(update_fields=['stock'])
+                product.save()
                 
                 ProductHistory.objects.create(
                     user_id=user_id,
@@ -32,6 +32,9 @@ def process_sale_deletion(sale_id, user_id, deleted_reason=None):
                     product=product,
                     old_stock=old_stock,
                     new_stock=product.stock,
+                    quantity_change=item.quantity,
+                    old_price=product.selling_price,
+                    new_price=product.selling_price,
                     type='RETURN_IN',
                     change_reason='SALE_CANCELLED',
                     reason=f"Deleted Sale #{sale.receipt_number}. Reason: {deleted_reason or 'No reason provided'}",

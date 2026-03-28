@@ -16,12 +16,19 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
-    # Optional nested serialization for category/supplier might be needed later
+    image = serializers.URLField(write_only=True, required=False)
+
     class Meta:
         model = Product
         fields = '__all__'
 
     def validate(self, data):
+        # Handle backward compatibility: if 'image' is provided but 'image_url' is not
+        if 'image' in data and not data.get('image_url'):
+            data['image_url'] = data.pop('image')
+        elif 'image' in data:
+            data.pop('image') # redundant if image_url is also present
+            
         """
         Check that the product name is unique within the branch.
         """

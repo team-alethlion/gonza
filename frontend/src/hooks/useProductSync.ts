@@ -35,17 +35,17 @@ export const useProductSync = () => {
         if (result.products.length > 0) {
           const formattedProducts = result.products.map((p: any) => ({
             ...p,
-            locationId: currentBusiness.id, // ⚡️ ENSURE locationId is saved
+            locationId: p.branch || currentBusiness.id, // ⚡️ MAP branch from backend to locationId
             createdAt: new Date(p.createdAt),
             updatedAt: new Date(p.updatedAt)
           }));
           await localDb.products.bulkPut(formattedProducts as Product[]);
         }
 
-        // 4. Update sync metadata with CURRENT server time (or just now)
+        // 4. Update sync metadata with CURRENT server time (to prevent clock drift)
         await localDb.syncMetadata.put({
           id: currentBusiness.id,
-          lastSyncedAt: Date.now()
+          lastSyncedAt: result.serverTime || Date.now()
         });
       } else {
         throw new Error(result.error || 'Failed to fetch delta updates');
@@ -58,12 +58,18 @@ export const useProductSync = () => {
     }
   }, [currentBusiness]); // Dependency on whole currentBusiness to be safe
 
-  // Initial sync on mount or business change
+  // Initial sync on mount or business change, plus periodic polling
   useEffect(() => {
-    const timer = setTimeout(() => {
+    // Initial sync
+    syncProducts();
+
+    // 🕒 POLLING: Check for updates every 30 seconds
+    // Since we use 'since' (delta sync), this is very lightweight (usually 0 products)
+    const interval = setInterval(() => {
       syncProducts();
-    }, 0);
-    return () => clearTimeout(timer);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, [syncProducts]);
 
   // Expose sync status and manual trigger

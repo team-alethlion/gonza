@@ -19,4 +19,5 @@ class MessageTemplateSerializer(serializers.ModelSerializer):
 class WhatsAppSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = WhatsAppSession
-        fields = '__all__'
+        # 🛡️ SECURITY: Exclude session_data to prevent tokens from being sent to the UI
+        fields = ['id', 'user', 'status', 'instance_name', 'qr_code', 'pairing_code', 'linked_phone_number', 'created_at', 'updated_at']

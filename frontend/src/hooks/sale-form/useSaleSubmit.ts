@@ -135,36 +135,20 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
           m.generateReceiptNumber(props.currentBusiness?.id || ""),
         ));
       const profit = calculateTotalProfit(props.formData.items);
-      let finalCashTransactionId = props.cashTransactionId;
 
-      if (props.initialData) {
-        finalCashTransactionId = await props.updateCashTransactionForSale(
-          {
-            id: props.initialData.id,
-            customerName: props.formData.customerName,
-            receiptNumber: props.initialData.receiptNumber,
-            items: props.formData.items,
-          },
-          grandTotal,
-          props.cashTransactionId,
-          props.originalPaymentStatus,
-          props.formData.paymentStatus,
-          props.linkToCash,
-          props.selectedCashAccountId,
+      const saleDbData = {
+        ...mapSaleToDbSale(
+          props.formData,
           props.selectedDate,
-        );
-        props.setCashTransactionId(finalCashTransactionId);
-      }
-
-      const saleDbData = mapSaleToDbSale(
-        props.formData,
-        props.selectedDate,
-        profit,
-        receiptNumber || "",
-        props.user?.id || "",
-        props.currentBusiness?.id || "",
-        finalCashTransactionId,
-      );
+          profit,
+          receiptNumber || "",
+          props.user?.id || "",
+          props.currentBusiness?.id || "",
+          props.cashTransactionId,
+        ),
+        linkToCash: props.linkToCash,
+        cashAccountId: props.selectedCashAccountId,
+      };
 
       const {
         success,
@@ -240,18 +224,6 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
             props.selectedDate,
           );
       } else {
-        const newCashId = await props.createCashTransactionForSale(
-          sale,
-          grandTotal,
-          props.linkToCash,
-          props.selectedCashAccountId,
-          props.selectedDate,
-          props.formData.paymentStatus,
-        );
-        if (newCashId) {
-          await updateSaleCashTransactionAction(sale.id, newCashId);
-          sale.cashTransactionId = newCashId;
-        }
         if (
           props.formData.paymentStatus === "Installment Sale" &&
           props.formData.amountPaid

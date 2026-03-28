@@ -30,6 +30,8 @@ interface ProductFormProps {
   categories: ProductCategory[];
   onProductSubmit: (data: ProductFormData & { autoPrintLabel?: boolean, printQuantity?: number }) => void;
   isLoading: boolean;
+  draftData?: any;
+  onClearDraft?: () => void;
 }
 
 // Extended form data type to handle quantity as string or number
@@ -47,6 +49,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
   categories,
   onProductSubmit,
   isLoading,
+  draftData,
+  onClearDraft
 }) => {
   const router = useRouter();
   const { settings } = useBusinessSettings();
@@ -103,26 +107,33 @@ const ProductForm: React.FC<ProductFormProps> = ({
     getInitialFormData(initialData)
   );
 
-  // Load draft on mount for new products
+  // Load draft from prop when provided (Seamless silent loading)
   useEffect(() => {
-    if (!initialData && hasDraft) {
-      const draft = loadDraft();
-      if (draft) {
+    if (!initialData && draftData?.formData) {
+      // Only load if form is currently "empty" to prevent overwriting manual input
+      const isFormEmpty = 
+        !formData.name?.trim() && 
+        !formData.barcode?.trim() && 
+        !formData.manufacturerBarcode?.trim() &&
+        !formData.description?.trim() &&
+        (formData.sellingPrice === undefined || formData.sellingPrice === 0);
+
+      if (isFormEmpty) {
         setFormData(prev => ({
           ...prev,
-          ...draft.formData,
-          createdAt: new Date(draft.formData.createdAt)
+          ...draftData.formData,
+          createdAt: new Date(draftData.formData.createdAt)
         }));
-        if (draft.formData.imageUrl) {
-          setImagePreview(draft.formData.imageUrl);
+        if (draftData.formData.imageUrl) {
+          setImagePreview(draftData.formData.imageUrl);
         }
-        toast.info('Restored your unsaved product draft');
       }
     }
-  }, [initialData]); // Run once on mount
+  }, [initialData, draftData, formData.name, formData.barcode, formData.manufacturerBarcode, formData.description, formData.sellingPrice]);
 
   // Auto-save logic
   const autoSave = React.useCallback((isPersistent = true) => {
+    // 🛡️ SECURITY: Never auto-save if we are currently submitting or if it's an edit
     if (!initialData && !isLoading) {
       const hasData = (formData.name?.trim() || '') || 
                       (formData.barcode?.trim() || '') || 
@@ -136,7 +147,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
   }, [formData, initialData, isLoading, saveDraft]);
 
   useEffect(() => {
-    if (initialData) return;
+    // 🛡️ SECURITY: Stop auto-save effects completely if submitting
+    if (initialData || isLoading) return;
 
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
     
@@ -434,7 +446,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
       
       // Clear draft after successful submission
       if (!initialData) {
-        clearDraft();
+        if (onClearDraft) {
+          onClearDraft();
+        } else {
+          clearDraft();
+        }
       }
     } catch (error) {
       console.error('Error handling form submission:', error);

@@ -54,7 +54,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         from finance.models import Expense
         from django.db.models import Sum, F
         
-        sales_qs = Sale.objects.filter(branch_id=branch_id).exclude(status='QUOTE')
+        sales_qs = Sale.objects.filter(branch_id=branch_id, is_deleted=False).exclude(status='QUOTE')
         if start_date:
             sales_qs = sales_qs.filter(date__gte=start_date)
         if end_date:
@@ -63,36 +63,42 @@ class AnalyticsViewSet(viewsets.ViewSet):
         sales_totals = sales_qs.aggregate(
             total=Sum('total_amount'),
             tax=Sum('tax_amount'),
-            discount=Sum('discount_amount')
+            discount=Sum('discount_amount'),
+            total_cost=Sum('total_cost')
         )
-        
-        # Calculate approximate total cost from items
-        item_stats = SaleItem.objects.filter(sale__in=sales_qs).aggregate(
-            total_cost=Sum(F('cost_price') * F('quantity'))
-        )
-        
+
         total_sales = sales_totals['total'] or 0
-        total_cost = item_stats['total_cost'] or 0
+        total_cost = sales_totals['total_cost'] or 0
         total_profit = total_sales - total_cost
-        
+
         counts = sales_qs.values('status').annotate(count=Count('id'))
         count_dict = {item['status']: item['count'] for item in counts}
-        
+
         expenses_qs = Expense.objects.filter(branch_id=branch_id)
         if start_date:
             expenses_qs = expenses_qs.filter(date__gte=start_date)
         if end_date:
             expenses_qs = expenses_qs.filter(date__lte=end_date)
-            
+
         expenses_stats = expenses_qs.aggregate(total=Sum('amount'))
-        
+
         paid_count = count_dict.get('COMPLETED', 0)
         pending_count = count_dict.get('PENDING', 0) + count_dict.get('PARTIAL', 0)
-        
-        # Recent Sales (last 5)
-        recent_sales = sales_qs.order_by('-date')[:5]
-        from sales.serializers import SaleSerializer
-        
+
+        # 🚀 PERFORMANCE: Optimize Recent Sales (last 5) with select_related for customer
+        recent_sales = sales_qs.select_related('customer').order_by('-date')[:5]
+
+        # Use a lightweight serialization to avoid N+1 and large payload overhead
+        recent_sales_data = []
+        for s in recent_sales:
+            recent_sales_data.append({
+                "id": s.id,
+                "receiptNumber": s.receipt_number,
+                "totalAmount": float(s.total_amount),
+                "status": s.status,
+                "date": s.date,
+                "customerName": s.customer.name if s.customer else "Guest"
+            })        
         data = {
             "totalSales": total_sales,
             "totalCost": total_cost,
@@ -100,7 +106,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
             "paidSalesCount": paid_count,
             "pendingSalesCount": pending_count,
             "totalExpenses": expenses_stats['total'] or 0,
-            "recentSales": SaleSerializer(recent_sales, many=True).data
+            "recentSales": recent_sales_data
         }
 
         # Cache for 5 minutes
@@ -249,6 +255,16 @@ class BranchViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             target_agency_id = data.get('agencyId') or user.agency_id
             
+            # 🛡️ SECURITY: Prevent hijacking of other agencies
+            if target_agency_id:
+                try:
+                    agency = Agency.objects.get(id=target_agency_id)
+                    # Only allow onboarding if agency has no name (new) or user is already linked
+                    if agency.name and user.agency_id and user.agency_id != target_agency_id:
+                        return Response({"error": "Unauthorized to onboard this agency."}, status=403)
+                except Agency.DoesNotExist:
+                    target_agency_id = None # Fallback to creation
+            
             if not target_agency_id:
                 unique_id = str(uuid.uuid4())[:6]
                 agency = Agency.objects.create(
@@ -264,10 +280,19 @@ class BranchViewSet(viewsets.ModelViewSet):
                 agency.is_onboarded = True
                 if data.get('packageId'): agency.package_id = data.get('packageId')
                 if data.get('subscriptionStatus'): agency.subscription_status = data.get('subscriptionStatus')
-                # Date fields omitted for brevity but can be added
                 agency.save()
 
             target_branch_id = data.get('branchId')
+            
+            # 🛡️ SECURITY: Prevent hijacking of other branches
+            if target_branch_id:
+                try:
+                    branch = Branch.objects.get(id=target_branch_id)
+                    if branch.agency_id != target_agency_id:
+                         return Response({"error": "Unauthorized to onboard this branch."}, status=403)
+                except Branch.DoesNotExist:
+                    target_branch_id = None
+
             if not target_branch_id:
                 branch = Branch.objects.filter(agency_id=target_agency_id).first()
                 if branch:
@@ -364,7 +389,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 delta = relativedelta(months=1)
                 
             if delta:
-                while count < 365:
+                while count < 1000: # 🛠️ Increased cap to ~3 years to prevent silent stops
                     current_date += delta
                     if current_date > end_date:
                         break

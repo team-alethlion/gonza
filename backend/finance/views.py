@@ -197,7 +197,8 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         # We need the selling price of return ins... this is complex because return in might not have it.
         # Sale returns in the React hook used `item.returnIn * item.sellingPrice`.
         # In Django, we'll sum up the value of RETURN_IN entries. 
-        total_sales_returns = to_decimal(returns_in_qs.aggregate(val=Sum(F('quantity_change') * F('product__selling_price')))['val'])
+        # Use the actual price recorded in the history entry at the time of return
+        total_sales_returns = to_decimal(returns_in_qs.aggregate(val=Sum(F('quantity_change') * F('new_price')))['val'])
 
         net_sales = total_sales - total_sales_returns
         total_cogs = total_cost_sales + total_carriage
@@ -393,7 +394,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
                 person_in_charge=expense.person_in_charge,
                 date=expense.date,
                 payment_method=expense.payment_method,
-                receipt_image=expense.receipt_image
+                receipt_image=expense.receipt_image,
+                reference_id=expense.id,
+                reference_type='EXPENSE'
             )
             expense.cash_transaction = cash_tx
             expense.save(update_fields=['cash_transaction'])
@@ -426,7 +429,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
                 person_in_charge=expense.person_in_charge,
                 date=expense.date,
                 payment_method=expense.payment_method,
-                receipt_image=expense.receipt_image
+                receipt_image=expense.receipt_image,
+                reference_id=expense.id,
+                reference_type='EXPENSE'
             )
             expense.cash_transaction = cash_tx
             expense.save(update_fields=['cash_transaction'])
@@ -441,6 +446,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             cash_tx.date = expense.date
             cash_tx.payment_method = expense.payment_method
             cash_tx.receipt_image = expense.receipt_image
+            # Ensure reference is set if it was missing
+            cash_tx.reference_id = expense.id
+            cash_tx.reference_type = 'EXPENSE'
             cash_tx.save()
             
         elif not should_link and was_linked:
@@ -662,7 +670,9 @@ class CarriageInwardViewSet(viewsets.ModelViewSet):
                 transaction_type='cash_out',
                 category='Inventory',
                 description=f"Carriage Inward: {instance.supplier_name} - {instance.details}",
-                date=instance.date
+                date=instance.date,
+                reference_id=instance.id,
+                reference_type='CARRIAGE_INWARD'
             )
             instance.cash_transaction = cash_tx
             instance.save(update_fields=['cash_transaction'])

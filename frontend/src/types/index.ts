@@ -29,7 +29,7 @@ export interface Sale {
   customerContact?: string;
   customerId?: string;
   items: SaleItem[];
-  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale';
+  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale' | 'COMPLETED' | 'UNPAID' | 'INSTALLMENT' | 'QUOTE' | 'PENDING';
   profit: number;
   total: number;
   totalCost: number;
@@ -137,7 +137,7 @@ export interface SaleFormData {
   customerContact: string;
   customerId?: string; // Added customerId field
   items: SaleItem[];
-  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale";
+  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale" | "COMPLETED" | "UNPAID" | "INSTALLMENT" | "QUOTE" | "PENDING";
   receiptNumber?: string;
   taxRate?: number | null;
   amountPaid?: number;
@@ -467,6 +467,13 @@ export const mapSaleToDbSale = (
     discountAmount: item.discountAmount
   }));
 
+  // 🛡️ DATA INTEGRITY: Map frontend status to backend enum values
+  let status_val = saleData.paymentStatus;
+  if (status_val === 'Paid') status_val = 'COMPLETED';
+  if (status_val === 'NOT PAID') status_val = 'UNPAID';
+  if (status_val === 'Installment Sale') status_val = 'INSTALLMENT';
+  if (status_val === 'Quote') status_val = 'QUOTE';
+
   return {
     user_id: userId,
     location_id: locationId,
@@ -476,7 +483,7 @@ export const mapSaleToDbSale = (
     customer_contact: saleData.customerContact || null,
     customer_id: saleData.customerId || null, // Include customer_id
     items: (mappedItems as unknown) as Json,
-    payment_status: saleData.paymentStatus,
+    payment_status: status_val,
     profit: profit,
     date: selectedDate.toISOString().split('T')[0],
     tax_rate: saleData.taxRate || 0,

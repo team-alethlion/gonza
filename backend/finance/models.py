@@ -35,6 +35,10 @@ class CashTransaction(models.Model):
     payment_method = models.CharField(max_length=100, null=True, blank=True)
     receipt_image = models.URLField(max_length=500, null=True, blank=True)
 
+    # 🛡️ AUDITABILITY: Direct link to the source of the transaction
+    reference_id = models.CharField(max_length=100, null=True, blank=True)
+    reference_type = models.CharField(max_length=50, null=True, blank=True) # e.g., "SALE", "EXPENSE", "INSTALLMENT"
+
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='cash_transactions', null=True, blank=True)
     account = models.ForeignKey(CashAccount, on_delete=models.CASCADE, related_name='transactions')
     branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='cash_transactions', null=True, blank=True)

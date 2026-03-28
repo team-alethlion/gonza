@@ -57,7 +57,6 @@ class Product(models.Model):
     
     barcode = models.CharField(max_length=100, null=True, blank=True)
     sku = models.CharField(max_length=100, null=True, blank=True)
-    image = models.URLField(max_length=500, null=True, blank=True)
     image_url = models.URLField(max_length=500, null=True, blank=True)
     manufacturer_barcode = models.CharField(max_length=100, null=True, blank=True)
     tags = models.JSONField(default=list, blank=True)
@@ -82,6 +81,17 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug and self.name:
             self.slug = slugify(self.name)
+        
+        # 🛡️ DATA INTEGRITY: Ensure empty strings are saved as NULL (None)
+        # This prevents "unique_together" constraint violations for multiple products
+        # with empty barcodes or SKUs within the same branch.
+        if self.barcode == "":
+            self.barcode = None
+        if self.sku == "":
+            self.sku = None
+        if self.manufacturer_barcode == "":
+            self.manufacturer_barcode = None
+            
         super().save(*args, **kwargs)
 
     def __str__(self):

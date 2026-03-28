@@ -75,6 +75,57 @@ class MessageViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = request.data
+        new_status = data.get('status')
+        old_status = instance.status
+        profile_id = instance.profile_id or data.get('profileId')
+        
+        # 🛡️ SMS CREDIT REFUND/DEDUCTION LOGIC
+        # We need to capture changes to message status to ensure accurate credit management.
+        
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        message = serializer.save()
+        
+        if profile_id:
+            try:
+                # 1. REFUND LOGIC: If message was 'sent' (credits deducted) and now 'failed'
+                if old_status == 'sent' and new_status == 'failed':
+                    if message.sms_credits_used > 0:
+                        user_locked = User.objects.select_for_update().get(id=profile_id)
+                        if hasattr(user_locked, 'credits'):
+                            user_locked.credits = F('credits') + message.sms_credits_used
+                            user_locked.save(update_fields=['credits'])
+                            # Optional: Mark as refunded? For now, we rely on status change
+                
+                # 2. DEDUCTION LOGIC: If message wasn't 'sent' and now is
+                elif old_status != 'sent' and new_status == 'sent':
+                    sms_credits_to_deduct = data.get('smsCreditsUsed') or message.sms_credits_used
+                    if sms_credits_to_deduct > 0:
+                        user_locked = User.objects.select_for_update().get(id=profile_id)
+                        if hasattr(user_locked, 'credits'):
+                            if user_locked.credits < sms_credits_to_deduct:
+                                raise Exception("Insufficient SMS credits to update to 'sent'.")
+                            user_locked.credits = F('credits') - sms_credits_to_deduct
+                            user_locked.save(update_fields=['credits'])
+                            
+                            # Ensure the message record matches the deduction
+                            if message.sms_credits_used != sms_credits_to_deduct:
+                                message.sms_credits_used = sms_credits_to_deduct
+                                message.save(update_fields=['sms_credits_used'])
+                                
+            except User.DoesNotExist:
+                pass
+            except Exception as e:
+                # Re-raise to trigger transaction rollback
+                raise e
+                
+        return Response(self.get_serializer(message).data)
+
 class MessageTemplateViewSet(viewsets.ModelViewSet):
     queryset = MessageTemplate.objects.all()
     serializer_class = MessageTemplateSerializer

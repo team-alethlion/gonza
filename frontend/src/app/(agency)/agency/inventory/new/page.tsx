@@ -19,6 +19,8 @@ import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { getProductAction } from "@/app/actions/products";
+import { useNewProductDraft } from "@/hooks/useNewProductDraft";
+import DraftNotification from "@/components/sales/DraftNotification";
 
 const NewProduct = () => {
   const params = useParams();
@@ -48,6 +50,22 @@ const NewProduct = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const { settings } = useBusinessSettings();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
+
+  // 🛡️ DRAFT MANAGEMENT
+  const [formKey, setFormKey] = useState(0);
+  const {
+    showDraftNotification,
+    draftData,
+    handleLoadDraft,
+    handleDismissDraft,
+    clearDraft,
+    refreshDraft,
+  } = useNewProductDraft(!!id);
+
+  const handleResetForm = () => {
+    refreshDraft(); // Refresh data from storage
+    setFormKey((prev) => prev + 1); // Force re-mount of ProductForm
+  };
 
   const loadProductData = async () => {
     const targetId = id || duplicateId;
@@ -178,6 +196,9 @@ const NewProduct = () => {
         if (result.success && result.data) {
           const newProduct: Product = result.data;
           toast.success("Product created successfully");
+          
+          // Clear the draft upon success
+          clearDraft();
 
           // Auto-print label if requested
           if (formData.autoPrintLabel && newProduct.barcode) {
@@ -358,12 +379,17 @@ const NewProduct = () => {
           </Button>
         </div>
       ) : (
-        <ProductForm
-          initialData={initialData}
-          categories={categories}
-          onProductSubmit={handleProductSubmit}
-          isLoading={isLoading}
-        />
+        <>
+          <ProductForm
+            key={formKey}
+            initialData={initialData}
+            categories={categories}
+            onProductSubmit={handleProductSubmit}
+            isLoading={isLoading}
+            draftData={draftData}
+            onClearDraft={clearDraft}
+          />
+        </>
       )}
     </div>
   );

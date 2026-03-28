@@ -20,7 +20,7 @@ interface DjangoProduct {
   sku: string | null;
   barcode: string | null;
   manufacturer_barcode: string | null;
-  image: string | null;
+  image_url: string | null;
   cost_price: string | number;
   selling_price: string | number;
   stock: string | number;
@@ -94,7 +94,7 @@ export async function getProductsAction({
       costPrice: Number(p.cost_price),
       sellingPrice: Number(p.selling_price),
       supplier: p.supplier_name || p.supplier || null,
-      imageUrl: p.image,
+      imageUrl: p.image_url,
       barcode: p.barcode,
       manufacturerBarcode: p.manufacturer_barcode || null,
       itemNumber: p.sku || '',
@@ -128,7 +128,7 @@ export async function getProductAction(id: string, branchId: string) {
       costPrice: Number(p.cost_price),
       sellingPrice: Number(p.selling_price),
       supplier: p.supplier_name || p.supplier || null,
-      imageUrl: p.image,
+      imageUrl: p.image_url,
       barcode: p.barcode,
       manufacturerBarcode: p.manufacturer_barcode || null,
       itemNumber: p.sku || '',
@@ -183,28 +183,36 @@ export async function getProductsByIdsAction(ids: string[], businessId: string) 
 export async function getProductsDeltaAction(businessId: string, since?: number) {
   try {
     await verifyBranchAccess(businessId);
-    const rawProducts = await djangoFetch<DjangoProduct[] | PaginatedResponse<DjangoProduct>>(`inventory/products/?branch_id=${businessId}`);
-    let productsList = Array.isArray(rawProducts) ? rawProducts : (rawProducts.results || []);
+    
+    // ⚡️ PERFORMANCE: Use the dedicated delta endpoint for server-side filtering
+    const url = `inventory/products/delta/?branch_id=${businessId}&since=${since || 0}`;
+    const result = await djangoFetch<any>(url);
 
-    if (since) {
-      productsList = productsList.filter((p: DjangoProduct) => new Date(p.updated_at).getTime() > since);
+    if (!result || !result.products) {
+      throw new Error("Invalid response from delta sync");
     }
 
-    return { success: true, products: productsList.map((p: DjangoProduct) => ({
-      ...p,
-      itemNumber: p.sku,
-      manufacturerBarcode: p.manufacturer_barcode,
-      imageUrl: p.image,
-      category: p.category_name || p.category || 'Uncategorized',
-      supplier: p.supplier_name || p.supplier || null,
-      quantity: Number(p.stock),
-      costPrice: Number(p.cost_price),
-      sellingPrice: Number(p.selling_price),
-      minimumStock: Number(p.min_stock),
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-    })) };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : String(error) }; }
+    return { 
+      success: true, 
+      products: result.products.map((p: DjangoProduct) => ({
+        ...p,
+        itemNumber: p.sku,
+        manufacturerBarcode: p.manufacturer_barcode,
+        imageUrl: p.image_url,
+        category: p.category_name || p.category || 'Uncategorized',
+        supplier: p.supplier_name || p.supplier || null,
+        quantity: Number(p.stock),
+        costPrice: Number(p.cost_price),
+        sellingPrice: Number(p.selling_price),
+        minimumStock: Number(p.min_stock),
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      })),
+      serverTime: result.server_time
+    };
+  } catch (error) { 
+    return { success: false, error: error instanceof Error ? error.message : String(error) }; 
+  }
 }
 
 export async function createProductAction(data: {
@@ -238,7 +246,7 @@ export async function createProductAction(data: {
       branch_id: data.businessId,
       user_id: data.userId,
       barcode: data.barcode,
-      image: data.imageUrl,
+      image_url: data.imageUrl,
       cost_price: data.costPrice || 0,
       selling_price: data.sellingPrice || 0,
       stock: data.quantity || 0,
@@ -256,7 +264,7 @@ export async function createProductAction(data: {
         ...result,
         itemNumber: result.sku,
         manufacturerBarcode: result.manufacturer_barcode,
-        imageUrl: result.image,
+        imageUrl: result.image_url,
         quantity: Number(result.stock),
         costPrice: Number(result.cost_price),
         sellingPrice: Number(result.selling_price),
@@ -299,7 +307,7 @@ export async function updateProductAction(id: string, branchId: string, updates:
       supplier: updates.supplierId !== undefined ? updates.supplierId : undefined,
       sku: updates.itemNumber || updates.sku,
       barcode: updates.barcode,
-      image: updates.imageUrl,
+      image_url: updates.imageUrl,
       cost_price: updates.costPrice,
       selling_price: updates.sellingPrice,
       stock: updates.quantity,
@@ -442,7 +450,7 @@ export async function lookupProductByBarcodeAction(code: string, branchId: strin
         ...result,
         itemNumber: result.sku,
         manufacturerBarcode: result.manufacturer_barcode,
-        imageUrl: result.image,
+        imageUrl: result.image_url,
         quantity: Number(result.stock),
         costPrice: Number(result.cost_price),
         sellingPrice: Number(result.selling_price),

@@ -90,15 +90,21 @@ export const useSalesFilters = (sales: Sale[]) => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(sale => 
-        sale.customerName.toLowerCase().includes(query) ||
-        sale.receiptNumber.toLowerCase().includes(query) ||
-        sale.items.some(item => item.description.toLowerCase().includes(query))
+        (sale.customerName?.toLowerCase().includes(query) || false) ||
+        (sale.receiptNumber?.toLowerCase().includes(query) || false) ||
+        (sale.items?.some(item => item.description?.toLowerCase().includes(query)) || false)
       );
     }
 
     // Filter by payment status
     if (paymentFilter !== 'all') {
-      filtered = filtered.filter(sale => sale.paymentStatus === paymentFilter);
+      if (paymentFilter === 'Paid') {
+        filtered = filtered.filter(sale => 
+          sale.paymentStatus === 'Paid' || sale.paymentStatus === 'COMPLETED'
+        );
+      } else {
+        filtered = filtered.filter(sale => sale.paymentStatus === paymentFilter);
+      }
     }
 
     // Filter by cash transaction (linked/unlinked)

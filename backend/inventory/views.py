@@ -135,6 +135,33 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
+    def delta(self, request):
+        branch_id = self.request.query_params.get('branch_id')
+        since = self.request.query_params.get('since', '0')
+        
+        # ⚡️ CLOCK DRIFT PROTECTION: Capture server time BEFORE querying
+        server_now = int(datetime.now().timestamp() * 1000)
+        
+        qs = self.get_queryset()
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+            
+        if since and since != '0':
+            try:
+                # Convert since (milliseconds) to datetime
+                from django.utils import timezone
+                since_dt = timezone.datetime.fromtimestamp(int(since) / 1000.0, tz=timezone.get_current_timezone())
+                qs = qs.filter(updated_at__gt=since_dt)
+            except (ValueError, TypeError):
+                pass
+                
+        serializer = self.get_serializer(qs, many=True)
+        return Response({
+            "products": serializer.data,
+            "server_time": server_now
+        })
+
+    @action(detail=False, methods=['get'])
     def lookup(self, request):
         code = request.query_params.get('code', '').lower()
         branch_id = request.query_params.get('branchId')
@@ -347,7 +374,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 p.id as "productId",
                 p.name as "productName",
                 p.sku as "itemNumber",
-                p.image as "imageUrl",
+                p.image_url as "imageUrl",
                 p.cost_price as "costPrice",
                 p.selling_price as "sellingPrice",
                 c.name as "category",
@@ -464,54 +491,94 @@ class ProductViewSet(viewsets.ModelViewSet):
         total_discount = float(sales_totals['discount'] or 0)
         total_profit = float(sales_totals['profit'] or 0)
 
-        # 2. Get the items and attribute the Sale-level discount and profit pro-rata
+        # 2. Attribute Sale-level discount and profit pro-rata with remainder handling
         # This ensures the sum of items EXACTLY matches the Sale totals
-        item_qs = SaleItem.objects.filter(sale__in=sales_qs).annotate(
-            # Calculate item's share of the parent sale's subtotal to distribute discount/profit
-            sale_subtotal=F('sale__subtotal'),
-            sale_discount=F('sale__discount_amount'),
-            sale_profit=F('sale__profit'),
-            # Handle division by zero for sales with 0 subtotal
-            weight=Case(
-                When(sale_subtotal=0, then=Value(1.0)),
-                default=Cast(F('subtotal'), DecimalField()) / Cast(F('sale_subtotal'), DecimalField()),
-                output_field=DecimalField(max_digits=10, decimal_places=4)
-            )
-        ).annotate(
-            attributed_discount=ExpressionWrapper(F('weight') * F('sale_discount'), output_field=DecimalField()),
-            attributed_profit=ExpressionWrapper(F('weight') * F('sale_profit'), output_field=DecimalField()),
-            attributed_total=ExpressionWrapper(F('subtotal') - (F('weight') * F('sale_discount')), output_field=DecimalField())
-        )
+        product_data = {}
 
-        # 3. Aggregate by Product using the attributed values
-        aggregates = item_qs.values('product_id', 'product_name').annotate(
-            totalQuantity=Sum('quantity'),
-            totalAmount=Sum('attributed_total'),
-            totalCost=Sum(F('cost_price') * F('quantity')),
-            totalProfit=Sum('attributed_profit'),
-            totalDiscount=Sum('attributed_discount'),
-            avgPrice=Cast(Sum('attributed_total') / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2)),
-            avgCost=Cast(Sum(F('cost_price') * F('quantity')) / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2))
-        ).order_by('-totalAmount')
+        # Prefetch items to avoid N+1
+        sales_with_items = sales_qs.prefetch_related('items')
 
+        for sale in sales_with_items:
+            items = list(sale.items.all())
+            if not items:
+                continue
+
+            sale_subtotal = sale.subtotal or Decimal('0')
+            sale_discount = sale.discount_amount or Decimal('0')
+            sale_profit = sale.profit or Decimal('0')
+
+            remaining_discount = sale_discount
+            remaining_profit = sale_profit
+
+            for i, item in enumerate(items):
+                is_last = (i == len(items) - 1)
+                
+                # Calculate weights and attributed values
+                if is_last:
+                    attributed_discount = remaining_discount
+                    attributed_profit = remaining_profit
+                else:
+                    if sale_subtotal > 0:
+                        weight = item.subtotal / sale_subtotal
+                        attributed_discount = (weight * sale_discount).quantize(Decimal('0.01'))
+                        attributed_profit = (weight * sale_profit).quantize(Decimal('0.01'))
+                    else:
+                        # If subtotal is 0 but there's discount/profit (edge case), distribute evenly
+                        attributed_discount = (sale_discount / len(items)).quantize(Decimal('0.01'))
+                        attributed_profit = (sale_profit / len(items)).quantize(Decimal('0.01'))
+                    
+                    remaining_discount -= attributed_discount
+                    remaining_profit -= attributed_profit
+
+                attributed_total = item.subtotal - attributed_discount
+                cost_value = item.cost_price * item.quantity
+
+                # Aggregate by Product
+                p_id = item.product_id or "unknown"
+                if p_id not in product_data:
+                    product_data[p_id] = {
+                        "description": item.product_name,
+                        "totalQuantity": Decimal('0'),
+                        "totalAmount": Decimal('0'),
+                        "totalCost": Decimal('0'),
+                        "totalProfit": Decimal('0'),
+                        "totalDiscount": Decimal('0'),
+                        "productIds": [item.product_id] if item.product_id else []
+                    }
+                
+                pd = product_data[p_id]
+                pd["totalQuantity"] += item.quantity
+                pd["totalAmount"] += attributed_total
+                pd["totalCost"] += cost_value
+                pd["totalProfit"] += attributed_profit
+                pd["totalDiscount"] += attributed_discount
+
+        # 3. Format results for Response
         formatted = []
-        for row in aggregates:
+        for p_id, pd in product_data.items():
+            qty = float(pd["totalQuantity"])
+            total_amt = float(pd["totalAmount"])
+            total_cost = float(pd["totalCost"])
+            
             formatted.append({
-                "description": row['product_name'],
-                "totalQuantity": float(row['totalQuantity'] or 0),
-                "averagePrice": float(row['avgPrice'] or 0),
-                "totalAmount": float(row['totalAmount'] or 0),
-                "totalCost": float(row['totalCost'] or 0),
-                "totalProfit": float(row['totalProfit'] or 0),
-                "totalDiscount": float(row['totalDiscount'] or 0),
-                "averageCost": float(row['avgCost'] or 0),
-                "productIds": [row['product_id']] if row['product_id'] else []
+                "description": pd["description"],
+                "totalQuantity": qty,
+                "averagePrice": round(total_amt / qty, 2) if qty > 0 else 0,
+                "totalAmount": total_amt,
+                "totalCost": total_cost,
+                "totalProfit": float(pd["totalProfit"]),
+                "totalDiscount": float(pd["totalDiscount"]),
+                "averageCost": round(total_cost / qty, 2) if qty > 0 else 0,
+                "productIds": pd["productIds"]
             })
 
+        # Sort by totalAmount descending
+        formatted.sort(key=lambda x: x["totalAmount"], reverse=True)
+
         summary = {
-            "totalQuantity": float(item_qs.aggregate(q=Sum('quantity'))['q'] or 0),
+            "totalQuantity": sum(float(pd["totalQuantity"]) for pd in product_data.values()),
             "totalAmount": total_sales,
-            "totalCost": float(item_qs.aggregate(c=Sum(F('cost_price') * F('quantity')))['c'] or 0),
+            "totalCost": sum(float(pd["totalCost"]) for pd in product_data.values()),
             "totalProfit": total_profit,
             "totalDiscount": total_discount
         }
@@ -558,7 +625,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 old_stock = product.stock
                 new_stock = old_stock + delta
                 product.stock = new_stock
-                product.save(update_fields=['stock', 'cost_price'])
+                product.save()
                 
                 ProductHistory.objects.create(
                     id=f"hist_{uuid.uuid4().hex[:10]}",
@@ -686,7 +753,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
             )
             
             product.stock = actual_new_stock
-            product.save(update_fields=['stock'])
+            product.save()
             
             serializer = self.get_serializer(history)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -759,10 +826,45 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                 
                 # Deduct from source
                 src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+                # Add to destination
+                dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
+
+                # 🛡️ DATA LOSS PROTECTION: Create the product in destination branch if it doesn't exist
+                if src_product and not dest_product:
+                    # Handle category (it's branch-specific)
+                    new_category = None
+                    if src_product.category:
+                        new_category, _ = Category.objects.get_or_create(
+                            name=src_product.category.name,
+                            branch_id=to_branch_id,
+                            defaults={
+                                'agency_id': src_product.agency_id,
+                                'user_id': user_id
+                            }
+                        )
+                    
+                    dest_product = Product.objects.create(
+                        branch_id=to_branch_id,
+                        user_id=user_id,
+                        agency_id=src_product.agency_id,
+                        name=src_product.name,
+                        description=src_product.description,
+                        sku=src_product.sku,
+                        barcode=src_product.barcode,
+                        manufacturer_barcode=src_product.manufacturer_barcode,
+                        image_url=src_product.image_url,
+                        cost_price=src_product.cost_price,
+                        selling_price=src_product.selling_price,
+                        min_stock=src_product.min_stock,
+                        category=new_category,
+                        supplier=src_product.supplier,
+                        stock=0
+                    )
+
                 if src_product:
                     old_stock = src_product.stock
                     src_product.stock -= qty
-                    src_product.save(update_fields=['stock'])
+                    src_product.save()
                     
                     ProductHistory.objects.create(
                         id=f"hist_{uuid.uuid4().hex[:10]}",
@@ -777,12 +879,10 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                         reference_id=transfer.id
                     )
                 
-                # Add to destination
-                dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
                 if dest_product:
                     old_stock = dest_product.stock
                     dest_product.stock += qty
-                    dest_product.save(update_fields=['stock'])
+                    dest_product.save()
                     
                     ProductHistory.objects.create(
                         id=f"hist_{uuid.uuid4().hex[:10]}",

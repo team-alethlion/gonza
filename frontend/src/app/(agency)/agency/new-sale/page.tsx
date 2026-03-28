@@ -18,6 +18,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
+import { useProductSync } from "@/hooks/useProductSync";
+
 const NewSale = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,6 +27,21 @@ const NewSale = () => {
   const { settings } = useBusinessSettings();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
+  const { syncProducts } = useProductSync();
+
+  // ⚡️ INSTANT SYNC: Sync products when window gains focus
+  // This ensures that if a user added a product in another tab and came back here,
+  // the new product will be available for search immediately.
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Window focused, triggering background product sync...');
+      syncProducts();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [syncProducts]);
+
   // In Next.js we don't have location.state, we only have ID via searchParams.
   // Realistically we also need to fetch the sale if editId is provided.
   // For now, this is a placeholder.

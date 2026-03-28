@@ -62,9 +62,14 @@ const SalesForm: React.FC<SalesFormProps> = ({
   onClearDraft,
   isReceiptOpen = false,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   const { settings } = useBusinessSettings();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { user } = useAuth();
   const { accounts: cashAccounts } = useCashAccounts();
   const { currentBusiness } = useBusiness();
@@ -287,6 +292,16 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const totalAmount = useMemo(() => calculateTotalAmount(formData.items), [formData.items, calculateTotalAmount]);
   const taxAmount = useMemo(() => calculateTaxAmount(totalAmount), [totalAmount, calculateTaxAmount]);
   const grandTotal = useMemo(() => totalAmount + taxAmount, [totalAmount, taxAmount]);
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-64 bg-gray-100 rounded-lg"></div>
+        <div className="h-48 bg-gray-100 rounded-lg"></div>
+        <div className="h-24 bg-gray-100 rounded-lg"></div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

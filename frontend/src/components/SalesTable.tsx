@@ -367,10 +367,15 @@ const SalesTable: React.FC<SalesTableProps> = ({
   isLoading = false,
   mobileOptimized = false,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<BusinessSettings>({
     ...DEFAULT_SETTINGS,
     currency,
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingSale, setIsDeletingSale] = useState(false);
@@ -626,9 +631,17 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     Sales Records
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {memoizedFilteredSales.length}{" "}
-                    {memoizedFilteredSales.length === 1 ? "record" : "records"}{" "}
-                    found
+                    {mounted ? (
+                      <>
+                        {memoizedFilteredSales.length}{" "}
+                        {memoizedFilteredSales.length === 1
+                          ? "record"
+                          : "records"}{" "}
+                        found
+                      </>
+                    ) : (
+                      "Loading records..."
+                    )}
                   </p>
                 </div>
                 <div className="flex gap-2">

@@ -15,7 +15,7 @@ from .serializers import (
     SaleSerializer, SaleItemSerializer, InstallmentPaymentSerializer
 )
 from inventory.models import Product, ProductHistory
-from finance.models import Expense
+from finance.models import Expense, CashAccount, CashTransaction
 from core_app.pdf_utils import ReceiptGenerator, SalesReportGenerator, ProfitLossGenerator, generate_pdf_response
 from django.db.models.functions import Cast
 from django.db.models import Count, F, DecimalField
@@ -76,7 +76,7 @@ class SaleCategoryViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-created_at')
 
-from .utils import generate_receipt_number
+from .utils import generate_receipt_number, get_next_receipt_number
 
 class SaleViewSet(viewsets.ModelViewSet):
     queryset = Sale.objects.all().prefetch_related('items', 'installments')
@@ -175,6 +175,8 @@ class SaleViewSet(viewsets.ModelViewSet):
                 product=product,
                 old_stock=old_stock,
                 new_stock=new_stock,
+                old_price=product.selling_price,
+                new_price=product.selling_price,
                 quantity_change=-qty_sold, # ⚡️ Record the negative change
                 type='SALE',
                 change_reason='SALE',
@@ -187,6 +189,12 @@ class SaleViewSet(viewsets.ModelViewSet):
     def _create_sale_from_data(self, data, user_id):
         raw_items = data.get('items', [])
         status_val = data.get('paymentStatus', 'PENDING')
+        
+        # 🛡️ DATA INTEGRITY: Normalize incoming status strings
+        if status_val == 'Paid': status_val = 'COMPLETED'
+        if status_val == 'NOT PAID': status_val = 'UNPAID'
+        if status_val == 'Installment Sale': status_val = 'INSTALLMENT'
+        
         print(f"DEBUG: Creating sale. Status: {status_val}, Items count: {len(raw_items)}")
         
         tax_rate = to_decimal(data.get('taxRate', 0))
@@ -232,6 +240,37 @@ class SaleViewSet(viewsets.ModelViewSet):
             total_cost=financials['totalCost'],
             profit=financials['profit'],
         )
+
+        # ⚡️ FINANCIAL INTEGRATION: Create Cash Transaction if linked and Paid
+        link_to_cash = data.get('linkToCash', False)
+        cash_account_id = data.get('cashAccountId')
+        if link_to_cash and cash_account_id and status_val == 'COMPLETED':
+            try:
+                account = CashAccount.objects.get(id=cash_account_id)
+                description = f"Sale to {sale.customer_name or 'Valued Customer'} - Receipt #{sale.receipt_number}"
+                
+                cash_tx = CashTransaction.objects.create(
+                    id=f"ctx_{uuid.uuid4().hex[:12]}",
+                    amount=sale.total_amount,
+                    transaction_type='cash_in',
+                    category='Cash sale',
+                    description=description,
+                    agency_id=sale.agency_id,
+                    branch_id=sale.branch_id,
+                    user_id=user_id,
+                    account=account,
+                    date=sale.date,
+                    reference_id=sale.id,
+                    reference_type='SALE'
+                )
+                
+                sale.cash_transaction = cash_tx
+                sale.save(update_fields=['cash_transaction'])
+                print(f"DEBUG: Created cash transaction {cash_tx.id} for sale {sale.id}")
+            except CashAccount.DoesNotExist:
+                print(f"DEBUG: Cash account {cash_account_id} not found. Skipping transaction.")
+            except Exception as e:
+                print(f"DEBUG: Error creating cash transaction: {str(e)}")
         
         for item in raw_items:
             qty = to_decimal(item.get('quantity', 0))
@@ -309,6 +348,12 @@ class SaleViewSet(viewsets.ModelViewSet):
         branch_id = sale.branch_id
         user_id = data.get('userId') or request.user.id
         new_status = data.get('paymentStatus', sale.status)
+        
+        # 🛡️ DATA INTEGRITY: Normalize incoming status strings
+        if new_status == 'Paid': new_status = 'COMPLETED'
+        if new_status == 'NOT PAID': new_status = 'UNPAID'
+        if new_status == 'Installment Sale': new_status = 'INSTALLMENT'
+        
         old_status = sale.status
         
         financials = self.calculate_financials(items, tax_rate)
@@ -379,6 +424,54 @@ class SaleViewSet(viewsets.ModelViewSet):
         sale.total_amount = financials['total'] + sale.shipping_cost
         sale.discount_amount = financials['discount']
         sale.tax_amount = financials['taxAmount']
+        sale.total_cost = financials['totalCost']
+        sale.profit = financials['profit']
+
+        # ⚡️ FINANCIAL INTEGRATION: Manage Cash Transaction
+        link_to_cash = data.get('linkToCash', False)
+        cash_account_id = data.get('cashAccountId')
+
+        was_linked = sale.cash_transaction_id is not None
+        should_link = link_to_cash and cash_account_id and new_status == 'COMPLETED'
+
+        if should_link:
+            description = f"Sale to {sale.customer_name or 'Valued Customer'} - Receipt #{sale.receipt_number}"
+            if not was_linked:
+                # Create new transaction
+                try:
+                    account = CashAccount.objects.get(id=cash_account_id)
+                    cash_tx = CashTransaction.objects.create(
+                        id=f"ctx_{uuid.uuid4().hex[:12]}",
+                        amount=sale.total_amount,
+                        transaction_type='cash_in',
+                        category='Cash sale',
+                        description=description,
+                        agency_id=sale.agency_id,
+                        branch_id=sale.branch_id,
+                        user_id=user_id,
+                        account=account,
+                        date=sale.date,
+                        reference_id=sale.id,
+                        reference_type='SALE'
+                    )
+                    sale.cash_transaction = cash_tx
+                except CashAccount.DoesNotExist:
+                    print(f"DEBUG: Cash account {cash_account_id} not found. Skipping creation.")
+            else:
+                # Update existing transaction
+                cash_tx = sale.cash_transaction
+                cash_tx.amount = sale.total_amount
+                cash_tx.description = description
+                cash_tx.account_id = cash_account_id
+                # Ensure reference is set if it was missing
+                cash_tx.reference_id = sale.id
+                cash_tx.reference_type = 'SALE'
+                cash_tx.save()
+        elif was_linked:
+            # Delete transaction if it was unlinked or status changed from Paid
+            sale.cash_transaction.delete()
+            sale.cash_transaction = None
+
         sale.save()
 
         return Response(SaleSerializer(sale).data)
@@ -535,23 +628,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
             
-        last_sale = Sale.objects.filter(branch_id=branch_id).order_by('-receipt_number').first()
-        
-        if last_sale and last_sale.receipt_number:
-            try:
-                # Try to extract the number from strings like "PAY-000001" or just "000001"
-                import re
-                nums = re.findall(r'\d+', last_sale.receipt_number)
-                if nums:
-                    last_num = int(nums[-1])
-                    next_num = str(last_num + 1).zfill(6)
-                else:
-                    next_num = "000001"
-            except (ValueError, TypeError):
-                next_num = "000001"
-        else:
-            next_num = "000001"
-            
+        next_num = get_next_receipt_number(branch_id, increment=False)
         return Response({"next_number": next_num})
 
     @action(detail=False, methods=['get'])
@@ -661,7 +738,9 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
                 transaction_type='cash_in',
                 category='Installment payment',
                 description=desc,
-                date=date_val
+                date=date_val,
+                reference_id=payment.id,
+                reference_type='INSTALLMENT'
             )
             payment.cash_transaction = cash_tx
             payment.save(update_fields=['cash_transaction'])
@@ -711,7 +790,9 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
             transaction_type='cash_in',
             category='Installment payment',
             description=desc,
-            date=payment.date
+            date=payment.date,
+            reference_id=payment.id,
+            reference_type='INSTALLMENT'
         )
         payment.cash_transaction = cash_tx
         payment.save(update_fields=['cash_transaction'])

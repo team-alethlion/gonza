@@ -93,7 +93,9 @@ export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updat
             notes: saleDbData.notes,
             shippingCost: saleDbData.shipping_cost,
             discountReason: saleDbData.discount_reason,
-            paymentReference: saleDbData.payment_reference
+            paymentReference: saleDbData.payment_reference,
+            linkToCash: saleDbData.linkToCash,
+            cashAccountId: saleDbData.cashAccountId
         };
 
         let result;
@@ -162,7 +164,9 @@ export async function createReceiptAction(saleData: {
             notes: saleData.notes,
             shippingCost: saleData.shippingCost,
             discountReason: saleData.discountReason,
-            paymentReference: saleData.paymentReference
+            paymentReference: saleData.paymentReference,
+            linkToCash: (saleData as any).linkToCash,
+            cashAccountId: (saleData as any).cashAccountId
         };
 
         const result = await djangoFetch(`sales/sales/`, {
