@@ -108,8 +108,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         custom_reason = request.data.get('customChangeReason')
         is_from_sale = request.data.get('isFromSale')
         
+        # 🚀 SUPPORT ABSOLUTE STOCK SETTING
+        absolute_stock = request.data.get('absoluteStock')
+        
         with transaction.atomic():
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            data = request.data.copy()
+            if absolute_stock is not None:
+                # If absolute stock is provided, ensure the serializer sets the stock correctly
+                data['stock'] = absolute_stock
+
+            serializer = self.get_serializer(instance, data=data, partial=partial)
             serializer.is_valid(raise_exception=True)
             product = serializer.save()
             
@@ -117,10 +125,31 @@ class ProductViewSet(viewsets.ModelViewSet):
                 change_reason = custom_reason
                 if not change_reason:
                     if is_from_sale: change_reason = "Sale"
+                    elif absolute_stock is not None: change_reason = "Opening Stock Adjustment" # 🛡️ Accurate Reason
                     elif product.stock > old_stock: change_reason = "Manual stock addition"
                     else: change_reason = "Manual stock reduction"
                 
+        # Determine type - use ADJUSTMENT for absolute setting
                 type_enum = 'SALE' if is_from_sale else ('RESTOCK' if product.stock > old_stock else 'ADJUSTMENT')
+                if absolute_stock is not None: type_enum = 'ADJUSTMENT'
+
+                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
+                from django.utils import timezone
+                final_created_at = None
+                created_at_raw = request.data.get('adjustmentDate') or request.data.get('createdAt')
+                
+                if created_at_raw:
+                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
+                    if parsed_dt:
+                        if parsed_dt < product.created_at:
+                            from datetime import timedelta
+                            final_created_at = product.created_at + timedelta(seconds=1)
+                        else:
+                            final_created_at = parsed_dt
+                
+                if final_created_at is None:
+                    final_created_at = timezone.now()
+
                 ProductHistory.objects.create(
                     user_id=user_id,
                     branch_id=product.branch_id,
@@ -130,7 +159,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                     new_stock=product.stock,
                     quantity_change=product.stock - old_stock,
                     reason=f"[{product.name}] | {change_reason}",
-                    reference_id=request.data.get('referenceId')
+                    reference_id=request.data.get('referenceId'),
+                    created_at=final_created_at
                 )
         return Response(serializer.data)
 
@@ -139,8 +169,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         branch_id = self.request.query_params.get('branch_id')
         since = self.request.query_params.get('since', '0')
         
-        # ⚡️ CLOCK DRIFT PROTECTION: Capture server time BEFORE querying
-        server_now = int(datetime.now().timestamp() * 1000)
+        from django.utils import timezone
+        server_now = int(timezone.now().timestamp() * 1000)
         
         qs = self.get_queryset()
         if branch_id:
@@ -604,29 +634,61 @@ class ProductViewSet(viewsets.ModelViewSet):
                 sku = adj.get('sku')
                 
                 delta = Decimal(str(adj.get('quantity', 0)))
+                absolute_qty = adj.get('absoluteQuantity') # 🚀 SUPPORT ABSOLUTE SETTING
                 new_price = adj.get('price')
                 adj_type = adj.get('type', 'ADJUSTMENT')
                 reason = adj.get('reason', '')
-                created_at = adj.get('createdAt')
+                created_at_raw = adj.get('createdAt')
                 
-                product = None
-                if p_id:
-                    product = Product.objects.select_for_update().filter(id=p_id, branch_id=branch_id).first()
-                elif sku:
-                    product = Product.objects.select_for_update().filter(sku=sku, branch_id=branch_id).first()
+                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
+                final_created_at = None
+                if created_at_raw:
+                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
+                    if parsed_dt:
+                        # Ensure it's not before product creation
+                        if parsed_dt < product.created_at:
+                            # Clamp to product creation + 1 second to maintain order
+                            from datetime import timedelta
+                            final_created_at = product.created_at + timedelta(seconds=1)
+                        else:
+                            final_created_at = parsed_dt
                 
                 if not product:
                     # Log error or skip
                     continue
+
+                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
+                from django.utils import timezone
+                final_created_at = None
+                if created_at_raw:
+                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
+                    if parsed_dt:
+                        # Ensure it's not before product creation
+                        if parsed_dt < product.created_at:
+                            # Clamp to product creation + 1 second to maintain order
+                            from datetime import timedelta
+                            final_created_at = product.created_at + timedelta(seconds=1)
+                        else:
+                            final_created_at = parsed_dt
                 
+                if final_created_at is None:
+                    final_created_at = timezone.now()
+
                 if new_price is not None:
                     product.cost_price = Decimal(str(new_price))
 
                 old_stock = product.stock
-                new_stock = old_stock + delta
+
+                # 🛡️ DATA INTEGRITY: Calculate delta on server if absolute quantity is requested
+                if absolute_qty is not None:
+                    absolute_qty_dec = Decimal(str(absolute_qty))
+                    delta = absolute_qty_dec - old_stock
+                    new_stock = absolute_qty_dec
+                else:
+                    new_stock = old_stock + delta
+
                 product.stock = new_stock
-                product.save()
-                
+                product.save()                
                 ProductHistory.objects.create(
                     id=f"hist_{uuid.uuid4().hex[:10]}",
                     user_id=user_id,
@@ -637,7 +699,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     new_stock=new_stock,
                     quantity_change=delta,
                     reason=reason,
-                    created_at=created_at or datetime.now(),
+                    created_at=final_created_at,
                     old_cost=product.cost_price,
                     new_cost=Decimal(str(new_price)) if new_price is not None else product.cost_price,
                     old_price=product.selling_price,
@@ -673,23 +735,23 @@ class StockAuditViewSet(viewsets.ModelViewSet):
         data = request.data
         items_data = data.pop('items', [])
         branch_id = data.get('branch')
-        
-        from core_app.models import BranchCounter
-        
+
+        from core_app.models import Branch
+
         with transaction.atomic():
             if not data.get('audit_number'):
                 counter, _ = BranchCounter.objects.get_or_create(branch_id=branch_id, type='audit', defaults={'count': 0})
                 counter.count += 1
                 counter.save()
                 data['audit_number'] = f"AUD-{str(counter.count).zfill(4)}"
-            
+
             if not data.get('id'):
                 data['id'] = f"aud_{uuid.uuid4().hex[:8]}"
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             audit = serializer.save()
-            
+
             for item in items_data:
                 item_id = f"aitm_{uuid.uuid4().hex[:8]}"
                 StockAuditItem.objects.create(
@@ -703,9 +765,66 @@ class StockAuditViewSet(viewsets.ModelViewSet):
                     variance=item.get('variance', 0),
                     status=item.get('status', 'Pending')
                 )
-                
+
         return Response(self.get_serializer(audit).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'])
+    def save_draft(self, request):
+        data = request.data
+        items_data = data.pop('items', [])
+        branch_id = data.get('branch')
+        user_id = data.get('user')
+
+        if not branch_id:
+            return Response({"error": "branch required"}, status=400)
+
+        with transaction.atomic():
+            # Find existing draft for this branch
+            audit = StockAudit.objects.filter(branch_id=branch_id, status='Draft').first()
+
+            if not audit:
+                audit_id = f"aud_drft_{uuid.uuid4().hex[:6]}"
+                audit = StockAudit.objects.create(
+                    id=audit_id,
+                    branch_id=branch_id,
+                    user_id=user_id,
+                    status='Draft',
+                    audit_number='DRAFT'
+                )
+
+            # Clear existing items and replace with new ones
+            audit.items.all().delete()
+
+            for item in items_data:
+                StockAuditItem.objects.create(
+                    id=f"aitm_{uuid.uuid4().hex[:8]}",
+                    audit=audit,
+                    product_id=item.get('productId'),
+                    product_name=item.get('productName'),
+                    sku=item.get('sku'),
+                    expected_qty=item.get('expected_qty', 0),
+                    counted_qty=item.get('counted_qty', 0),
+                    variance=item.get('variance', 0),
+                    status=item.get('status', 'Pending')
+                )
+
+            # Update audit timestamp
+            audit.save()
+
+        return Response({"status": "draft saved", "id": audit.id})
+
+    @action(detail=False, methods=['get'])
+    def get_draft(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        audit = StockAudit.objects.filter(branch_id=branch_id, status='Draft').first()
+        if not audit:
+            return Response({"status": "no draft found"}, status=404)
+
+        serializer = self.get_serializer(audit)
+        return Response(serializer.data)
 class ProductHistoryViewSet(viewsets.ModelViewSet):
     queryset = ProductHistory.objects.all()
     serializer_class = ProductHistorySerializer
@@ -736,6 +855,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
             change = float(data.get('newQuantity', 0)) - float(data.get('previousQuantity', 0))
             actual_new_stock = current_stock + change
             
+            from django.utils import timezone
             history = ProductHistory.objects.create(
                 user=request.user,
                 branch_id=branch_id,
@@ -745,7 +865,7 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
                 type=data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT'),
                 change_reason=data.get('changeReason'),
                 reference_id=data.get('referenceId'),
-                created_at=data.get('createdAt') or datetime.now(),
+                created_at=data.get('createdAt') or timezone.now(),
                 old_cost=product.cost_price,
                 new_cost=product.cost_price,
                 old_price=product.selling_price,
@@ -823,12 +943,22 @@ class StockTransferViewSet(viewsets.ModelViewSet):
             for item in items_data:
                 sku = item.get('sku')
                 qty = int(item.get('quantity', 0))
-                
+
                 # Deduct from source
                 src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+
+                # 🛡️ DATA INTEGRITY: Strict stock check on server (with override)
+                allow_negative = data.get('allow_negative', False)
+
+                if not src_product:
+                    raise serializers.ValidationError({"error": f"Product with SKU {sku} not found in source branch."})
+
+                if src_product.stock < qty and not allow_negative:
+                    raise serializers.ValidationError({
+                        "error": f"Insufficient stock for {src_product.name}. Requested: {qty}, Available: {src_product.stock}. Provide 'allow_negative' to override."
+                    })
                 # Add to destination
                 dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
-
                 # 🛡️ DATA LOSS PROTECTION: Create the product in destination branch if it doesn't exist
                 if src_product and not dest_product:
                     # Handle category (it's branch-specific)
