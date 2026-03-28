@@ -291,6 +291,7 @@ export async function updateProductAction(id: string, branchId: string, updates:
   costPrice?: number | null;
   sellingPrice?: number | null;
   quantity?: number | null;
+  absoluteStock?: number | null;
   minimumStock?: number | null;
   customChangeReason?: string;
   isFromSale?: boolean;
@@ -311,6 +312,7 @@ export async function updateProductAction(id: string, branchId: string, updates:
       cost_price: updates.costPrice,
       selling_price: updates.sellingPrice,
       stock: updates.quantity,
+      absoluteStock: updates.absoluteStock,
       min_stock: updates.minimumStock,
       customChangeReason: updates.customChangeReason,
       isFromSale: updates.isFromSale,

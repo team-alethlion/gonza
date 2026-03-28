@@ -155,7 +155,7 @@ const BulkStockAddTab = () => {
   const {
     products,
     loadProducts
-  } = useProducts(user?.id, 10000); // Load all products for proper lookup
+  } = useProducts(user?.id); // Standard load (paged)
   const {
     settings
   } = useBusinessSettings();
@@ -170,6 +170,12 @@ const BulkStockAddTab = () => {
         stockHistory,
         loadStockHistory
     } = useStockHistory(user?.id);
+
+  // 🚀 PERFORMANCE: Helper to find product without needing all 10,000 in memory
+  const getProductById = useCallback(async (id: string) => {
+    const { localDb } = await import('@/lib/dexie');
+    return await localDb.products.get(id);
+  }, []);
 
   // Get the initial stock date (chronologically first entry)
   const getInitialStockDate = useCallback((): Date | null => {
@@ -416,22 +422,30 @@ const BulkStockAddTab = () => {
   const handleInputFocus = useCallback((rowId: string) => {
     setFocusedRowId(rowId);
   }, []);
-  const validateRows = useCallback(() => {
-    const errors: string[] = [];
-    stockRows.forEach((row, index) => {
-      if (!row.productId) {
-        errors.push(`Row ${index + 1}: Please select a product`);
-      }
-      if (row.quantity <= 0) {
-        errors.push(`Row ${index + 1}: Quantity must be greater than 0`);
-      }
-      if (row.price < 0) {
-        errors.push(`Row ${index + 1}: Price cannot be negative`);
-      }
 
-      // Check if product existed before the selected date
-      if (row.productId) {
-        const product = products.find(p => p.id === row.productId);
+  const [rowValidationErrors, setRowValidationErrors] = useState<string[]>([]);
+
+  // 🚀 PERFORMANCE: Asynchronous validation using local database lookups
+  useEffect(() => {
+    const validate = async () => {
+      const errors: string[] = [];
+      const { localDb } = await import('@/lib/dexie');
+
+      for (let index = 0; index < stockRows.length; index++) {
+        const row = stockRows[index];
+        if (!row.productId) {
+          errors.push(`Row ${index + 1}: Please select a product`);
+          continue;
+        }
+        if (row.quantity <= 0) {
+          errors.push(`Row ${index + 1}: Quantity must be greater than 0`);
+        }
+        if (row.price < 0) {
+          errors.push(`Row ${index + 1}: Price cannot be negative`);
+        }
+
+        // Check if product existed before the selected date
+        const product = await localDb.products.get(row.productId);
         if (product) {
           const productCreationDate = new Date(product.createdAt);
           const selectedDate = new Date(stockEntryDate);
@@ -444,11 +458,14 @@ const BulkStockAddTab = () => {
           }
         }
       }
-    });
-    return errors;
-  }, [stockRows, products, stockEntryDate]);
+      setRowValidationErrors(errors);
+    };
+
+    validate();
+  }, [stockRows, stockEntryDate]);
+
   const handleBulkSave = useCallback(async () => {
-    const errors = validateRows();
+    const errors = [...rowValidationErrors];
 
     // Add date validation
     const dateError = validateStockDate(stockEntryDate);
@@ -468,28 +485,11 @@ const BulkStockAddTab = () => {
       let successCount = 0;
       const failureCount = 0;
 
-      // Consolidate duplicates that might have been entered manually/pasted
-      const consolidatedRowsMap = new Map<string, StockAddRow>();
-      stockRows.forEach(row => {
-        if (!row.productId) return;
-        if (consolidatedRowsMap.has(row.productId)) {
-          const existing = consolidatedRowsMap.get(row.productId)!;
-          existing.quantity += row.quantity;
-          // Use the latest price from the list
-          existing.price = row.price;
-          existing.amount = existing.quantity * existing.price;
-        } else {
-          consolidatedRowsMap.set(row.productId, { ...row });
-        }
-      });
-
-      const consolidatedRows = Array.from(consolidatedRowsMap.values());
-
       // Create a unique purchase session ID
       const purchaseSessionId = Date.now().toString();
       const changeReason = `Purchase: ${supplierName || 'Unknown Supplier'} | Invoice: ${invoiceNumber || 'N/A'} | Session: ${purchaseSessionId}`;
 
-      const adjustments = consolidatedRows.map((row, index) => ({
+      const adjustments = stockRows.map((row, index) => ({
         productId: row.productId,
         quantity: row.quantity,
         type: 'RESTOCK',
@@ -504,7 +504,7 @@ const BulkStockAddTab = () => {
       const result = await bulkAdjustStockAction(adjustments, businessId, user?.id || '');
 
       if (result.success) {
-        successCount = consolidatedRows.length;
+        successCount = stockRows.length;
       } else {
         throw new Error(result.error);
       }
@@ -556,7 +556,7 @@ const BulkStockAddTab = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [stockRows, currentBusiness?.id, user?.id, loadProducts, loadStockHistory, toast, validateRows, validateStockDate, clearStoredData, stockEntryDate, supplierName, invoiceNumber]);
+  }, [stockRows, currentBusiness?.id, user?.id, loadProducts, loadStockHistory, toast, rowValidationErrors, validateStockDate, clearStoredData, stockEntryDate, supplierName, invoiceNumber]);
   const totalAmount = stockRows.reduce((sum, row) => sum + row.amount, 0);
   const totalQuantity = stockRows.reduce((sum, row) => sum + row.quantity, 0);
   return <div className="space-y-4 md:space-y-6">

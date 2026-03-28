@@ -143,6 +143,8 @@ const StockTransferTab = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showOverstockConfirm, setShowOverstockConfirm] = useState(false);
     const [pendingTransferData, setPendingTransferData] = useState<any>(null);
+    const [verificationCode, setVerificationCode] = useState('');
+    const [userInputCode, setUserInputCode] = useState('');
 
     // ── History state ──
     const [transfers, setTransfers] = useState<any[]>([]);
@@ -248,7 +250,10 @@ const StockTransferTab = () => {
         const payload = buildTransferPayload();
 
         if (overstockItems.length > 0) {
-            // Ask user to confirm
+            // Generate a random 6-character code
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            setVerificationCode(code);
+            setUserInputCode('');
             setPendingTransferData(payload);
             setShowOverstockConfirm(true);
         } else {
@@ -540,30 +545,52 @@ const StockTransferTab = () => {
 
             {/* ── Overstock Confirmation Dialog ── */}
             <AlertDialog open={showOverstockConfirm} onOpenChange={setShowOverstockConfirm}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-md">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Transfer Exceeds Available Stock</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            The following items have quantities that exceed what is currently available in this branch:
-                            <ul className="mt-2 list-disc pl-5 space-y-1">
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertCircle className="h-5 w-5" />
+                            Transfer Exceeds Available Stock
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-4">
+                            <p>The following items have quantities that exceed what is currently available in this branch:</p>
+                            <ul className="list-disc pl-5 space-y-1 bg-red-50 p-3 rounded border border-red-100 text-red-900">
                                 {items
                                     .filter(i => i.productId && i.quantity > i.availableStock)
                                     .map(i => (
-                                        <li key={i.id}>
-                                            <strong>{i.name}</strong> — requesting {i.quantity}, have {i.availableStock}
+                                        <li key={i.id} className="text-xs">
+                                            <strong>{i.name}</strong>: requesting {i.quantity}, have {i.availableStock}
                                         </li>
                                     ))}
                             </ul>
-                            <p className="mt-3">Do you want to proceed anyway? The stock at the source branch may go negative.</p>
+                            <div className="space-y-3 pt-2">
+                                <p className="text-sm font-semibold text-gray-900">
+                                    To proceed anyway and allow negative stock, please type the following code:
+                                </p>
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="bg-muted px-4 py-2 rounded-md font-mono text-xl font-bold tracking-widest border-2 border-dashed select-none">
+                                        {verificationCode}
+                                    </div>
+                                    <Input
+                                        value={userInputCode}
+                                        onChange={e => setUserInputCode(e.target.value.toUpperCase())}
+                                        placeholder="Enter code here"
+                                        className="text-center font-bold text-lg uppercase h-12"
+                                        maxLength={6}
+                                    />
+                                </div>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setPendingTransferData(null)}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90"
+                            className="bg-destructive hover:bg-destructive/90 text-white disabled:opacity-50"
+                            disabled={userInputCode !== verificationCode}
                             onClick={() => {
+                                if (pendingTransferData) {
+                                    executeTransfer({ ...pendingTransferData, allow_negative: true });
+                                }
                                 setShowOverstockConfirm(false);
-                                if (pendingTransferData) executeTransfer(pendingTransferData);
                             }}
                         >
                             Proceed Anyway

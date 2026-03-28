@@ -172,7 +172,8 @@ export const useProducts = (
     customChangeReason?: string,
     adjustmentDate?: Date,
     referenceId?: string,
-    receiptNumber?: string
+    receiptNumber?: string,
+    absoluteStock?: number | null
   ): Promise<{ success: boolean; data?: Product; error?: string }> => {
     try {
       if (!userId || !currentBusiness) {
@@ -190,7 +191,8 @@ export const useProducts = (
         userId,
         isFromSale,
         customChangeReason,
-        referenceId
+        referenceId,
+        absoluteStock
       } as any);
 
       if (!result.success || !result.data) {

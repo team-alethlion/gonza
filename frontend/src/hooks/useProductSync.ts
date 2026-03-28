@@ -12,30 +12,31 @@ export const useProductSync = () => {
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
   const syncProducts = useCallback(async () => {
-    if (!currentBusiness?.id) return;
+    const businessId = currentBusiness?.id;
+    if (!businessId || isSyncing) return;
 
     setIsSyncing(true);
     setLastSyncError(null);
 
     try {
       // 1. Get last sync time from local metadata
-      const metadata = await localDb.syncMetadata.get(currentBusiness.id);
+      const metadata = await localDb.syncMetadata.get(businessId);
       
       // Check if we actually have any products locally for this business
-      const localCount = await localDb.products.where('locationId').equals(currentBusiness.id).count();
+      const localCount = await localDb.products.where('locationId').equals(businessId).count();
       
       // If we have no local products for this branch, ignore 'since' and do a full sync
       const since = localCount > 0 ? (metadata?.lastSyncedAt || 0) : 0;
 
       // 2. Fetch changes from server
-      const result = await getProductsDeltaAction(currentBusiness.id, since);
+      const result = await getProductsDeltaAction(businessId, since);
 
       if (result.success && result.products) {
         // 3. Update local Dexie database
         if (result.products.length > 0) {
           const formattedProducts = result.products.map((p: any) => ({
             ...p,
-            locationId: p.branch || currentBusiness.id, // ⚡️ MAP branch from backend to locationId
+            locationId: p.branch || businessId, // ⚡️ MAP branch from backend to locationId
             createdAt: new Date(p.createdAt),
             updatedAt: new Date(p.updatedAt)
           }));
@@ -44,11 +45,14 @@ export const useProductSync = () => {
 
         // 4. Update sync metadata with CURRENT server time (to prevent clock drift)
         await localDb.syncMetadata.put({
-          id: currentBusiness.id,
+          id: businessId,
           lastSyncedAt: result.serverTime || Date.now()
         });
       } else {
-        throw new Error(result.error || 'Failed to fetch delta updates');
+        // Only throw if it's a real error, not a 401 which is handled by auth-guard
+        if (result.error && !result.error.includes('401')) {
+          throw new Error(result.error || 'Failed to fetch delta updates');
+        }
       }
     } catch (error: any) {
       console.error('Product Sync Error:', error);
@@ -56,21 +60,23 @@ export const useProductSync = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [currentBusiness]); // Dependency on whole currentBusiness to be safe
+  }, [currentBusiness?.id, isSyncing]); // Depend on ID and isSyncing state
 
   // Initial sync on mount or business change, plus periodic polling
   useEffect(() => {
+    if (!currentBusiness?.id) return;
+
     // Initial sync
     syncProducts();
 
     // 🕒 POLLING: Check for updates every 30 seconds
-    // Since we use 'since' (delta sync), this is very lightweight (usually 0 products)
     const interval = setInterval(() => {
       syncProducts();
-    }, 30000); // 30 seconds
+    }, 30000); 
 
     return () => clearInterval(interval);
-  }, [syncProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBusiness?.id]); // Only re-run when business ID changes
 
   // Expose sync status and manual trigger
   return {
