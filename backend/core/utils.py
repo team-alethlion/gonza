@@ -57,6 +57,7 @@ def gen_cc_id(): return generate_id("cc")
 def gen_cu_id(): return generate_id("cu")
 def gen_fc_id(): return generate_id("fc")
 def gen_tk_id(): return generate_id("tk")
+def gen_cl_id(): return generate_id("cl")
 
 # Sales
 def gen_sg_id(): return generate_id("sg")

@@ -1,5 +1,6 @@
 from django.db import models
-from core.utils import gen_cc_id, gen_cu_id, gen_fc_id, gen_tk_id
+from django.utils.timezone import now
+from core.utils import gen_cc_id, gen_cu_id, gen_fc_id, gen_tk_id, gen_cl_id
 
 class CustomerCategory(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_cc_id)
@@ -44,6 +45,7 @@ class Customer(models.Model):
     timezone = models.CharField(max_length=100, default="UTC")
     language = models.CharField(max_length=100, default="English")
     assignee = models.CharField(max_length=200, null=True, blank=True)
+    credit_limit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -94,3 +96,31 @@ class Ticket(models.Model):
 
     def __str__(self):
         return self.title
+
+class CustomerLedger(models.Model):
+    LEDGER_TYPES = (
+        ('CHARGE', 'Charge (Debit)'),
+        ('PAYMENT', 'Payment (Credit)'),
+        ('ADJUSTMENT', 'Adjustment')
+    )
+
+    id = models.CharField(max_length=30, primary_key=True, default=gen_cl_id)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ledger_entries')
+    agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='ledger_entries', null=True, blank=True)
+    branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='ledger_entries', null=True, blank=True)
+    user = models.ForeignKey('users.User', on_delete=models.SET_NULL, related_name='ledger_entries', null=True, blank=True)
+    
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    type = models.CharField(max_length=20, choices=LEDGER_TYPES)
+    description = models.TextField()
+    date = models.DateField(default=now)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Customer Ledgers"
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f"{self.customer.name} - {self.type} - {self.amount}"

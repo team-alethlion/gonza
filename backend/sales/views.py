@@ -214,6 +214,10 @@ class SaleViewSet(viewsets.ModelViewSet):
         if receipt_number and Sale.objects.filter(receipt_number=receipt_number).exists():
             receipt_number = f"{receipt_number}-{uuid.uuid4().hex[:4].upper()}"
 
+        customer_id = data.get('customerId')
+        if customer_id == "":
+            customer_id = None
+
         sale = Sale.objects.create(
             id=f"sl_{uuid.uuid4().hex[:12]}",
             user_id=user_id,
@@ -223,7 +227,7 @@ class SaleViewSet(viewsets.ModelViewSet):
             customer_name=data.get('customerName', 'Valued Customer'),
             customer_phone=data.get('customerContact'),
             customer_address=data.get('customerAddress'),
-            customer_id=data.get('customerId'),
+            customer_id=customer_id,
             category_id=data.get('categoryId'),
             status=status_val,
             amount_paid=to_decimal(data.get('amountPaid', 0)),

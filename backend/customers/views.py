@@ -7,11 +7,12 @@ from django.db.models import Sum, Count, Q
 from django.db.models.functions import Coalesce
 from django.utils.timezone import now
 
-from .models import CustomerCategory, Customer, FavoriteCustomer, Ticket
+from .models import CustomerCategory, Customer, FavoriteCustomer, Ticket, CustomerLedger
 from .filters import CustomerFilter
 from .serializers import (
     CustomerCategorySerializer, CustomerSerializer,
-    FavoriteCustomerSerializer, TicketSerializer
+    FavoriteCustomerSerializer, TicketSerializer,
+    CustomerLedgerSerializer
 )
 
 class CustomerCategoryViewSet(viewsets.ModelViewSet):
@@ -105,6 +106,104 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Response(data)
 
     @action(detail=False, methods=['get'])
+    def top(self, request):
+        from sales.models import Sale
+        from django.db.models import Sum, Count, Q
+        
+        branch_id = request.query_params.get('branchId')
+        start_date = request.query_params.get('startDate')
+        end_date = request.query_params.get('endDate')
+        category_id = request.query_params.get('categoryId')
+        
+        # Base query: non-quote sales for this branch
+        sales_qs = Sale.objects.filter(branch_id=branch_id).exclude(status='QUOTE')
+        
+        if start_date:
+            sales_qs = sales_qs.filter(date__gte=start_date)
+        if end_date:
+            sales_qs = sales_qs.filter(date__lte=end_date)
+            
+        # If category is filtered, we need to join with Customer table
+        if category_id and category_id != 'all':
+            sales_qs = sales_qs.filter(
+                Q(customer__category_id=category_id) | 
+                Q(customer_id__isnull=True) # Guest sales usually don't have category anyway
+            )
+
+        # Aggregate by customer_id (first) and customer_name
+        # This groups guest sales by name and registered sales by ID
+        stats = sales_qs.values('customer_id', 'customer_name').annotate(
+            total_purchases=Sum('total_amount'),
+            order_count=Count('id')
+        ).order_by('-total_purchases')
+        
+        # We only want the top ones (e.g., 100)
+        top_stats = stats[:100]
+        
+        response_data = []
+        for item in top_stats:
+            response_data.append({
+                "id": item['customer_id'],
+                "name": item['customer_name'],
+                "totalPurchases": float(item['total_purchases'] or 0),
+                "orderCount": item['order_count']
+            })
+            
+        return Response(response_data)
+
+    @action(detail=False, methods=['get'])
+    def inactive(self, request):
+        from sales.models import Sale
+        from django.db.models import Max, Q
+        from datetime import timedelta
+        
+        branch_id = request.query_params.get('branchId')
+        days = int(request.query_params.get('days', 30))
+        category_id = request.query_params.get('categoryId')
+        
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        cutoff_date = now() - timedelta(days=days)
+        
+        # We only track inactivity for REGISTERED customers
+        customers_qs = Customer.objects.filter(branch_id=branch_id)
+        
+        if category_id and category_id != 'all':
+            customers_qs = customers_qs.filter(category_id=category_id)
+            
+        # Get the last sale date for each customer
+        last_sales = Sale.objects.filter(
+            branch_id=branch_id
+        ).exclude(status='QUOTE').values('customer_id').annotate(
+            last_purchase=Max('date')
+        )
+        
+        # Map customer_id -> last_purchase_date
+        last_sale_map = {item['customer_id']: item['last_purchase'] for item in last_sales if item['customer_id']}
+        
+        inactive_customers = []
+        for customer in customers_qs:
+            last_date = last_sale_map.get(customer.id)
+            
+            # Inactive if: Never purchased OR last purchase was before cutoff
+            is_inactive = False
+            if not last_date:
+                is_inactive = True
+            else:
+                # Sale.date is usually a DateField, compare with cutoff_date.date()
+                if last_date < cutoff_date.date():
+                    is_inactive = True
+            
+            if is_inactive:
+                serializer = self.get_serializer(customer)
+                data = serializer.data
+                data['lastPurchaseDate'] = last_date.isoformat() if last_date else None
+                inactive_customers.append(data)
+                
+        return Response(inactive_customers)
+
+    @action(detail=False, methods=['get'])
     def stats(self, request):
         branch_id = request.query_params.get('branchId')
         qs = self.get_queryset()
@@ -145,6 +244,64 @@ class CustomerViewSet(viewsets.ModelViewSet):
             return Response({"error": "Primary customer not found"}, status=404)
 
     @action(detail=False, methods=['get'])
+    def duplicates(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        # 🚀 PERFORMANCE: Scan entire branch database for duplicates
+        # We check Phone, Email, and Name (normalized)
+        from django.db.models import Count
+        from django.db.models.functions import Lower, Replace
+        from django.db import models
+
+        # 1. Find duplicate phone numbers
+        phone_dupes = Customer.objects.filter(branch_id=branch_id).exclude(phone__isnull=True).exclude(phone='').values('phone').annotate(count=Count('id')).filter(count__gt=1)
+        
+        # 2. Find duplicate emails
+        email_dupes = Customer.objects.filter(branch_id=branch_id).exclude(email__isnull=True).exclude(email='').values('email').annotate(count=Count('id')).filter(count__gt=1)
+        
+        # 3. Find duplicate names (normalized: lowercase and no spaces)
+        name_dupes = Customer.objects.filter(branch_id=branch_id).annotate(
+            norm_name=Replace(Lower('name'), models.Value(' '), models.Value(''))
+        ).values('norm_name').annotate(count=Count('id')).filter(count__gt=1)
+
+        # Collect all duplicate IDs
+        duplicate_groups = []
+        seen_ids = set()
+
+        # Helper to group by a field
+        def add_groups(queryset, field_name):
+            for item in queryset:
+                val = item[field_name]
+                group_qs = Customer.objects.filter(branch_id=branch_id, **{field_name: val})
+                ids = list(group_qs.values_list('id', flat=True))
+                if any(id in seen_ids for id in ids): continue # Avoid overlap
+                
+                group_data = self.get_serializer(group_qs, many=True).data
+                duplicate_groups.append(group_data)
+                seen_ids.update(ids)
+
+        add_groups(phone_dupes, 'phone')
+        add_groups(email_dupes, 'email')
+        
+        # For names, it's slightly different due to normalization
+        for item in name_dupes:
+            val = item['norm_name']
+            group_qs = Customer.objects.filter(branch_id=branch_id).annotate(
+                norm_name=Replace(Lower('name'), models.Value(' '), models.Value(''))
+            ).filter(norm_name=val)
+            
+            ids = list(group_qs.values_list('id', flat=True))
+            if any(id in seen_ids for id in ids): continue
+            
+            group_data = self.get_serializer(group_qs, many=True).data
+            duplicate_groups.append(group_data)
+            seen_ids.update(ids)
+
+        return Response(duplicate_groups)
+
+    @action(detail=False, methods=['get'])
     def lifetime_stats(self, request):
         branch_id = request.query_params.get('branchId')
         customer_name = request.query_params.get('customerName')
@@ -177,3 +334,18 @@ class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
+
+class CustomerLedgerViewSet(viewsets.ModelViewSet):
+    queryset = CustomerLedger.objects.all()
+    serializer_class = CustomerLedgerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        branch_id = self.request.query_params.get('branchId')
+        customer_id = self.request.query_params.get('customerId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        return qs.order_by('-date', '-created_at')
