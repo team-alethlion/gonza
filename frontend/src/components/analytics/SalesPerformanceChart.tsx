@@ -62,6 +62,15 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [expensesData, setExpensesData] = useState<{ date: string; amount: number }[]>([]);
 
+  // 🛡️ HYDRATION GUARD: Prevent redundant fetches during re-renders
+  const lastFetchRef = React.useRef<{
+    businessId: string, 
+    timeFrame: string, 
+    year: string, 
+    dateFilter: string,
+    time: number
+  } | null>(null);
+
   const currentYear = new Date().getFullYear();
   const years = [
     ...new Set(sales.map(s => new Date(s.date).getFullYear()))
@@ -97,6 +106,28 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
   useEffect(() => {
     const fetchExpenses = async () => {
       if (!currentBusiness?.id) { setExpensesData([]); return; }
+
+      // 🛡️ HYDRATION CHECK
+      const now = Date.now();
+      if (
+        lastFetchRef.current?.businessId === currentBusiness.id &&
+        lastFetchRef.current?.timeFrame === timeFrame &&
+        lastFetchRef.current?.year === yearFilter &&
+        lastFetchRef.current?.dateFilter === dateFilter &&
+        now - lastFetchRef.current.time < 60000
+      ) {
+        console.log('[PerformanceChart] Skipping expense fetch: Request is redundant');
+        return;
+      }
+
+      // Lock guard
+      lastFetchRef.current = {
+        businessId: currentBusiness.id,
+        timeFrame,
+        year: yearFilter,
+        dateFilter,
+        time: now
+      };
 
       let from: string | undefined;
       let to: string | undefined;

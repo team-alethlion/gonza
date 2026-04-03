@@ -150,7 +150,7 @@ const InventoryClient = ({
     setMounted(true);
   }, []);
 
-  if (businessLoading || !currentBusiness || isLoading) {
+  if (businessLoading || !currentBusiness || isLoading || !mounted) {
     return <InventoryPageSkeleton />;
   }
 
@@ -175,82 +175,82 @@ const InventoryClient = ({
       {/* Stats Cards */}
       <InventoryStats
         products={products}
-        totalCountOverride={globalStats?.totalCount !== undefined ? globalStats.totalCount : totalCount}
+        totalCountOverride={
+          globalStats?.totalCount !== undefined
+            ? globalStats.totalCount
+            : totalCount
+        }
         totalCostValueOverride={globalStats?.totalCostValue}
         lowStockOverride={globalStats?.lowStockCount}
         outOfStockOverride={globalStats?.outOfStockCount}
         totalStockValueOverride={globalStats?.totalStockValue}
       />
 
-      {/* Main Content with Tabs - Only render content structure when mounted to fix Radix ID mismatch */}
-      {mounted ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 md:space-y-6">
-          <InventoryTabsList 
+      {/* Main Content with Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-3 md:space-y-6">
+        <InventoryTabsList isMobile={isMobile} hasPermission={hasPermission} />
+
+        {/* 🚀 PERFORMANCE: Conditional Rendering (Lazy Loading) for each tab content */}
+
+        {activeTab === "overview" && (
+          <InventoryOverviewTab
+            products={products}
+            filters={filters}
+            setFilters={setFilters}
             isMobile={isMobile}
-            hasPermission={hasPermission}
+            isFetching={isFetching}
+            globalStats={globalStats}
+            topSellingProducts={topSellingProducts}
+            topSellingLoading={soldItemsLoading}
+            period={period}
+            setPeriod={setPeriod}
           />
+        )}
 
-          {/* 🚀 PERFORMANCE: Conditional Rendering (Lazy Loading) for each tab content */}
-
-          {activeTab === "overview" && (
-            <InventoryOverviewTab
-              products={products}
-              filters={filters}
-              setFilters={setFilters}
-              isMobile={isMobile}
-              isFetching={isFetching}
-              globalStats={globalStats}
-              topSellingProducts={topSellingProducts}
-              topSellingLoading={soldItemsLoading}
-              period={period}
-              setPeriod={setPeriod}
-            />
-          )}
-
-          {activeTab === "add-stock" && hasPermission("inventory", "stock_adjustment") && (
+        {activeTab === "add-stock" &&
+          hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="add-stock">
               <BulkStockAddTab />
             </TabsContent>
           )}
 
-          {activeTab === "stock-count" && hasPermission("inventory", "stock_adjustment") && (
+        {activeTab === "stock-count" &&
+          hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="stock-count">
               <StockCountTab />
             </TabsContent>
           )}
 
-          {activeTab === "transfer" && hasPermission("inventory", "stock_adjustment") && (
+        {activeTab === "transfer" &&
+          hasPermission("inventory", "stock_adjustment") && (
             <TabsContent value="transfer">
               <StockTransferTab />
             </TabsContent>
           )}
 
-          {activeTab === "requisition" && (
-            <TabsContent value="requisition">
-              <RequisitionTab />
-            </TabsContent>
-          )}
+        {activeTab === "requisition" && (
+          <TabsContent value="requisition">
+            <RequisitionTab />
+          </TabsContent>
+        )}
 
-          {activeTab === "sold-items" && (
-            <TabsContent value="sold-items">
-              <SoldItemsTab />
-            </TabsContent>
-          )}
+        {activeTab === "sold-items" && (
+          <TabsContent value="sold-items">
+            <SoldItemsTab />
+          </TabsContent>
+        )}
 
-          {activeTab === "stock-summary" && (
-            <TabsContent value="stock-summary">
-              <StockSummaryTab />
-            </TabsContent>
-          )}
-        </Tabs>
-      ) : (
-        <div className="space-y-6">
-           <div className="h-12 w-full bg-gray-50 animate-pulse rounded-md" />
-           <div className="h-64 w-full bg-gray-50 animate-pulse rounded-md" />
-        </div>
-      )}
+        {activeTab === "stock-summary" && (
+          <TabsContent value="stock-summary">
+            <StockSummaryTab />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
-
 };
+
 export default InventoryClient;

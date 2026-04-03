@@ -31,7 +31,8 @@ import { localDb } from '@/lib/dexie';
 export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, specificDate, isCustomRange, isSpecificDate, initialAnalytics }: UseAnalyticsDataProps) {
   const { currentBusiness } = useBusiness();
   
-  // Use a ref to track if we've already initialized from context to prevent loops
+  // 🛡️ HYDRATION GUARD: Prevent redundant fetches if server data is fresh
+  const lastFetchTimeRef = useRef<number>(initialAnalytics ? Date.now() : 0);
   const hasInitializedFromContext = useRef(false);
 
   const [summary, setSummary] = useState<AnalyticsData | null>(() => {
@@ -47,6 +48,7 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     if (dateFilter === 'all' && initialAnalytics && !hasInitializedFromContext.current) {
       setSummary(initialAnalytics);
       hasInitializedFromContext.current = true;
+      lastFetchTimeRef.current = Date.now();
     }
   }, [initialAnalytics, dateFilter]);
 
@@ -63,10 +65,16 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
         return;
       }
 
-      // If it's 'all' and we already have the context data, skip the initial loading state
-      // but still fetch in background to ensure 100% freshness
+      // 🛡️ HYDRATION CHECK: If it's the 'all' view and we have fresh data, skip this fetch
       const isInitialAll = dateFilter === 'all' && initialAnalytics;
+      const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
       
+      if (isInitialAll && timeSinceLastFetch < 60000) {
+        console.log('[Analytics] Skipping background refresh: SSR data is fresh (< 60s)');
+        setIsLoadingSummary(false);
+        return;
+      }
+
       if (!isInitialAll) {
         setIsLoadingSummary(true);
       }
@@ -121,6 +129,7 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
         const result = await getAnalyticsSummaryAction(currentBusiness.id, startDate, endDate);
 
         if (isMounted && result.success && result.data) {
+          lastFetchTimeRef.current = Date.now(); // Update timestamp
           // Only update if the data is different to avoid unnecessary re-renders
           const newData = result.data as AnalyticsData;
           setSummary(prev => {
@@ -149,7 +158,7 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     return () => {
       isMounted = false;
     };
-  }, [dateFilter, isCustomRange, isSpecificDate, dateRange.from, dateRange.to, specificDate, currentBusiness?.id]);
+  }, [dateFilter, isCustomRange, isSpecificDate, dateRange.from, dateRange.to, specificDate, currentBusiness?.id, initialAnalytics]);
 
   // 1. Calculate INSTANT client-side analytics from the local sales list
   // This ensures the cards and bar chart show data the exact millisecond they mount
@@ -215,6 +224,8 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     recentSales,
     nonQuoteSalesCount,
     expenses: displaySummary.totalExpenses || 0,
-    isLoadingExpenses: isLoadingSummary && !summary
+    isLoadingExpenses: isLoadingSummary && !summary,
+    inventoryStats: displaySummary.inventoryStats || null,
+    activeGoal: displaySummary.activeGoal || null
   };
 }

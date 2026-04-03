@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { verifyBranchAccess, verifyUserAccess } from "@/lib/auth-guard";
 import { djangoFetch } from "@/lib/django-client";
 
-export async function getBusinessLocationsAction(userId: string) {
+export async function getBusinessLocationsAction(userId: string, session?: any) {
   try {
-    const sessionUser = await verifyUserAccess(userId);
+    const sessionUser = await verifyUserAccess(userId, session);
     const sessionBranchId = (sessionUser as any).branchId;
 
-    const branches = await djangoFetch('core/branches/');
+    const branches = await djangoFetch('core/branches/', {
+        accessToken: session?.accessToken
+    });
     const list = Array.isArray(branches) ? branches : (branches.results || []);
 
     return list.map((b: any, index: number) => ({

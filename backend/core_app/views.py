@@ -42,75 +42,8 @@ class AnalyticsViewSet(viewsets.ViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
 
-        # 🚀 CACHE: Use unique key based on params
-        from django.core.cache import cache
-        cache_key = f"analytics_summary_{branch_id}_{start_date}_{end_date}"
-        cached_data = cache.get(cache_key)
-        
-        if cached_data:
-            return Response(cached_data)
-
-        from sales.models import Sale, SaleItem
-        from finance.models import Expense
-        from django.db.models import Sum, F
-        
-        sales_qs = Sale.objects.filter(branch_id=branch_id, is_deleted=False).exclude(status='QUOTE')
-        if start_date:
-            sales_qs = sales_qs.filter(date__gte=start_date)
-        if end_date:
-            sales_qs = sales_qs.filter(date__lte=end_date)
-            
-        sales_totals = sales_qs.aggregate(
-            total=Sum('total_amount'),
-            tax=Sum('tax_amount'),
-            discount=Sum('discount_amount'),
-            total_cost=Sum('total_cost')
-        )
-
-        total_sales = sales_totals['total'] or 0
-        total_cost = sales_totals['total_cost'] or 0
-        total_profit = total_sales - total_cost
-
-        counts = sales_qs.values('status').annotate(count=Count('id'))
-        count_dict = {item['status']: item['count'] for item in counts}
-
-        expenses_qs = Expense.objects.filter(branch_id=branch_id)
-        if start_date:
-            expenses_qs = expenses_qs.filter(date__gte=start_date)
-        if end_date:
-            expenses_qs = expenses_qs.filter(date__lte=end_date)
-
-        expenses_stats = expenses_qs.aggregate(total=Sum('amount'))
-
-        paid_count = count_dict.get('COMPLETED', 0)
-        pending_count = count_dict.get('PENDING', 0) + count_dict.get('PARTIAL', 0)
-
-        # 🚀 PERFORMANCE: Optimize Recent Sales (last 5) with select_related for customer
-        recent_sales = sales_qs.select_related('customer').order_by('-date')[:5]
-
-        # Use a lightweight serialization to avoid N+1 and large payload overhead
-        recent_sales_data = []
-        for s in recent_sales:
-            recent_sales_data.append({
-                "id": s.id,
-                "receiptNumber": s.receipt_number,
-                "totalAmount": float(s.total_amount),
-                "status": s.status,
-                "date": s.date,
-                "customerName": s.customer.name if s.customer else "Guest"
-            })        
-        data = {
-            "totalSales": total_sales,
-            "totalCost": total_cost,
-            "totalProfit": total_profit,
-            "paidSalesCount": paid_count,
-            "pendingSalesCount": pending_count,
-            "totalExpenses": expenses_stats['total'] or 0,
-            "recentSales": recent_sales_data
-        }
-
-        # Cache for 5 minutes
-        cache.set(cache_key, data, 300)
+        from .logic.analytics import get_analytics_summary
+        data = get_analytics_summary(branch_id, start_date, end_date)
         
         return Response(data)
 

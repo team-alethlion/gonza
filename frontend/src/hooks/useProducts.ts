@@ -9,8 +9,6 @@ import { clearInventoryCaches } from '@/utils/inventoryCacheUtils';
 // Import our new Server Actions
 import { getProductsAction, createProductAction, updateProductAction, deleteProductAction, updateProductsBulkAction } from '@/app/actions/products';
 
-import { useProductSync } from './useProductSync';
-
 const EMPTY_ARRAY: Product[] = [];
 
 export const useProducts = (
@@ -25,7 +23,6 @@ export const useProducts = (
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { syncProducts } = useProductSync();
 
   const [filters, setFilters] = useState<ProductFilters>({
     search: '',
@@ -154,9 +151,6 @@ export const useProducts = (
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
 
-      // ⚡️ SYNC LOCAL DB: Instant background sync to ensure search finds it immediately
-      syncProducts();
-
       return { success: true, data: newProduct };
     } catch (error: any) {
       console.error('Error creating product:', error);
@@ -208,9 +202,6 @@ export const useProducts = (
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
-
-      // ⚡️ SYNC LOCAL DB: Instant background sync to ensure search finds it immediately
-      syncProducts();
 
       return { success: true, data: updatedProduct };
     } catch (error: any) {

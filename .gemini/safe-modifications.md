@@ -34,4 +34,18 @@
 - **The Rule**: ALWAYS check for downstream dependencies before modifying shared files (e.g., `backend/core_app/views.py`, common hooks, or global contexts).
 - **The Protocol**: Use `grep_search` or `codebase_investigator` to find all usages of the symbol or file being modified.
 - **The Protocol**: If a modification solves the current task but might break other pages or features, you MUST implement a backward-compatible solution (e.g., optional parameters, fallbacks, or versioned logic).
-- **The Rationale**: Prevents "greedy fixes" where a localized improvement results in systemic regressions.
+- **The Rationale**: Prevents \"greedy fixes\" where a localized improvement results in systemic regressions.
+
+## 8. Next.js Proxy Pattern (Middleware)
+
+- **The Rule**: NEVER create or use a `middleware.ts` file in this project.
+- **The Protocol**: All middleware-level logic (Authentication, Redirects, Proxying) MUST reside in `proxy.ts` (currently located in `frontend/src/proxy.ts`).
+- **The Rationale**: Next.js version 16+ in this project uses the `proxy` convention. Reintroducing `middleware.ts` causes build errors and prevents the application from booting correctly.
+- **The Asset Protection**: Always ensure the `config.matcher` in `proxy.ts` includes strict exclusions for static assets (`icon.png`, `favicon.ico`, etc.) to prevent redundant authentication checks on images.
+
+## 9. Anti-Deletion Protocol
+
+- **The Rule**: NEVER use `...` or any omission placeholders in the `new_string` or `old_string` of a `replace` call. You must provide the EXACT, literal code.
+- **The Rule**: AVOID updating large blocks of code in a single move. If a change spans multiple unrelated functions or sections, split it into sequential, smaller `replace` calls across multiple turns.
+- **The Rule**: AVOID bulk updates that refactor many things at once. Keep every change targeted and reasonable to its specific purpose.
+- **The Rationale**: Omission placeholders and large-scale replaces are the primary causes of accidental code deletion and syntax errors. Smaller, literal updates are safer and easier to verify.

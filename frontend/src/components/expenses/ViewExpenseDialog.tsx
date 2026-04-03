@@ -1,22 +1,28 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Drawer, 
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
   DrawerContent,
   DrawerClose,
   DrawerHeader,
-  DrawerTitle
-} from '@/components/ui/drawer';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { X, Eye } from 'lucide-react';
-import { Expense } from '@/hooks/useExpenses';
-import { CashAccount } from '@/types/cash';
-import ImageViewer from '@/components/ui/ImageViewer';
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { X, Eye } from "lucide-react";
+import { Expense } from "@/hooks/useExpenses";
+import { CashAccount } from "@/types/cash";
+import ImageViewer from "@/components/ui/ImageViewer";
+import Image from "next/image";
 
 interface ViewExpenseDialogProps {
   expense: Expense | null;
@@ -31,7 +37,7 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
   open,
   onOpenChange,
   formatCurrency,
-  accounts
+  accounts,
 }) => {
   const isMobile = useIsMobile();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -40,32 +46,42 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
 
   const getCashAccountName = (accountId: string | null) => {
     if (!accountId) return null;
-    const account = accounts.find(acc => acc.id === accountId);
-    return account?.name || 'Unknown Account';
+    const account = accounts.find((acc) => acc.id === accountId);
+    return account?.name || "Unknown Account";
   };
 
   const content = (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Date</label>
+          <label className="text-sm font-medium text-muted-foreground">
+            Date
+          </label>
           <p className="text-sm">{expense.date.toLocaleDateString()}</p>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Amount</label>
-          <p className="text-lg font-semibold text-red-600">{formatCurrency(expense.amount)}</p>
+          <label className="text-sm font-medium text-muted-foreground">
+            Amount
+          </label>
+          <p className="text-lg font-semibold text-red-600">
+            {formatCurrency(expense.amount)}
+          </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-muted-foreground">Description</label>
+        <label className="text-sm font-medium text-muted-foreground">
+          Description
+        </label>
         <p className="text-sm">{expense.description}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Category</label>
+          <label className="text-sm font-medium text-muted-foreground">
+            Category
+          </label>
           {expense.category ? (
             <Badge variant="secondary">{expense.category}</Badge>
           ) : (
@@ -74,39 +90,53 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Payment Method</label>
-          <p className="text-sm">{expense.paymentMethod || 'Not specified'}</p>
+          <label className="text-sm font-medium text-muted-foreground">
+            Payment Method
+          </label>
+          <p className="text-sm">{expense.paymentMethod || "Not specified"}</p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-muted-foreground">Person in Charge</label>
-        <p className="text-sm">{expense.personInCharge || 'Not specified'}</p>
+        <label className="text-sm font-medium text-muted-foreground">
+          Person in Charge
+        </label>
+        <p className="text-sm">{expense.personInCharge || "Not specified"}</p>
       </div>
 
       {expense.cashAccountId && (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Cash Account</label>
-          <Badge variant="outline">{getCashAccountName(expense.cashAccountId)}</Badge>
+          <label className="text-sm font-medium text-muted-foreground">
+            Cash Account
+          </label>
+          <Badge variant="outline">
+            {getCashAccountName(expense.cashAccountId)}
+          </Badge>
         </div>
       )}
 
       {expense.receiptImage && (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-muted-foreground">Receipt</label>
+          <label className="text-sm font-medium text-muted-foreground">
+            Receipt
+          </label>
           <div className="relative">
-            <img 
-              src={expense.receiptImage} 
-              alt="Receipt" 
-              className="max-w-full h-32 object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => setImageViewerOpen(true)}
-            />
+            <div
+              className="relative h-32 w-full max-w-fit border rounded cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+              onClick={() => setImageViewerOpen(true)}>
+              <Image
+                src={expense.receiptImage}
+                alt="Receipt"
+                fill
+                sizes="(max-width: 768px) 100vw, 200px"
+                className="object-contain"
+              />
+            </div>
             <Button
               variant="secondary"
               size="sm"
               className="absolute top-2 right-2 opacity-80 hover:opacity-100"
-              onClick={() => setImageViewerOpen(true)}
-            >
+              onClick={() => setImageViewerOpen(true)}>
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -154,9 +184,7 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
           <DialogHeader>
             <DialogTitle>Expense Details</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[70vh] pr-4">
-            {content}
-          </ScrollArea>
+          <ScrollArea className="max-h-[70vh] pr-4">{content}</ScrollArea>
         </DialogContent>
       </Dialog>
 

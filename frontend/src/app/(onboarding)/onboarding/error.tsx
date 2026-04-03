@@ -19,33 +19,35 @@ export default function OnboardingError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-6 text-center">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="text-center space-y-6 max-w-md">
         <div className="flex justify-center">
-          <div className="bg-red-50 p-5 rounded-3xl">
-            <AlertTriangle className="w-12 h-12 text-red-500" />
+          <div className="bg-red-100 p-6 rounded-full">
+            <AlertTriangle className="w-16 h-16 text-red-500" />
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Setup Interrupted</h1>
-          <p className="text-slate-500 font-medium text-sm leading-relaxed">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Setup Interrupted</h1>
+          <p className="text-muted-foreground">
             We encountered a technical issue while configuring your environment. 
             Don&apos;t worry, your progress up to the last completed step is safe.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
-          <Button onClick={() => reset()} className="h-14 bg-primary hover:bg-primary/95 rounded-2xl font-bold shadow-lg shadow-primary/20">
-            <RefreshCcw className="w-4 h-4 mr-2" /> Resume Setup
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <Button onClick={() => reset()} className="gap-2">
+            <RefreshCcw className="w-4 h-4" /> Resume Setup
           </Button>
-          <Button variant="ghost" onClick={() => signOut()} className="h-14 text-slate-400 hover:text-red-600 font-bold">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out & Restart
+          <Button variant="outline" onClick={() => signOut()} className="gap-2">
+            <LogOut className="w-4 h-4" /> Sign Out & Restart
           </Button>
         </div>
 
         {error.digest && (
-          <p className="text-[10px] text-slate-300 font-mono uppercase tracking-widest">Trace ID: {error.digest}</p>
+          <div className="pt-8">
+            <p className="text-[10px] text-gray-400 font-mono mt-2 uppercase tracking-widest">Trace ID: {error.digest}</p>
+          </div>
         )}
       </div>
     </div>

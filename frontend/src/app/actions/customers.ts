@@ -4,6 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
+import { mapDbCustomerToCustomer } from '@/utils/customerMapping';
 
 export async function getCustomerStatsAction(userId: string, branchId: string) {
     try {
@@ -68,24 +69,7 @@ export async function getCustomersAction(branchId: string, page: number = 1, pag
              count = data.length;
         }
 
-        const mappedCustomers = customersList.map((c: any) => ({
-            id: c.id,
-            fullName: c.name,
-            phoneNumber: c.phone,
-            email: c.email,
-            birthday: c.birthday ? new Date(c.birthday).toISOString() : null,
-            gender: c.gender,
-            location: c.address,
-            categoryId: c.category,
-            notes: c.notes,
-            tags: c.tags || [],
-            socialMedia: c.social_media || null,
-            createdAt: c.created_at,
-            updatedAt: c.updated_at,
-            lifetimeValue: Number(c.lifetimeValue || 0),
-            orderCount: Number(c.orderCount || 0),
-            creditLimit: Number(c.credit_limit || 0)
-        }));
+        const mappedCustomers = customersList.map((c: any) => mapDbCustomerToCustomer(c));
 
         return { success: true, data: { customers: mappedCustomers, count } };
     } catch (error: any) {
@@ -178,26 +162,7 @@ export async function getCustomerAction(customerId: string, branchId: string) {
             return { success: false, error: customer?.error || 'Customer not found' };
         }
 
-        const formattedCustomer = {
-            id: customer.id,
-            fullName: customer.name,
-            phoneNumber: customer.phone,
-            email: customer.email,
-            birthday: customer.birthday ? new Date(customer.birthday).toISOString() : null,
-            gender: customer.gender,
-            location: customer.address,
-            categoryId: customer.category,
-            notes: customer.notes,
-            tags: customer.tags || [],
-            socialMedia: customer.social_media || null,
-            createdAt: customer.created_at,
-            updatedAt: customer.updated_at,
-            lifetimeValue: Number(customer.lifetimeValue || 0),
-            orderCount: customer.orderCount || 0,
-            creditLimit: Number(customer.credit_limit || 0)
-        };
-
-        return { success: true, data: formattedCustomer };
+        return { success: true, data: mapDbCustomerToCustomer(customer) };
     } catch (error: any) {
         console.error('Error fetching customer:', error);
         return { success: false, error: error.message };
@@ -387,22 +352,7 @@ export async function getDuplicateCustomersAction(branchId: string) {
         
         // Map backend groups to frontend Customer structure
         const mappedGroups = (data || []).map(group => 
-            group.map(c => ({
-                id: c.id,
-                fullName: c.name,
-                phoneNumber: c.phone || null,
-                email: c.email || null,
-                birthday: c.birthday ? new Date(c.birthday) : null,
-                gender: c.gender || null,
-                location: c.address || null,
-                categoryId: c.category || null,
-                notes: c.notes || null,
-                tags: c.tags || [],
-                branchId: c.branch || '',
-                socialMedia: c.social_media || null,
-                createdAt: new Date(c.created_at),
-                updatedAt: new Date(c.updated_at)
-            }))
+            group.map(c => mapDbCustomerToCustomer(c))
         );
 
         return { success: true, data: mappedGroups };

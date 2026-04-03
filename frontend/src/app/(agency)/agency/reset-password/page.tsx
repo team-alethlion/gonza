@@ -28,6 +28,7 @@ import { resetPasswordAction, signOutAction } from "@/app/actions/auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 const resetSchema = z
   .object({
@@ -166,10 +167,17 @@ const ResetPassword = () => {
         backgroundImage: `url('/lovable-uploads/2fca69a3-fd1f-4833-bb84-fd7f5764059f.png')`,
       }}>
       <div className="mb-6">
-        <img
+        <Image
           src="/lovable-uploads/da3f3948-8e6b-4501-b4aa-5e365d8e799e.png"
           alt="Gonzo Sales & Profit Tracker"
-          className="h-16 md:h-20 object-contain"
+          // 1. Set these to the "base" (mobile) size to prevent layout jump
+          width={204}
+          height={64}
+          // 2. Use classes to handle the responsive scaling
+          className="h-16 w-auto md:h-20 object-contain transition-all duration-300"
+          priority
+          // 3. For logos, a slightly higher quality keeps the text crisp
+          quality={90}
         />
       </div>
       <Card className="w-full max-w-md border-primary/10 shadow-lg bg-white/90">

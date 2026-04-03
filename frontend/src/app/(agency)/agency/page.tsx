@@ -5,13 +5,8 @@ import { getSalesAction } from "@/app/actions/sales";
 import { getAnalyticsSummaryAction } from "@/app/actions/analytics";
 import { getBusinessLocationsAction } from "@/app/actions/business";
 import { Sale, mapDbSaleToSale, AnalyticsData } from "@/types";
-import { enforceStrictAccess } from "@/lib/strict-guard";
 
 export default async function AgencyDashboard() {
-  // SUPER STRICT GUARD: Return notFound() if status is invalid
-  // before ANY other code or data fetching runs.
-  await enforceStrictAccess();
-
   const session = await auth();
   const userId = session?.user?.id;
   const branchId = (session?.user as any)?.branchId;

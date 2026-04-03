@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { enforceStrictAccess } from "@/lib/strict-guard";
 import { getProductsAction } from "@/app/actions/products";
 import { getBusinessLocationsAction } from "@/app/actions/business";
 import { getGlobalInventoryStatsAction } from "@/app/actions/analytics";
@@ -9,7 +8,6 @@ import InventoryClient from "./InventoryClient";
 import { Product } from "@/types";
 
 export default async function InventoryPage() {
-  await enforceStrictAccess();
   const session = await auth();
   const userId = session?.user?.id;
   const branchId = (session?.user as any)?.branchId;
@@ -17,7 +15,7 @@ export default async function InventoryPage() {
   let initialProducts: Product[] = [];
   let initialCount = 0;
   let initialStats = null;
-  let initialTopSelling: any[] = [];
+  const initialTopSelling: any[] = [];
 
   if (userId) {
     try {
@@ -37,7 +35,7 @@ export default async function InventoryPage() {
         // 🚀 SSR: Parallel fetch for critical inventory data only
         // We REMOVED getSoldItemsReportAction from SSR because it takes 29s+ for large datasets.
         // The client-side useSoldItemsData hook will fetch it in the background after the page loads instantly.
-        
+
         const [productsResult, statsResult]: [any, any] = await Promise.all([
           getProductsAction({
             userId,
@@ -45,7 +43,7 @@ export default async function InventoryPage() {
             page: 1,
             pageSize: 50,
           }),
-          getGlobalInventoryStatsAction(activeBranchId)
+          getGlobalInventoryStatsAction(activeBranchId),
         ]);
 
         if (productsResult && productsResult.products) {
@@ -63,11 +61,13 @@ export default async function InventoryPage() {
   }
 
   return (
-    <InventoryClient
-      initialProducts={initialProducts}
-      initialCount={initialCount}
-      initialStats={initialStats}
-      initialTopSelling={initialTopSelling}
-    />
+    <>
+      <InventoryClient
+        initialProducts={initialProducts}
+        initialCount={initialCount}
+        initialStats={initialStats}
+        initialTopSelling={initialTopSelling}
+      />
+    </>
   );
 }

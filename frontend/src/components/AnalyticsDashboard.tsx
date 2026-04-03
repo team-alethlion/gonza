@@ -12,7 +12,6 @@ import FinancialOverview from "./analytics/FinancialOverview";
 import SalesGoalTracker from "./SalesGoalTracker";
 import RecentSalesTable from "./analytics/RecentSalesTable";
 import SalesPerformanceChart from "./analytics/SalesPerformanceChart";
-import { useProductsBase } from "@/hooks/useProductsBase";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useFinancialVisibility } from "@/hooks/useFinancialVisibility";
 
@@ -52,9 +51,9 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
     );
     const [isCustomRange, setIsCustomRange] = useState(false);
     const [isSpecificDate, setIsSpecificDate] = useState(false);
-    const { products, isLoading: isLoadingProducts } = useProductsBase(
-      user?.id,
-    );
+
+    // 🛡️ PERF: useProductsBase removed as inventory value is now in the consolidated summary
+
     const {
       canViewCostPrice,
       canViewTotalSales,
@@ -64,15 +63,31 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
       canViewSalesTypes,
     } = useFinancialVisibility();
 
-    // Memoize inventory value calculation
+    const {
+      analyticsData,
+      barChartData,
+      recentSales,
+      nonQuoteSalesCount,
+      expenses,
+      isLoadingExpenses,
+      inventoryStats,
+      activeGoal
+    } = useAnalyticsData({
+      sales,
+      dateFilter,
+      dateRange,
+      specificDate,
+      isCustomRange,
+      isSpecificDate,
+      initialAnalytics,
+    });
+
+    // Memoize inventory value calculation from consolidated summary
     const inventoryValue = useMemo(() => {
-      if (!products || products.length === 0) return 0;
+      if (!inventoryStats) return 0;
       if (!canViewCostPrice) return 0;
-      return products.reduce(
-        (sum, product) => sum + product.costPrice * product.quantity,
-        0,
-      );
-    }, [products, canViewCostPrice]);
+      return inventoryStats.totalCostValue || 0;
+    }, [inventoryStats, canViewCostPrice]);
 
     // Memoize settings update
     const memoizedSettings = useMemo(() => {
@@ -139,28 +154,11 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
       [],
     );
 
-    const {
-      analyticsData,
-      barChartData,
-      recentSales,
-      nonQuoteSalesCount,
-      expenses,
-      isLoadingExpenses,
-    } = useAnalyticsData({
-      sales,
-      dateFilter,
-      dateRange,
-      specificDate,
-      isCustomRange,
-      isSpecificDate,
-      initialAnalytics,
-    });
-
     const formatCurrency = (value: any) => {
       return `${settings.currency} ${formatNumber(value)}`;
     };
 
-    const isLoading = isLoadingExpenses || isLoadingProducts;
+    const isLoading = isLoadingExpenses;
 
     return (
       <div className="space-y-6 w-full">
@@ -212,7 +210,7 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
           </div>
 
           <div className="xl:col-span-1">
-            <SalesGoalTracker />
+            <SalesGoalTracker initialGoal={activeGoal} isSummaryLoading={isLoadingExpenses} />
           </div>
         </div>
 

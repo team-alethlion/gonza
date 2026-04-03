@@ -9,13 +9,13 @@ const extractId = (obj: any): string | undefined => {
   return undefined;
 };
 
-export async function verifyUserAccess(userId: string) {
-  const session = await auth();
-  if (!session || !session.user) {
+export async function verifyUserAccess(userId: string, session?: any) {
+  const activeSession = session || (await auth());
+  if (!activeSession || !activeSession.user) {
     throw new Error("Unauthorized: No active session");
   }
 
-  const sessionUser = session.user as any;
+  const sessionUser = activeSession.user as any;
   const currentUserId = extractId(sessionUser.id);
   const targetUserId = extractId(userId);
   const isSuperAdmin = sessionUser.role?.toLowerCase() === "superadmin";
@@ -31,13 +31,13 @@ export async function verifyUserAccess(userId: string) {
 // This prevents 10+ concurrent actions from hitting the DB 10+ times for the same branch check.
 const branchOwnershipCache = new Map<string, any>();
 
-export async function verifyBranchAccess(branchId: string) {
-  const session = await auth();
-  if (!session || !session.user) {
+export async function verifyBranchAccess(branchId: string, session?: any) {
+  const activeSession = session || (await auth());
+  if (!activeSession || !activeSession.user) {
     throw new Error("Unauthorized: No active session");
   }
 
-  const sessionUser = session.user as any;
+  const sessionUser = activeSession.user as any;
   const userRole = sessionUser.role?.toLowerCase();
   const userAgencyId = extractId(sessionUser.agencyId);
   const userBranchId = extractId(sessionUser.branchId);
@@ -56,7 +56,7 @@ export async function verifyBranchAccess(branchId: string) {
     }
 
     try {
-      const branch = await djangoFetch(`core/branches/${targetBranchId}/`);
+      const branch = await djangoFetch(`core/branches/${targetBranchId}/`, { accessToken: (activeSession as any).accessToken });
       const branchAgencyId = extractId(branch.agency);
       
       if (branchAgencyId === userAgencyId) {
@@ -78,13 +78,13 @@ export async function verifyBranchAccess(branchId: string) {
   throw new Error("Unauthorized: You do not have access to this branch");
 }
 
-export async function verifyAgencyAccess(agencyId: string) {
-    const session = await auth();
-    if (!session || !session.user) {
+export async function verifyAgencyAccess(agencyId: string, session?: any) {
+    const activeSession = session || (await auth());
+    if (!activeSession || !activeSession.user) {
       throw new Error("Unauthorized: No active session");
     }
   
-    const sessionUser = session.user as any;
+    const sessionUser = activeSession.user as any;
     const userRole = sessionUser.role?.toLowerCase();
     const userAgencyId = extractId(sessionUser.agencyId);
     const targetAgencyId = extractId(agencyId);

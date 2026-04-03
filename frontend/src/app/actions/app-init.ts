@@ -3,15 +3,18 @@
 
 import { auth } from "@/auth";
 import { getBusinessLocationsAction } from "./business";
-import { getProfilesAction } from "./profiles";
 import { getAccountStatusAction } from "./business-settings";
 
 import { getAnalyticsSummaryAction } from "./analytics";
 import { getBusinessSettingsAction } from "./business-settings";
 import { djangoFetch } from "@/lib/django-client";
 import { signOut } from "@/auth";
+import { cache } from "react";
 
-export async function getInitialAppDataAction() {
+/**
+ * 🚀 PERFORMANCE: Wrapped in React.cache to deduplicate across nested layouts.
+ */
+const getCachedInitialAppData = cache(async () => {
   const start = Date.now();
   let isUnauthorized = false;
 
@@ -59,6 +62,7 @@ export async function getInitialAppDataAction() {
         try {
           const freshUser = await djangoFetch("users/users/me/", {
             cache: "no-store",
+            accessToken: (session as any).accessToken
           });
           if (freshUser) {
             const freshAgency = freshUser.agency || {};
@@ -111,12 +115,12 @@ export async function getInitialAppDataAction() {
     // 🚀 SSR: Parallel fetch for Shell Essentials
     // If branchId is already in session, fetch settings in parallel to save time.
     const promises: Promise<any>[] = [
-      getBusinessLocationsAction(userId),
-      getAccountStatusAction(userId),
+      getBusinessLocationsAction(userId, session),
+      getAccountStatusAction(userId, session),
     ];
 
     if (branchId) {
-      promises.push(getBusinessSettingsAction(branchId));
+      promises.push(getBusinessSettingsAction(branchId, session));
     }
 
     const [locationsData, accountStatusData, maybeSettings] = await Promise.all(
@@ -135,7 +139,7 @@ export async function getInitialAppDataAction() {
     // Now fetch settings if we didn't fetch them in parallel (due to missing branchId in session)
     let businessSettings = maybeSettings || null;
     if (targetBranchId && !businessSettings) {
-        businessSettings = await getBusinessSettingsAction(targetBranchId);
+        businessSettings = await getBusinessSettingsAction(targetBranchId, session);
     }
 
     const end = Date.now();
@@ -168,4 +172,11 @@ export async function getInitialAppDataAction() {
 
     return { success: false, error: error.message };
   }
+});
+
+/**
+ * Public Server Action entry point.
+ */
+export async function getInitialAppDataAction() {
+  return await getCachedInitialAppData();
 }

@@ -11,6 +11,7 @@ import {
   deleteCustomerAction,
 } from "@/app/actions/customers";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { mapDbCustomerToCustomer } from "@/utils/customerMapping";
 
 export interface Customer {
   id: string;
@@ -32,6 +33,7 @@ export interface Customer {
   } | null;
   lifetimeValue?: number;
   orderCount?: number;
+  creditLimit?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,41 +44,13 @@ export const useCustomers = (
   initialPageSize: number = 50,
   initialData?: { customers: Customer[]; count: number }
 ) => {
-  const [customers, setCustomers] = useState<Customer[]>(initialData?.customers || []);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [totalCount, setTotalCount] = useState(initialData?.count || 0);
   const { toast } = useToast();
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
   const { logActivity } = useActivityLogger();
   const queryClient = useQueryClient();
-
-  // Load from Dexie cache on mount
-  useEffect(() => {
-    const loadFromCache = async () => {
-      if (currentBusiness?.id && customers.length === 0) {
-        const cached = await localDb.customers
-          .where('locationId')
-          .equals(currentBusiness.id)
-          .reverse()
-          .sortBy('createdAt');
-        
-        if (cached && cached.length > 0) {
-          console.log('[Customers] Loaded from Dexie cache');
-          const mapped = cached.map(c => ({
-            ...c,
-            birthday: c.birthday ? new Date(c.birthday) : null,
-            createdAt: new Date(c.createdAt),
-            updatedAt: new Date(c.updatedAt)
-          }));
-          setCustomers(page === 1 ? mapped.slice(0, pageSize) : []);
-          setTotalCount(mapped.length);
-        }
-      }
-    };
-    loadFromCache();
-  }, [currentBusiness?.id, page, pageSize]);
 
   const loadCustomers = useCallback(async (): Promise<{
     customers: Customer[];
@@ -89,7 +63,7 @@ export const useCustomers = (
     try {
       const result = await getCustomersAction(
         currentBusiness.id,
-        page, // ⚡️ FIX: Pass page number, not skip/offset
+        page,
         pageSize,
       );
 
@@ -98,48 +72,26 @@ export const useCustomers = (
       }
 
       const formattedCustomers: Customer[] = (result.data?.customers || []).map(
-        (customer: any) => ({
-          id: customer.id,
-          fullName: customer.fullName || customer.name,
-          phoneNumber: customer.phoneNumber || customer.phone,
-          email: customer.email,
-          birthday: customer.birthday ? new Date(customer.birthday) : null,
-          gender: customer.gender,
-          location: customer.location || customer.address,
-          categoryId: customer.categoryId,
-          notes: customer.notes,
-          tags: customer.tags,
-          branchId: customer.branchId,
-          socialMedia: customer.socialMedia || null,
-          createdAt: new Date(customer.createdAt),
-          updatedAt: new Date(customer.updatedAt),
-          lifetimeValue: customer.lifetimeValue || 0,
-          orderCount: customer.orderCount || 0,
-          creditLimit: customer.creditLimit || 0,
-        }),
+        (customer: any) => mapDbCustomerToCustomer(customer)
       );
 
-      // Update Dexie cache in the background (only if we're on page 1 to avoid complexity)
+      // Background Dexie sync for first page
       if (formattedCustomers.length > 0 && page === 1) {
          const cacheData = formattedCustomers.map(c => ({
            ...c,
            locationId: currentBusiness.id as string,
          }));
-         await localDb.customers.where('locationId').equals(currentBusiness.id).delete();
-         await localDb.customers.bulkPut(cacheData as any);
+         localDb.customers.where('locationId').equals(currentBusiness.id).delete().then(() => {
+            localDb.customers.bulkPut(cacheData as any);
+         });
       }
 
       return { customers: formattedCustomers, count: result.data?.count || 0 };
     } catch (error) {
       console.error("Error loading customers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load customers. Please try again.",
-        variant: "destructive",
-      });
       return { customers: [], count: 0 };
     }
-  }, [currentBusiness?.id, page, pageSize, toast]);
+  }, [currentBusiness?.id, page, pageSize]);
 
   // React Query caching
   const queryKey = ["customers", currentBusiness?.id, page, pageSize];
@@ -154,16 +106,11 @@ export const useCustomers = (
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     initialData: (page === 1 && initialData?.customers.length) ? initialData : undefined
   });
 
-  useEffect(() => {
-    if (queriedData) {
-      setCustomers(queriedData.customers);
-      setTotalCount(queriedData.count);
-    }
-  }, [queriedData]);
+  const customers = queriedData?.customers || [];
+  const totalCount = queriedData?.count || 0;
 
   // Derived loading state to avoid flash on background refetch
   const isLoading = isQueryLoading && !queriedData;
@@ -183,75 +130,34 @@ export const useCustomers = (
     try {
       if (!user) throw new Error("User not authenticated");
 
-      const insertData = {
-        fullName: customerData.fullName,
-        phoneNumber: customerData.phoneNumber || null,
-        email: customerData.email || null,
-        birthday: customerData.birthday?.toISOString().split("T")[0] || null,
-        gender: customerData.gender || null,
-        location: customerData.location || null,
-        categoryId: customerData.categoryId || null,
-        notes: customerData.notes || null,
-        tags: customerData.tags || null,
-        socialMedia: customerData.socialMedia || null,
-        creditLimit: (customerData as any).creditLimit || 0
-      };
-
       const result = await createCustomerAction(
         currentBusiness.id,
         user.id,
-        insertData,
+        customerData,
       );
 
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to create customer");
       }
 
-      const data = result.data;
+      const newCustomer = mapDbCustomerToCustomer(result.data);
 
-      // Format the new customer and update cache immediately
-      const newCustomer: Customer = {
-        id: data.id,
-        fullName: data.name,
-        phoneNumber: data.phone,
-        email: data.email,
-        birthday: data.birthday ? new Date(data.birthday) : null,
-        gender: data.gender,
-        location: data.address,
-        categoryId: data.categoryId,
-        notes: data.notes,
-        tags: data.tags,
-        branchId: data.branchId || currentBusiness?.id || '',
-        socialMedia: data.socialMedia as any,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt),
-      };
-
-      // Update local state immediately
-      setCustomers((prev) => [newCustomer, ...prev]);
-      setTotalCount((c) => c + 1);
-
-      // Update React Query cache immediately
-      queryClient.setQueryData(queryKey, (oldData: any) => {
-        if (!oldData) return { customers: [newCustomer], count: 1 };
-        return {
-          customers: [newCustomer, ...oldData.customers],
-          count: (oldData.count || 0) + 1,
-        };
-      });
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["customers", currentBusiness.id] });
+      queryClient.invalidateQueries({ queryKey: ["customer_stats", currentBusiness.id] });
 
       // Log activity
       await logActivity({
         activityType: "CREATE",
         module: "CUSTOMERS",
         entityType: "customer",
-        entityId: data.id,
-        entityName: customerData.fullName,
-        description: `Created customer "${customerData.fullName}"`,
+        entityId: newCustomer.id,
+        entityName: newCustomer.fullName,
+        description: `Created customer "${newCustomer.fullName}"`,
         metadata: {
-          phoneNumber: customerData.phoneNumber,
-          email: customerData.email,
-          location: customerData.location,
+          phoneNumber: newCustomer.phoneNumber,
+          email: newCustomer.email,
+          location: newCustomer.location,
         },
       });
 
@@ -260,7 +166,7 @@ export const useCustomers = (
         description: "Customer created successfully",
       });
 
-      return data;
+      return result.data;
     } catch (error) {
       console.error("Error creating customer:", error);
       toast({
@@ -276,49 +182,15 @@ export const useCustomers = (
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
     try {
-      const updateData: any = {};
-
-      if (updates.fullName !== undefined)
-        updateData.fullName = updates.fullName;
-      if (updates.phoneNumber !== undefined)
-        updateData.phoneNumber = updates.phoneNumber;
-      if (updates.email !== undefined) updateData.email = updates.email;
-      if (updates.birthday !== undefined)
-        updateData.birthday = updates.birthday?.toISOString();
-      if (updates.gender !== undefined) updateData.gender = updates.gender;
-      if (updates.location !== undefined)
-        updateData.location = updates.location;
-      if (updates.categoryId !== undefined)
-        updateData.categoryId = updates.categoryId;
-      if (updates.notes !== undefined) updateData.notes = updates.notes;
-      if (updates.tags !== undefined) updateData.tags = updates.tags;
-      if (updates.socialMedia !== undefined)
-        updateData.socialMedia = updates.socialMedia;
-      if ((updates as any).creditLimit !== undefined)
-        updateData.creditLimit = (updates as any).creditLimit;
-
       if (!currentBusiness) throw new Error("No business selected");
 
-      const result = await updateCustomerAction(id, currentBusiness.id, updateData);
+      const result = await updateCustomerAction(id, currentBusiness.id, updates);
 
       if (!result.success)
         throw new Error(result.error || "Failed to update customer");
 
-      // Update local state immediately
-      setCustomers((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-      );
-
-      // Update React Query cache immediately
-      queryClient.setQueryData(queryKey, (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          customers: oldData.customers.map((c: Customer) =>
-            c.id === id ? { ...c, ...updates } : c,
-          ),
-        };
-      });
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["customers", currentBusiness.id] });
 
       // Log activity
       const customer = customers.find((c) => c.id === id);
@@ -353,7 +225,6 @@ export const useCustomers = (
 
   const deleteCustomer = async (id: string) => {
     try {
-      // Get customer details before deletion
       const customer = customers.find((c) => c.id === id);
 
       if (!currentBusiness) throw new Error("No business selected");
@@ -362,22 +233,10 @@ export const useCustomers = (
 
       if (!result.success)
         throw new Error(result.error || "Failed to delete customer");
-      // Optimistic update: remove locally
-      setCustomers((prev) => prev.filter((c) => c.id !== id));
-      setTotalCount((c) => Math.max(0, c - 1));
-      // Update cache immediately for current page
-      queryClient.setQueryData(queryKey, (old: any) => {
-        if (!old) return old;
-        const { customers: oldCustomers, count } = old;
-        const newCustomers = (oldCustomers as Customer[]).filter(
-          (c) => c.id !== id,
-        );
-        return {
-          customers: newCustomers,
-          count: Math.max(0, (count || 0) - 1),
-        };
-      });
-      queryClient.invalidateQueries({ queryKey });
+
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["customers", currentBusiness.id] });
+      queryClient.invalidateQueries({ queryKey: ["customer_stats", currentBusiness.id] });
 
       // Log activity
       if (customer) {

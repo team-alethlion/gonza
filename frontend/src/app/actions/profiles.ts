@@ -5,11 +5,13 @@ import { checkUserQuota } from '@/lib/quota-check';
 import { verifyBranchAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
 
-export async function getProfilesAction(branchId: string) {
+export async function getProfilesAction(branchId: string, session?: any) {
     try {
-        await verifyBranchAccess(branchId);
+        await verifyBranchAccess(branchId, session);
 
-        const users = await djangoFetch(`users/users/?branchId=${branchId}`);
+        const users = await djangoFetch(`users/users/?branchId=${branchId}`, {
+            accessToken: session?.accessToken
+        });
         const usersList = Array.isArray(users) ? users : (users.results || []);
 
         return usersList.map((u: any) => {

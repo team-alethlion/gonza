@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from "next/link";
 import { Phone } from "lucide-react";
+import Image from "next/image";
 
 const Footer = ({ B }: { B: any }) => (
   <footer
@@ -20,7 +21,9 @@ const Footer = ({ B }: { B: any }) => (
         }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Link href="/" className="flex items-center">
-            <img
+            <Image
+              width={32}
+              height={32}
               src="/lovable-uploads/logo sys white-01.png"
               alt="Gonza Logo"
               className="h-8 md:h-10"

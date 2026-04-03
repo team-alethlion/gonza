@@ -184,6 +184,9 @@ export async function getProductsDeltaAction(businessId: string, since?: number)
   try {
     await verifyBranchAccess(businessId);
     
+    // 🔍 SERVER LOGGING: Identify sync request source
+    console.log(`[ServerAction] 📥 Received Delta Sync Request for Branch: ${businessId} Since: ${since || 0}`);
+
     // ⚡️ PERFORMANCE: Use the dedicated delta endpoint for server-side filtering
     const url = `inventory/products/delta/?branch_id=${businessId}&since=${since || 0}`;
     const result = await djangoFetch<any>(url);

@@ -1,19 +1,32 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CashTransactionFormData, CashAccount } from '@/types/cash';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Eye, FileText, X } from 'lucide-react';
-import ImageViewer from '@/components/ui/ImageViewer';
-import LoadingSpinner from '@/components/LoadingSpinner';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CashTransactionFormData, CashAccount } from "@/types/cash";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Eye, FileText, X } from "lucide-react";
+import ImageViewer from "@/components/ui/ImageViewer";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 
 interface CashTransactionDialogProps {
   open: boolean;
@@ -21,7 +34,7 @@ interface CashTransactionDialogProps {
   onSubmit: (data: CashTransactionFormData) => void;
   accounts: CashAccount[];
   defaultAccountId?: string;
-  presetTransactionType?: 'cash_in' | 'cash_out' | 'transfer';
+  presetTransactionType?: "cash_in" | "cash_out" | "transfer";
 }
 
 const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
@@ -30,24 +43,31 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
   onSubmit,
   accounts,
   defaultAccountId,
-  presetTransactionType
+  presetTransactionType,
 }) => {
-  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<CashTransactionFormData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue,
+  } = useForm<CashTransactionFormData>({
     defaultValues: {
-      accountId: defaultAccountId || '',
-      transactionType: presetTransactionType || 'cash_in',
-      category: '',
-      description: '',
-      personInCharge: '',
+      accountId: defaultAccountId || "",
+      transactionType: presetTransactionType || "cash_in",
+      category: "",
+      description: "",
+      personInCharge: "",
       tags: [],
       date: new Date(),
-      paymentMethod: '',
-      receiptImage: ''
-    }
+      paymentMethod: "",
+      receiptImage: "",
+    },
   });
 
-  const transactionType = watch('transactionType');
-  const receiptImage = watch('receiptImage');
+  const transactionType = watch("transactionType");
+  const receiptImage = watch("receiptImage");
   const isMobile = useIsMobile();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,28 +76,28 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
   React.useEffect(() => {
     if (open) {
       const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
+      const todayString = today.toISOString().split("T")[0];
 
       reset({
-        accountId: defaultAccountId || '',
+        accountId: defaultAccountId || "",
         amount: undefined as any,
-        transactionType: presetTransactionType || 'cash_in',
-        category: '',
-        description: '',
-        personInCharge: '',
+        transactionType: presetTransactionType || "cash_in",
+        category: "",
+        description: "",
+        personInCharge: "",
         tags: [],
         date: today,
-        paymentMethod: '',
-        receiptImage: ''
+        paymentMethod: "",
+        receiptImage: "",
       });
 
       // Set the preset transaction type if provided
       if (presetTransactionType) {
-        setValue('transactionType', presetTransactionType);
+        setValue("transactionType", presetTransactionType);
       }
 
       // Set today's date in the date input with proper string format
-      setValue('date', todayString as any);
+      setValue("date", todayString as any);
     }
   }, [open, defaultAccountId, presetTransactionType, reset, setValue]);
 
@@ -85,35 +105,35 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
     const file = event.target.files?.[0];
     if (file) {
       // Check file type
-      const isImage = file.type.startsWith('image/');
-      const isPDF = file.type === 'application/pdf';
+      const isImage = file.type.startsWith("image/");
+      const isPDF = file.type === "application/pdf";
 
       if (!isImage && !isPDF) {
         toast({
           title: "Error",
           description: "Please select an image or PDF file",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       // Create a local URL for the uploaded file
       const fileUrl = URL.createObjectURL(file);
-      setValue('receiptImage', fileUrl);
+      setValue("receiptImage", fileUrl);
     }
   };
 
   const isReceiptPDF = (url: string) => {
     // Check if the file is a PDF based on the URL or stored file type
-    return url && url.includes('pdf');
+    return url && url.includes("pdf");
   };
 
   const removeReceipt = () => {
-    setValue('receiptImage', '');
+    setValue("receiptImage", "");
   };
 
   const handleFormSubmit = async (data: any) => {
-    console.log('Raw form data:', data);
+    console.log("Raw form data:", data);
 
     setIsSubmitting(true);
 
@@ -122,7 +142,7 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
       let formDate: Date;
       if (data.date instanceof Date) {
         formDate = data.date;
-      } else if (typeof data.date === 'string') {
+      } else if (typeof data.date === "string") {
         formDate = new Date(data.date);
       } else {
         formDate = new Date();
@@ -139,10 +159,10 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
         tags: [],
         date: formDate,
         paymentMethod: data.paymentMethod,
-        receiptImage: data.receiptImage
+        receiptImage: data.receiptImage,
       };
 
-      console.log('Processed form data being submitted:', formData);
+      console.log("Processed form data being submitted:", formData);
       await onSubmit(formData);
     } finally {
       setIsSubmitting(false);
@@ -152,37 +172,46 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={`${isMobile ? 'max-h-[85vh] w-[95vw] max-w-none' : 'sm:max-w-[500px]'}`}>
-          <DialogHeader className={isMobile ? 'pb-2' : ''}>
+        <DialogContent
+          className={`${
+            isMobile ? "max-h-[85vh] w-[95vw] max-w-none" : "sm:max-w-[500px]"
+          }`}>
+          <DialogHeader className={isMobile ? "pb-2" : ""}>
             <DialogTitle>New Transaction</DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className={isMobile ? 'h-[calc(85vh-120px)] pr-4' : 'max-h-[70vh]'}>
-            <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+          <ScrollArea
+            className={isMobile ? "h-[calc(85vh-120px)] pr-4" : "max-h-[70vh]"}>
+            <form
+              onSubmit={handleSubmit(handleFormSubmit)}
+              className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="accountId">Account</Label>
                 <Select
-                  value={watch('accountId')}
+                  value={watch("accountId")}
                   onValueChange={(value) => {
-                    setValue('accountId', value);
+                    setValue("accountId", value);
                     // Focus transaction type after selection
                     setTimeout(() => {
-                      const transactionTypeSelect = document.querySelectorAll('[role="combobox"]')[1] as HTMLElement;
+                      const transactionTypeSelect = document.querySelectorAll(
+                        '[role="combobox"]',
+                      )[1] as HTMLElement;
                       transactionTypeSelect?.focus();
                     }, 100);
-                  }}
-                >
+                  }}>
                   <SelectTrigger
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         setTimeout(() => {
-                          const transactionTypeSelect = document.querySelectorAll('[role="combobox"]')[1] as HTMLElement;
+                          const transactionTypeSelect =
+                            document.querySelectorAll(
+                              '[role="combobox"]',
+                            )[1] as HTMLElement;
                           transactionTypeSelect?.focus();
                         }, 100);
                       }
-                    }}
-                  >
+                    }}>
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
@@ -194,7 +223,9 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                   </SelectContent>
                 </Select>
                 {errors.accountId && (
-                  <p className="text-sm text-red-600">{errors.accountId.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errors.accountId.message}
+                  </p>
                 )}
               </div>
 
@@ -203,33 +234,38 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 <Select
                   value={transactionType}
                   onValueChange={(value) => {
-                    setValue('transactionType', value as 'cash_in' | 'cash_out' | 'transfer');
+                    setValue(
+                      "transactionType",
+                      value as "cash_in" | "cash_out" | "transfer",
+                    );
                     // Focus next field after selection
                     setTimeout(() => {
-                      if (value === 'transfer') {
-                        const toAccountSelect = document.querySelectorAll('[role="combobox"]')[2] as HTMLElement;
+                      if (value === "transfer") {
+                        const toAccountSelect = document.querySelectorAll(
+                          '[role="combobox"]',
+                        )[2] as HTMLElement;
                         toAccountSelect?.focus();
                       } else {
-                        document.getElementById('amount')?.focus();
+                        document.getElementById("amount")?.focus();
                       }
                     }, 100);
-                  }}
-                >
+                  }}>
                   <SelectTrigger
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         setTimeout(() => {
-                          if (transactionType === 'transfer') {
-                            const toAccountSelect = document.querySelectorAll('[role="combobox"]')[2] as HTMLElement;
+                          if (transactionType === "transfer") {
+                            const toAccountSelect = document.querySelectorAll(
+                              '[role="combobox"]',
+                            )[2] as HTMLElement;
                             toAccountSelect?.focus();
                           } else {
-                            document.getElementById('amount')?.focus();
+                            document.getElementById("amount")?.focus();
                           }
                         }, 100);
                       }
-                    }}
-                  >
+                    }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -240,34 +276,32 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 </Select>
               </div>
 
-              {transactionType === 'transfer' && (
+              {transactionType === "transfer" && (
                 <div className="space-y-2">
                   <Label htmlFor="toAccountId">To Account</Label>
                   <Select
-                    value={watch('toAccountId') || ''}
+                    value={watch("toAccountId") || ""}
                     onValueChange={(value) => {
-                      setValue('toAccountId', value);
+                      setValue("toAccountId", value);
                       // Focus amount after selection
                       setTimeout(() => {
-                        document.getElementById('amount')?.focus();
+                        document.getElementById("amount")?.focus();
                       }, 100);
-                    }}
-                  >
+                    }}>
                     <SelectTrigger
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
                           setTimeout(() => {
-                            document.getElementById('amount')?.focus();
+                            document.getElementById("amount")?.focus();
                           }, 100);
                         }
-                      }}
-                    >
+                      }}>
                       <SelectValue placeholder="Select destination account" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts
-                        .filter(account => account.id !== watch('accountId'))
+                        .filter((account) => account.id !== watch("accountId"))
                         .map((account) => (
                           <SelectItem key={account.id} value={account.id}>
                             {account.name}
@@ -284,20 +318,25 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                   id="amount"
                   type="number"
                   step="0.01"
-                  {...register('amount', {
-                    required: 'Amount is required',
-                    min: { value: 0.01, message: 'Amount must be greater than 0' }
+                  {...register("amount", {
+                    required: "Amount is required",
+                    min: {
+                      value: 0.01,
+                      message: "Amount must be greater than 0",
+                    },
                   })}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('category')?.focus();
+                      document.getElementById("category")?.focus();
                     }
                   }}
                   placeholder="0.00"
                 />
                 {errors.amount && (
-                  <p className="text-sm text-red-600">{errors.amount.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errors.amount.message}
+                  </p>
                 )}
               </div>
 
@@ -305,11 +344,11 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 <Label htmlFor="category">Category (Optional)</Label>
                 <Input
                   id="category"
-                  {...register('category')}
+                  {...register("category")}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('description')?.focus();
+                      document.getElementById("description")?.focus();
                     }
                   }}
                   placeholder="e.g., Sales, Expense, Investment"
@@ -320,31 +359,37 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  {...register('description', { required: 'Description is required' })}
+                  {...register("description", {
+                    required: "Description is required",
+                  })}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      document.getElementById('personInCharge')?.focus();
+                      document.getElementById("personInCharge")?.focus();
                     }
                   }}
                   placeholder="Transaction description"
                   rows={3}
-                  className={isMobile ? 'min-h-[80px]' : ''}
+                  className={isMobile ? "min-h-[80px]" : ""}
                 />
                 {errors.description && (
-                  <p className="text-sm text-red-600">{errors.description.message}</p>
+                  <p className="text-sm text-red-600">
+                    {errors.description.message}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="personInCharge">Person in Charge (Optional)</Label>
+                <Label htmlFor="personInCharge">
+                  Person in Charge (Optional)
+                </Label>
                 <Input
                   id="personInCharge"
-                  {...register('personInCharge')}
+                  {...register("personInCharge")}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('paymentMethod')?.focus();
+                      document.getElementById("paymentMethod")?.focus();
                     }
                   }}
                   placeholder="e.g., John Doe, Manager"
@@ -355,11 +400,11 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 <Label htmlFor="paymentMethod">Payment Method (Optional)</Label>
                 <Input
                   id="paymentMethod"
-                  {...register('paymentMethod')}
+                  {...register("paymentMethod")}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('date')?.focus();
+                      document.getElementById("date")?.focus();
                     }
                   }}
                   placeholder="e.g., Cash, Credit Card, Bank Transfer"
@@ -367,7 +412,9 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="receiptImage">Receipt (Image or PDF) (Optional)</Label>
+                <Label htmlFor="receiptImage">
+                  Receipt (Image or PDF) (Optional)
+                </Label>
                 <Input
                   id="receiptImage"
                   type="file"
@@ -386,26 +433,31 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                           variant="destructive"
                           size="sm"
                           className="ml-auto h-6 w-6 rounded-full p-0"
-                          onClick={removeReceipt}
-                        >
+                          onClick={removeReceipt}>
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <img
-                          src={receiptImage}
-                          alt="Receipt preview"
-                          className="max-w-full h-32 object-contain border rounded cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setImageViewerOpen(true)}
-                        />
+                        <div
+                          className="relative h-32 w-full max-w-fit border rounded cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+                          onClick={() => setImageViewerOpen(true)}>
+                          <Image
+                            src={receiptImage}
+                            alt="Receipt preview"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 300px"
+                            className="object-contain"
+                            // If receiptImage is a 'blob:' URL from a file input, add:
+                            // unoptimized
+                          />
+                        </div>
                         <Button
                           type="button"
                           variant="secondary"
                           size="sm"
                           className="absolute top-2 right-2 opacity-80 hover:opacity-100"
-                          onClick={() => setImageViewerOpen(true)}
-                        >
+                          onClick={() => setImageViewerOpen(true)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </>
@@ -419,11 +471,13 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 <Input
                   id="date"
                   type="date"
-                  {...register('date', { required: 'Date is required' })}
+                  {...register("date", { required: "Date is required" })}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      const submitButton = document.querySelector('button[type="submit"]') as HTMLElement;
+                      const submitButton = document.querySelector(
+                        'button[type="submit"]',
+                      ) as HTMLElement;
                       submitButton?.focus();
                     }
                   }}
@@ -433,28 +487,29 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                 )}
               </div>
 
-              <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-end space-x-2'} pt-4`}>
+              <div
+                className={`flex ${
+                  isMobile ? "flex-col gap-2" : "justify-end space-x-2"
+                } pt-4`}>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  className={isMobile ? 'w-full' : ''}
-                  disabled={isSubmitting}
-                >
+                  className={isMobile ? "w-full" : ""}
+                  disabled={isSubmitting}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className={isMobile ? 'w-full' : ''}
-                  disabled={isSubmitting}
-                >
+                  className={isMobile ? "w-full" : ""}
+                  disabled={isSubmitting}>
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
                       <LoadingSpinner size="sm" className="!space-y-0" />
                       <span>Creating Transaction...</span>
                     </div>
                   ) : (
-                    'Create Transaction'
+                    "Create Transaction"
                   )}
                 </Button>
               </div>

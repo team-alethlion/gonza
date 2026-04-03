@@ -139,12 +139,21 @@ const GoalContent = React.memo<GoalContentProps>(
 
 GoalContent.displayName = "GoalContent";
 
-const SalesGoalTracker = () => {
+const SalesGoalTracker = ({ 
+  initialGoal, 
+  isSummaryLoading = false 
+}: { 
+  initialGoal?: any; 
+  isSummaryLoading?: boolean;
+}) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
   const { canViewTotalSales } = useFinancialVisibility();
   const queryClient = useQueryClient();
+
+  // 🚀 PERF: Detect if we have any data (even null) from SSR
+  const hasInitialGoalData = initialGoal !== undefined;
 
   const [currentDate] = useState(() => new Date());
   const currentMonth = currentDate.getMonth() + 1;
@@ -201,7 +210,17 @@ const SalesGoalTracker = () => {
       return result.data;
     },
     enabled: !!user?.id && !!currentBusiness?.id,
-    staleTime: 30000,
+    // Use a longer staleTime if we have SSR data to prevent immediate background refetch
+    staleTime: (selectedGoalType === 'monthly' && hasInitialGoalData) ? 300000 : 60000,
+    // 🚀 PERF: Trust the SSR data (even if it is null)
+    initialData: (selectedGoalType === 'monthly' && hasInitialGoalData) ? (initialGoal ? {
+        id: initialGoal.id,
+        target: initialGoal.amountTarget,
+        current_amount: initialGoal.currentAmount,
+        period: initialGoal.period,
+        period_name: initialGoal.periodName,
+        end_date: initialGoal.endDate
+    } : null) : undefined
   });
 
   // Fetch current period sales
@@ -224,7 +243,10 @@ const SalesGoalTracker = () => {
       return result.data ?? 0;
     },
     enabled: !!currentBusiness?.id,
-    staleTime: 30000,
+    // Use a longer staleTime if we have SSR data
+    staleTime: (selectedGoalType === 'monthly' && hasInitialGoalData) ? 300000 : 60000,
+    // 🚀 PERF: If initialGoal exists, we can derive the current monthly sales from it
+    initialData: (selectedGoalType === 'monthly' && hasInitialGoalData) ? (initialGoal?.currentAmount || 0) : undefined
   });
 
   // Update sales goal mutation

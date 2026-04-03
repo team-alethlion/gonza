@@ -509,18 +509,21 @@ const SalesTable: React.FC<SalesTableProps> = ({
     setIsDeleteDialogOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async (reason: string) => {
-    if (saleToDelete && !isDeletingSale) {
-      setIsDeletingSale(true);
-      try {
-        await onDeleteSale(saleToDelete, reason);
-        setIsDeleteDialogOpen(false);
-        setSaleToDelete(null);
-      } finally {
-        setIsDeletingSale(false);
+  const handleConfirmDelete = useCallback(
+    async (reason: string) => {
+      if (saleToDelete && !isDeletingSale) {
+        setIsDeletingSale(true);
+        try {
+          await onDeleteSale(saleToDelete, reason);
+          setIsDeleteDialogOpen(false);
+          setSaleToDelete(null);
+        } finally {
+          setIsDeletingSale(false);
+        }
       }
-    }
-  }, [saleToDelete, onDeleteSale, isDeletingSale]);
+    },
+    [saleToDelete, onDeleteSale, isDeletingSale],
+  );
 
   const handleCancelDelete = useCallback(
     (open: boolean) => {
@@ -609,11 +612,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4">
-        <img
-          src="/lovable-uploads/7f7549a3-e9df-4762-b8b9-8e041e34f55d.png"
-          alt="Loading"
-          className="w-12 h-12 animate-spin"
-        />
+        <img src="/icon.png" alt="Loading" className="w-12 h-12 animate-spin" />
         <p className="text-muted-foreground text-sm">Loading sales...</p>
       </div>
     );

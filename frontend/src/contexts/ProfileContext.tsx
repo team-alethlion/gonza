@@ -351,7 +351,6 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
       const needsLoad = !hasLoadedInitial.current && !hasCorrectInitialData;
       
       if (needsLoad) {
-        console.log('[Profiles] No SSR data found. Triggering client-side fetch.');
         loadProfiles();
       } else {
         // If we have SSR data, mark as loaded so we don't trigger again

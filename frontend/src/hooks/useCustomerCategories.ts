@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getCustomerCategoriesAction,
   createCustomerCategoryAction,
@@ -21,73 +21,41 @@ export interface CustomerCategory {
 import { localDb } from '@/lib/dexie';
 
 export const useCustomerCategories = () => {
-  const [categories, setCategories] = useState<CustomerCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Load from Dexie cache on mount
-  useEffect(() => {
-    const loadFromCache = async () => {
-      if (currentBusiness?.id && categories.length === 0) {
-        const cached = await localDb.categories
-          .where('[locationId+type]')
-          .equals([currentBusiness.id, 'customer'])
-          .toArray();
-        
-        if (cached && cached.length > 0) {
-          console.log('[CustomerCategories] Loaded from Dexie cache');
-          setCategories(cached);
-          setIsLoading(false);
-        }
-      }
-    };
-    loadFromCache();
-  }, [currentBusiness?.id]);
+  const queryKey = ['customer_categories', currentBusiness?.id];
 
-  const fetchCategories = async () => {
-    if (!currentBusiness) {
-      setCategories([]);
-      setIsLoading(false);
-      return;
-    }
+  const { data: categories = [], isLoading, refetch } = useQuery<CustomerCategory[]>({
+    queryKey,
+    queryFn: async () => {
+      if (!currentBusiness?.id) return [];
 
-    try {
-      setIsLoading(categories.length === 0);
       const result = await getCustomerCategoriesAction(currentBusiness.id);
-      if (result.success && result.data) {
-        const fetched = result.data as any;
-        
-        // Update Dexie cache in the background
-        if (fetched.length > 0) {
-          const cacheData = fetched.map((c: any) => ({
-            ...c,
-            type: 'customer',
-            locationId: currentBusiness.id as string
-          }));
-          await localDb.categories.where('[locationId+type]').equals([currentBusiness.id, 'customer']).delete();
-          await localDb.categories.bulkPut(cacheData as any);
-        }
-        
-        setCategories(fetched);
-      } else {
-        throw new Error(result.error);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch customer categories');
       }
-    } catch (error) {
-      console.error('Error fetching customer categories:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch customer categories",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchCategories();
-  }, [currentBusiness]);
+      const fetched = result.data as CustomerCategory[];
+      
+      // Update Dexie cache in the background
+      if (fetched.length > 0) {
+        const cacheData = fetched.map((c: any) => ({
+          ...c,
+          type: 'customer',
+          locationId: currentBusiness.id as string
+        }));
+        localDb.categories.where('[locationId+type]').equals([currentBusiness.id, 'customer']).delete().then(() => {
+            localDb.categories.bulkPut(cacheData as any);
+        });
+      }
+      
+      return fetched;
+    },
+    enabled: !!currentBusiness?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const createCategory = async (name: string) => {
     if (!currentBusiness || !user) {
@@ -102,11 +70,11 @@ export const useCustomerCategories = () => {
     try {
       const result = await createCustomerCategoryAction(currentBusiness.id, user.id, name);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Customer category created successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -127,11 +95,11 @@ export const useCustomerCategories = () => {
       if (!currentBusiness) throw new Error("No business selected");
       const result = await updateCustomerCategoryAction(id, currentBusiness.id, name);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Customer category updated successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -152,11 +120,11 @@ export const useCustomerCategories = () => {
       if (!currentBusiness) throw new Error("No business selected");
       const result = await deleteCustomerCategoryAction(id, currentBusiness.id);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Customer category deleted successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -178,6 +146,6 @@ export const useCustomerCategories = () => {
     createCategory,
     updateCategory,
     deleteCategory,
-    refetch: fetchCategories,
+    refetch,
   };
 };

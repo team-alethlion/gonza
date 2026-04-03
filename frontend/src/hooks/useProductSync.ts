@@ -6,16 +6,31 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Product } from '@/types';
 import { matchProductSearch } from '@/utils/searchUtils';
 
+// 🔒 GLOBAL LOCK: Prevent overlapping syncs across multiple hook instances
+let globalSyncLock: string | null = null;
+
 export const useProductSync = () => {
   const { currentBusiness } = useBusiness();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
-  const syncProducts = useCallback(async () => {
+  // Sync interval from env or default to 30s
+  const SYNC_INTERVAL = Number(process.env.NEXT_PUBLIC_PRODUCT_SYNC_INTERVAL) || 30000;
+
+  const syncProducts = useCallback(async (isAuto = false) => {
     const businessId = currentBusiness?.id;
     if (!businessId || isSyncing) return;
 
+    // 🛡️ SYNC LOCK CHECK: If a sync for this business is already in progress globally, skip.
+    if (globalSyncLock === businessId) return;
+
+    // 🛡️ TAB VISIBILITY GUARD: If auto-syncing, only proceed if tab is active
+    if (isAuto && typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      return;
+    }
+
     setIsSyncing(true);
+    globalSyncLock = businessId; // Set the lock
     setLastSyncError(null);
 
     try {
@@ -28,12 +43,16 @@ export const useProductSync = () => {
       // If we have no local products for this branch, ignore 'since' and do a full sync
       const since = localCount > 0 ? (metadata?.lastSyncedAt || 0) : 0;
 
+      // 🔍 INFORMATIONAL LOGGING: Explicitly tag sync source and parameters
+      console.log(`[SyncManager] 🔄 Product Delta Sync: Business=${businessId} Since=${since} Type=${isAuto ? 'AUTO' : 'MANUAL'}`);
+
       // 2. Fetch changes from server
       const result = await getProductsDeltaAction(businessId, since);
 
       if (result.success && result.products) {
         // 3. Update local Dexie database
         if (result.products.length > 0) {
+          console.log(`[SyncManager] ✅ Applied ${result.products.length} updates for branch ${businessId}`);
           const formattedProducts = result.products.map((p: any) => ({
             ...p,
             locationId: p.branch || businessId, // ⚡️ MAP branch from backend to locationId
@@ -55,10 +74,11 @@ export const useProductSync = () => {
         }
       }
     } catch (error: any) {
-      console.error('Product Sync Error:', error);
+      console.error('[SyncManager] ❌ Product Sync Error:', error);
       setLastSyncError(error.message);
     } finally {
       setIsSyncing(false);
+      globalSyncLock = null; // Release the lock
     }
   }, [currentBusiness?.id, isSyncing]); // Depend on ID and isSyncing state
 
@@ -66,17 +86,17 @@ export const useProductSync = () => {
   useEffect(() => {
     if (!currentBusiness?.id) return;
 
-    // Initial sync
-    syncProducts();
+    // Initial sync (manual/on-mount)
+    syncProducts(false);
 
-    // 🕒 POLLING: Check for updates every 30 seconds
+    // 🕒 POLLING: Check for updates based on configured interval
     const interval = setInterval(() => {
-      syncProducts();
-    }, 30000); 
+      syncProducts(true);
+    }, SYNC_INTERVAL); 
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBusiness?.id]); // Only re-run when business ID changes
+  }, [currentBusiness?.id, SYNC_INTERVAL]); // Only re-run when business ID changes or interval changes
 
   // Expose sync status and manual trigger
   return {

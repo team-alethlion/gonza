@@ -98,7 +98,6 @@ export const BusinessProvider: React.FC<{
   initialBusinessSettings: rawSettings = null,
   initialAnalyticsSummary = null,
 }) => {
-  console.log("[DEBUG] BusinessProvider: Initializing...");
   const { user, updateSession } = useAuth();
 
   // 🚀 MAP DATA: Convert raw DB settings to frontend camelCase format

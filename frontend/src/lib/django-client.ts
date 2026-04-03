@@ -8,6 +8,8 @@ const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://127.0.0
  * Automatically injects the JWT access token from the active session.
  */
 export async function djangoFetch<T = any>(endpoint: string, options: RequestInit & { accessToken?: string } = {}): Promise<T> {
+  // If accessToken is provided in options, use it. 
+  // ONLY call auth() if no token was provided.
   const token = options.accessToken || (await auth() as any)?.accessToken;
 
   if (!token && !endpoint.includes('auth/token')) {

@@ -2,6 +2,7 @@
 "use client";
 
 import { useReveal } from "@/hooks/useReveal";
+import Image from "next/image";
 
 const DashboardShowcase = ({ B }: { B: any }) => {
   const { ref, visible } = useReveal(0.05);
@@ -137,19 +138,18 @@ const DashboardShowcase = ({ B }: { B: any }) => {
 
           {/* Product image */}
           <div style={{ position: "relative", lineHeight: 0 }}>
-            <img
-              src="/lovable-uploads/GDG.png"
-              alt="Gonza Systems — dashboard on desktop and mobile"
-              style={{ width: "100%", height: "auto", display: "block" }}
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                // Try the laptop+phone image uploaded via WhatsApp
-                if (!img.dataset.tried) {
-                  img.dataset.tried = "1";
-                  img.src = "/lovable-uploads/GDG.png";
-                }
-              }}
-            />
+            <div className="w-full overflow-hidden rounded-xl shadow-2xl bg-muted/30">
+              <Image
+                src="/lovable-uploads/GDG.png"
+                alt="Gonza Systems — dashboard on desktop and mobile"
+                width={2480}
+                height={2044}
+                className="w-full h-auto block"
+                priority
+                quality={90}
+                sizes="100vw"
+              />
+            </div>
             {/* Subtle bottom gradient so it fades into page */}
             <div
               style={{

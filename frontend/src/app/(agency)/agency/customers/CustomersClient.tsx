@@ -6,6 +6,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { useCustomers, Customer } from "@/hooks/useCustomers";
 import { useCustomerCategories } from "@/hooks/useCustomerCategories";
 import { useCustomerData } from "@/hooks/useCustomerData";
+import { useCustomerStats } from "@/hooks/useCustomerStats";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useSalesData } from "@/hooks/useSalesData";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -60,8 +61,8 @@ const CustomersClient = ({
   const { categories } = useCustomerCategories();
   const { settings } = useBusinessSettings();
 
-  // We no longer need all sales on the client for lifetime stats
-  // const { getCustomerLifetimePurchases } = useSalesData(user?.id);
+  // New React Query based stats hook
+  const { data: globalStats } = useCustomerStats(user?.id, currentBusiness?.id);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -96,62 +97,6 @@ const CustomersClient = ({
   >(null);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
 
-  // Global customer stats
-  const [customersWithBirthdaysAll, setCustomersWithBirthdaysAll] = useState<
-    number | undefined
-  >(undefined);
-  const [customersThisMonthAll, setCustomersThisMonthAll] = useState<
-    number | undefined
-  >(undefined);
-
-  // Fetch global customer stats with 5-min cache
-  useEffect(() => {
-    let cancelled = false;
-    const loadGlobalStats = async () => {
-      if (!user?.id || !currentBusiness?.id) return;
-
-      const cacheKey = `allCustomerStats_${currentBusiness.id}`;
-      const cachedRaw = localStorage.getItem(cacheKey);
-      try {
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as {
-            withBirthdays: number;
-            thisMonth: number;
-            ts: number;
-          };
-          if (Date.now() - cached.ts < 5 * 60 * 1000) {
-            setCustomersWithBirthdaysAll(cached.withBirthdays);
-            setCustomersThisMonthAll(cached.thisMonth);
-            return;
-          }
-        }
-      } catch {}
-
-      const result = await getCustomerStatsAction(user.id, currentBusiness.id);
-
-      if (!cancelled && result.success && result.data) {
-        setCustomersWithBirthdaysAll(result.data.withBirthdays);
-        setCustomersThisMonthAll(result.data.thisMonth);
-
-        try {
-          localStorage.setItem(
-            cacheKey,
-            JSON.stringify({
-              withBirthdays: result.data.withBirthdays,
-              thisMonth: result.data.thisMonth,
-              ts: Date.now(),
-            }),
-          );
-        } catch {}
-      }
-    };
-
-    loadGlobalStats();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, currentBusiness?.id]);
-
   // Use customer data hook for all calculations
   const { validCategories, filteredCustomers, customerStats, getCategoryName } =
     useCustomerData(
@@ -160,8 +105,8 @@ const CustomersClient = ({
       searchTerm,
       selectedCategory,
       totalCount,
-      customersWithBirthdaysAll,
-      customersThisMonthAll,
+      globalStats?.withBirthdays,
+      globalStats?.thisMonth,
     );
 
   useEffect(() => {

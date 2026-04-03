@@ -421,6 +421,9 @@ export async function bulkSyncSalesAction(sales: { localId: string, saleData: an
     try {
         await verifyBranchAccess(sales[0].branchId);
         
+        // 🔍 SERVER LOGGING: Identify sync request source
+        console.log(`[ServerAction] 📥 Received Bulk Sales Sync Request: Count=${sales.length} Branch=${sales[0].branchId}`);
+        
         const payload = sales.map(s => ({
             ...s.saleData,
             localId: s.localId,

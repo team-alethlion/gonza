@@ -55,7 +55,9 @@ export async function getAnalyticsSummaryAction(branchId: string, startDate?: st
                 pendingSalesCount: Number(result.pendingSalesCount || 0),
                 totalExpenses: Number(result.totalExpenses || 0),
                 recentSales: (result.recentSales || []).map((s: any) => mapDbSaleToSale(s)),
-                topSellingProducts: result.topSellingProducts || []
+                topSellingProducts: result.topSellingProducts || [],
+                inventoryStats: result.inventoryStats || null,
+                activeGoal: result.activeGoal || null
             }
         };
     } catch (error: any) {

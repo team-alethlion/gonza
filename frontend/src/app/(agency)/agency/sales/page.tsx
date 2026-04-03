@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { enforceStrictAccess } from "@/lib/strict-guard";
 import { getSalesAction } from "@/app/actions/sales";
 import { getBusinessLocationsAction } from "@/app/actions/business";
 import { SalesClient } from "@/components/sales/SalesClient";
 import { Sale, mapDbSaleToSale } from "@/types";
 
 export default async function SalesPage() {
-  await enforceStrictAccess();
   const session = await auth();
   const userId = session?.user?.id;
   const branchId = (session?.user as any)?.branchId;

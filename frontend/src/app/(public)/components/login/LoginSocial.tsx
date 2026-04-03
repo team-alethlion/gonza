@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { toast } from "sonner";
+import Image from "next/image";
 
 export function LoginSocial({ loading: parentLoading }: { loading: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -33,14 +35,14 @@ export function LoginSocial({ loading: parentLoading }: { loading: boolean }) {
       className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50"
       onClick={handleGoogleSignIn}
       disabled={googleLoading || parentLoading}>
-      <img
+      <Image
+        height={20}
+        width={20}
         src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
         alt="Google"
         className="w-5 h-5"
       />
-      {googleLoading
-        ? "Connecting with Google..."
-        : "Sign in with Google"}
+      {googleLoading ? "Connecting with Google..." : "Sign in with Google"}
     </Button>
   );
 }

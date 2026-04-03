@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
 
-export async function getBusinessSettingsAction(branchId: string) {
-    await verifyBranchAccess(branchId);
+export async function getBusinessSettingsAction(branchId: string, session?: any) {
+    await verifyBranchAccess(branchId, session);
     try {
-        const result = await djangoFetch(`core/settings/?branchId=${branchId}`);
+        const result = await djangoFetch(`core/settings/?branchId=${branchId}`, {
+            accessToken: session?.accessToken
+        });
         const settings = Array.isArray(result) ? result[0] : (result.results?.[0]);
 
         if (!settings) {
@@ -87,11 +89,13 @@ export async function completeInitialOnboardingAction(data: any) {
     }
 }
 
-export async function getAccountStatusAction(userId: string) {
-    await verifyUserAccess(userId);
+export async function getAccountStatusAction(userId: string, session?: any) {
+    await verifyUserAccess(userId, session);
     try {
         // 🚀 OPTIMIZATION: Fetch user, agency, and package in ONE call via optimized 'me' endpoint
-        const user = await djangoFetch(`users/users/me/`);
+        const user = await djangoFetch(`users/users/me/`, {
+            accessToken: session?.accessToken
+        });
         if (!user || user.error) return null;
 
         const agency = user.agency;

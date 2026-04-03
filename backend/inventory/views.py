@@ -508,8 +508,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         # 1. Get the SOURCE OF TRUTH from the Sale table (matching Sales Overview)
         sales_qs = Sale.objects.filter(
             branch_id=branch_id,
-            date__range=[start_date, end_date]
-        ).exclude(status='QUOTE')
+            date__gte=start_date,
+            date__lte=end_date
+        ).filter(is_deleted=False)
+
+        # Include everything except explicit Cancelled/Refunded if needed, 
+        # but let's keep it broad for now.
+        # .exclude(status__in=['CANCELLED', 'REFUNDED'])
 
         sales_totals = sales_qs.aggregate(
             total=Sum('total_amount'),
@@ -563,8 +568,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 attributed_total = item.subtotal - attributed_discount
                 cost_value = item.cost_price * item.quantity
 
-                # Aggregate by Product
-                p_id = item.product_id or "unknown"
+                # 🚀 FALLBACK LOGIC: Group by product_id if available, otherwise by product_name
+                # This ensures "Custom Items" are still aggregated correctly.
+                p_id = item.product_id or f"custom_{item.product_name}"
                 if p_id not in product_data:
                     product_data[p_id] = {
                         "description": item.product_name,

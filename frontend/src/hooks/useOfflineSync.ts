@@ -80,7 +80,12 @@ export const useOfflineSync = () => {
 
   // Periodic sync attempt (every 2 minutes)
   useEffect(() => {
-    const interval = setInterval(syncPendingSales, 120000);
+    const interval = setInterval(() => {
+        // Only sync if tab is visible to save resources
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+            syncPendingSales();
+        }
+    }, 120000);
     return () => clearInterval(interval);
   }, [syncPendingSales]);
 

@@ -1,48 +1,73 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState, useEffect, useRef, DragEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect, useRef, DragEvent } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Product, ProductCategory, ProductFormData } from '@/types';
-import { useBusinessSettings } from '@/hooks/useBusinessSettings';
-import { toast } from 'sonner';
-import { Trash2, Upload, ExternalLink, Loader2, Zap, Calendar, Printer } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useProductImage } from '@/hooks/useProductImage';
-import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { Switch } from '@/components/ui/switch';
+} from "@/components/ui/select";
+import { Product, ProductCategory, ProductFormData } from "@/types";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { toast } from "sonner";
+import {
+  Trash2,
+  Upload,
+  ExternalLink,
+  Loader2,
+  Zap,
+  Calendar,
+  Printer,
+} from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useProductImage } from "@/hooks/useProductImage";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 
 interface ProductFormProps {
   initialData?: Product;
   categories: ProductCategory[];
-  onProductSubmit: (data: ProductFormData & { autoPrintLabel?: boolean, printQuantity?: number }) => void;
+  onProductSubmit: (
+    data: ProductFormData & {
+      autoPrintLabel?: boolean;
+      printQuantity?: number;
+    },
+  ) => void;
   isLoading: boolean;
   draftData?: any;
   onClearDraft?: () => void;
 }
 
 // Extended form data type to handle quantity as string or number
-interface ExtendedProductFormData extends Omit<ProductFormData, 'quantity'> {
+interface ExtendedProductFormData extends Omit<ProductFormData, "quantity"> {
   quantity: number | string;
   createdAt?: Date;
   autoPrintLabel?: boolean;
   printQuantity: number;
 }
 
-import { useProductDraft } from '@/hooks/useProductDraft';
+import { useProductDraft } from "@/hooks/useProductDraft";
+import Image from "next/image";
 
 const ProductForm: React.FC<ProductFormProps> = ({
   initialData,
@@ -50,7 +75,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onProductSubmit,
   isLoading,
   draftData,
-  onClearDraft
+  onClearDraft,
 }) => {
   const router = useRouter();
   const { settings } = useBusinessSettings();
@@ -60,98 +85,115 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Function to get initial form data
-  const getInitialFormData = (productData?: Product): ExtendedProductFormData => {
+  const getInitialFormData = (
+    productData?: Product,
+  ): ExtendedProductFormData => {
     if (productData) {
       // When editing/duplicating, use the product's data
       return {
         name: productData.name,
-        barcode: productData.barcode || '',
-        manufacturerBarcode: productData.manufacturerBarcode || '',
-        description: productData.description || '',
-        category: productData.categoryId || productData.category || '',
+        barcode: productData.barcode || "",
+        manufacturerBarcode: productData.manufacturerBarcode || "",
+        description: productData.description || "",
+        category: productData.categoryId || productData.category || "",
         quantity: productData.quantity ?? 0,
         costPrice: productData.costPrice,
         sellingPrice: productData.sellingPrice,
-        supplier: productData.supplier || '',
+        supplier: productData.supplier || "",
         minimumStock: productData.minimumStock,
         imageFile: null,
         imageUrl: productData.imageUrl,
         createdAt: productData.createdAt || new Date(), // Use product's creation date
         printQuantity: 1,
-        autoPrintLabel: false
+        autoPrintLabel: false,
       };
     } else {
       // When creating new product, use defaults
       return {
-        name: '',
-        barcode: '',
-        manufacturerBarcode: '',
-        description: '',
-        category: '',
+        name: "",
+        barcode: "",
+        manufacturerBarcode: "",
+        description: "",
+        category: "",
         quantity: 0,
         costPrice: undefined,
         sellingPrice: undefined,
-        supplier: '',
+        supplier: "",
         minimumStock: undefined,
         imageFile: null,
         imageUrl: null,
         createdAt: new Date(), // Default to current date for new products
         autoPrintLabel: true, // Default to true for new products as requested
-        printQuantity: 1
+        printQuantity: 1,
       };
     }
   };
 
   // Form state
   const [formData, setFormData] = useState<ExtendedProductFormData>(() =>
-    getInitialFormData(initialData)
+    getInitialFormData(initialData),
   );
 
   // Load draft from prop when provided (Seamless silent loading)
   useEffect(() => {
     if (!initialData && draftData?.formData) {
       // Only load if form is currently "empty" to prevent overwriting manual input
-      const isFormEmpty = 
-        !formData.name?.trim() && 
-        !formData.barcode?.trim() && 
+      const isFormEmpty =
+        !formData.name?.trim() &&
+        !formData.barcode?.trim() &&
         !formData.manufacturerBarcode?.trim() &&
         !formData.description?.trim() &&
         (formData.sellingPrice === undefined || formData.sellingPrice === 0);
 
       if (isFormEmpty) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           ...draftData.formData,
-          createdAt: new Date(draftData.formData.createdAt)
+          createdAt: new Date(draftData.formData.createdAt),
         }));
         if (draftData.formData.imageUrl) {
           setImagePreview(draftData.formData.imageUrl);
         }
       }
     }
-  }, [initialData, draftData, formData.name, formData.barcode, formData.manufacturerBarcode, formData.description, formData.sellingPrice]);
+  }, [
+    initialData,
+    draftData,
+    formData.name,
+    formData.barcode,
+    formData.manufacturerBarcode,
+    formData.description,
+    formData.sellingPrice,
+  ]);
 
   // Auto-save logic
-  const autoSave = React.useCallback((isPersistent = true) => {
-    // 🛡️ SECURITY: Never auto-save if we are currently submitting or if it's an edit
-    if (!initialData && !isLoading) {
-      const hasData = (formData.name?.trim() || '') || 
-                      (formData.barcode?.trim() || '') || 
-                      (formData.description?.trim() || '') || 
-                      (formData.sellingPrice !== undefined && formData.sellingPrice > 0);
-      
-      if (hasData) {
-        saveDraft(formData, isPersistent);
+  const autoSave = React.useCallback(
+    (isPersistent = true) => {
+      // 🛡️ SECURITY: Never auto-save if we are currently submitting or if it's an edit
+      if (!initialData && !isLoading) {
+        const hasData =
+          formData.name?.trim() ||
+          "" ||
+          formData.barcode?.trim() ||
+          "" ||
+          formData.description?.trim() ||
+          "" ||
+          (formData.sellingPrice !== undefined && formData.sellingPrice > 0);
+
+        if (hasData) {
+          saveDraft(formData, isPersistent);
+        }
       }
-    }
-  }, [formData, initialData, isLoading, saveDraft]);
+    },
+    [formData, initialData, isLoading, saveDraft],
+  );
 
   useEffect(() => {
     // 🛡️ SECURITY: Stop auto-save effects completely if submitting
     if (initialData || isLoading) return;
 
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-    
+
     // Fast session save
     autoSave(false);
 
@@ -181,14 +223,23 @@ const ProductForm: React.FC<ProductFormProps> = ({
   // Update form data when initialData changes
   useEffect(() => {
     if (initialData) {
-      console.log('ProductForm - Setting form data from initialData:', initialData);
-      console.log('ProductForm - InitialData createdAt:', initialData.createdAt);
+      console.log(
+        "ProductForm - Setting form data from initialData:",
+        initialData,
+      );
+      console.log(
+        "ProductForm - InitialData createdAt:",
+        initialData.createdAt,
+      );
 
       const newFormData = getInitialFormData(initialData);
       setFormData(newFormData);
 
-      console.log('ProductForm - Form data set to:', newFormData);
-      console.log('ProductForm - Form createdAt set to:', newFormData.createdAt);
+      console.log("ProductForm - Form data set to:", newFormData);
+      console.log(
+        "ProductForm - Form createdAt set to:",
+        newFormData.createdAt,
+      );
 
       if (initialData.imageUrl) {
         setImagePreview(initialData.imageUrl);
@@ -197,41 +248,43 @@ const ProductForm: React.FC<ProductFormProps> = ({
   }, [initialData]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     let processedValue: any = value;
 
     // Convert numeric fields to numbers or undefined if empty
     if (
-      name === 'quantity' ||
-      name === 'minimumStock' ||
-      name === 'costPrice' ||
-      name === 'sellingPrice'
+      name === "quantity" ||
+      name === "minimumStock" ||
+      name === "costPrice" ||
+      name === "sellingPrice"
     ) {
       // For quantity, allow empty string and convert to number when not empty
-      if (name === 'quantity') {
-        if (value === '') {
-          processedValue = ''; // Keep as empty string to allow deletion
+      if (name === "quantity") {
+        if (value === "") {
+          processedValue = ""; // Keep as empty string to allow deletion
         } else {
           processedValue = parseFloat(value) || 0; // Allow decimal values
         }
-        console.log('Quantity changed to:', processedValue);
+        console.log("Quantity changed to:", processedValue);
       } else {
-        processedValue = value === '' ? undefined : parseFloat(value);
+        processedValue = value === "" ? undefined : parseFloat(value);
       }
     }
 
     setFormData({
       ...formData,
-      [name]: processedValue
+      [name]: processedValue,
     });
 
     // Clear error when field is edited
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: ''
+        [name]: "",
       });
     }
   };
@@ -239,19 +292,19 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleCategoryChange = (value: string) => {
     setFormData({
       ...formData,
-      category: value
+      category: value,
     });
 
     if (errors.category) {
       setErrors({
         ...errors,
-        category: ''
+        category: "",
       });
     }
 
     // Focus description field after category selection
     setTimeout(() => {
-      document.getElementById('description')?.focus();
+      document.getElementById("description")?.focus();
     }, 100);
   };
 
@@ -261,23 +314,24 @@ const ProductForm: React.FC<ProductFormProps> = ({
       const adjustedDate = new Date(date);
       adjustedDate.setHours(12, 0, 0, 0);
 
-      console.log('ProductForm - Date changed to:', adjustedDate);
+      console.log("ProductForm - Date changed to:", adjustedDate);
       setFormData({
         ...formData,
-        createdAt: adjustedDate
+        createdAt: adjustedDate,
       });
       setIsCalendarOpen(false);
     }
   };
 
   const processImageFile = async (file: File) => {
-    if (file.size > 20 * 1024 * 1024) { // 20MB
-      toast.error('Image file is too large. Maximum size is 20MB.');
+    if (file.size > 20 * 1024 * 1024) {
+      // 20MB
+      toast.error("Image file is too large. Maximum size is 20MB.");
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Only image files are allowed.');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are allowed.");
       return;
     }
 
@@ -289,16 +343,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
       const compressedFile = await compressImage(file);
 
       // Calculate compression stats
-      const reduction = ((file.size - compressedFile.size) / file.size * 100);
+      const reduction = ((file.size - compressedFile.size) / file.size) * 100;
       setCompressionStats({
         originalSize: file.size,
         compressedSize: compressedFile.size,
-        reduction: reduction
+        reduction: reduction,
       });
 
       setFormData({
         ...formData,
-        imageFile: compressedFile
+        imageFile: compressedFile,
       });
 
       setImageChanged(true);
@@ -310,10 +364,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
       };
       reader.readAsDataURL(compressedFile);
 
-      toast.success(`Image optimized to ${(compressedFile.size / 1024).toFixed(1)}KB!`);
+      toast.success(
+        `Image optimized to ${(compressedFile.size / 1024).toFixed(1)}KB!`,
+      );
     } catch (error) {
-      console.error('Error compressing image:', error);
-      toast.error('Failed to process image. Please try again.');
+      console.error("Error compressing image:", error);
+      toast.error("Failed to process image. Please try again.");
     } finally {
       setCompressing(false);
     }
@@ -358,7 +414,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setFormData({
       ...formData,
       imageFile: null,
-      imageUrl: null  // Clear the image URL when removing image
+      imageUrl: null, // Clear the image URL when removing image
     });
     setImagePreview(null);
     setImageChanged(true);
@@ -366,7 +422,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
     // Reset the file input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -374,7 +430,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Product name is required';
+      newErrors.name = "Product name is required";
     }
 
     // Category is optional, so no validation needed
@@ -383,15 +439,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
     // Removed validation that prevented negative initial stock values
 
     if (formData.costPrice !== undefined && formData.costPrice < 0) {
-      newErrors.costPrice = 'Cost price cannot be negative';
+      newErrors.costPrice = "Cost price cannot be negative";
     }
 
     if (formData.sellingPrice !== undefined && formData.sellingPrice < 0) {
-      newErrors.sellingPrice = 'Selling price cannot be negative';
+      newErrors.sellingPrice = "Selling price cannot be negative";
     }
 
     if (formData.minimumStock !== undefined && formData.minimumStock < 0) {
-      newErrors.minimumStock = 'Minimum stock cannot be negative';
+      newErrors.minimumStock = "Minimum stock cannot be negative";
     }
 
     setErrors(newErrors);
@@ -401,12 +457,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('ProductForm - Form data before validation:', formData);
-    console.log('ProductForm - Quantity value:', formData.quantity, 'Type:', typeof formData.quantity);
-    console.log('ProductForm - CreatedAt value:', formData.createdAt);
+    console.log("ProductForm - Form data before validation:", formData);
+    console.log(
+      "ProductForm - Quantity value:",
+      formData.quantity,
+      "Type:",
+      typeof formData.quantity,
+    );
+    console.log("ProductForm - CreatedAt value:", formData.createdAt);
 
     if (!validateForm()) {
-      toast.error('Please correct the errors in the form');
+      toast.error("Please correct the errors in the form");
       return;
     }
 
@@ -416,34 +477,45 @@ const ProductForm: React.FC<ProductFormProps> = ({
       // Handle image upload separately if needed
       if (imageChanged && formData.imageFile) {
         setUploading(true);
-        toast.info('Uploading optimized image...');
+        toast.info("Uploading optimized image...");
         finalImageUrl = await uploadProductImage(formData.imageFile);
 
         if (!finalImageUrl) {
           setUploading(false);
           return; // Stop if image upload failed - error is already shown by the hook
         }
-        toast.success('Image uploaded successfully!');
+        toast.success("Image uploaded successfully!");
       } else if (imageChanged && !formData.imageFile) {
         // Image was removed
         finalImageUrl = null;
       }
 
       // Prepare final submission data - convert empty string quantity to 0
-      const finalQuantity = typeof formData.quantity === 'string' ? (formData.quantity === '' ? 0 : Number(formData.quantity)) : formData.quantity;
+      const finalQuantity =
+        typeof formData.quantity === "string"
+          ? formData.quantity === ""
+            ? 0
+            : Number(formData.quantity)
+          : formData.quantity;
       const submissionData = {
         ...formData,
         imageUrl: finalImageUrl,
-        quantity: finalQuantity // Convert to number for submission
+        quantity: finalQuantity, // Convert to number for submission
       };
 
-      console.log('ProductForm - Final submission data:', submissionData);
-      console.log('ProductForm - Final quantity being submitted:', submissionData.quantity);
-      console.log('ProductForm - Final createdAt being submitted:', submissionData.createdAt);
+      console.log("ProductForm - Final submission data:", submissionData);
+      console.log(
+        "ProductForm - Final quantity being submitted:",
+        submissionData.quantity,
+      );
+      console.log(
+        "ProductForm - Final createdAt being submitted:",
+        submissionData.createdAt,
+      );
 
       // Submit form with final image URL
       await onProductSubmit(submissionData);
-      
+
       // Clear draft after successful submission
       if (!initialData) {
         if (onClearDraft) {
@@ -453,8 +525,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error handling form submission:', error);
-      toast.error('Something went wrong. Please try again.');
+      console.error("Error handling form submission:", error);
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -465,8 +537,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>{initialData ? 'Edit Product' : 'New Product'}</CardTitle>
-        <CardDescription>Enter the product details below. Only name is required.</CardDescription>
+        <CardTitle>{initialData ? "Edit Product" : "New Product"}</CardTitle>
+        <CardDescription>
+          Enter the product details below. Only name is required.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -480,14 +554,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   value={formData.name}
                   onChange={handleChange}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      const categorySelect = document.querySelector('[role="combobox"]') as HTMLElement;
+                      const categorySelect = document.querySelector(
+                        '[role="combobox"]',
+                      ) as HTMLElement;
                       categorySelect?.focus();
                     }
                   }}
                   placeholder="Enter product name"
-                  className={errors.name ? 'border-red-500' : ''}
+                  className={errors.name ? "border-red-500" : ""}
                   disabled={isSubmitting}
                 />
                 {errors.name && (
@@ -496,16 +572,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="manufacturerBarcode">Manufacturer Barcode (Optional)</Label>
+                <Label htmlFor="manufacturerBarcode">
+                  Manufacturer Barcode (Optional)
+                </Label>
                 <Input
                   id="manufacturerBarcode"
                   name="manufacturerBarcode"
                   value={formData.manufacturerBarcode}
                   onChange={handleChange}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      const categorySelect = document.querySelector('[role="combobox"]') as HTMLElement;
+                      const categorySelect = document.querySelector(
+                        '[role="combobox"]',
+                      ) as HTMLElement;
                       categorySelect?.focus();
                     }
                   }}
@@ -514,50 +594,64 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 />
               </div>
 
-
               <div className="grid gap-3">
                 <Label htmlFor="category">Category (Optional)</Label>
                 <p className="text-sm text-muted-foreground">
-                  Need to create a new category? Go to the{' '}
+                  Need to create a new category? Go to the{" "}
                   <Button
                     type="button"
                     variant="link"
                     className="p-0 h-auto text-blue-600 underline"
-                    onClick={() => router.push(`/agency/categories?returnTo=${encodeURIComponent(window.location.pathname)}`)}
-                    disabled={isSubmitting}
-                  >
-                    Categories page <ExternalLink className="h-3 w-3 ml-1 inline" />
-                  </Button>
-                  {' '}first, then return here to select it.
+                    onClick={() =>
+                      router.push(
+                        `/agency/categories?returnTo=${encodeURIComponent(
+                          window.location.pathname,
+                        )}`,
+                      )
+                    }
+                    disabled={isSubmitting}>
+                    Categories page{" "}
+                    <ExternalLink className="h-3 w-3 ml-1 inline" />
+                  </Button>{" "}
+                  first, then return here to select it.
                 </p>
                 <Select
                   value={formData.category}
                   onValueChange={handleCategoryChange}
-                  disabled={isSubmitting}
-                >
+                  disabled={isSubmitting}>
                   <SelectTrigger
-                    className={cn(errors.category ? 'border-red-500' : '')}
+                    className={cn(errors.category ? "border-red-500" : "")}
                     onKeyDown={(e) => {
-                      console.log('SelectTrigger keydown:', e.key, 'Category:', formData.category);
-                      if (e.key === 'Enter') {
+                      console.log(
+                        "SelectTrigger keydown:",
+                        e.key,
+                        "Category:",
+                        formData.category,
+                      );
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('Enter pressed on SelectTrigger, focusing description');
+                        console.log(
+                          "Enter pressed on SelectTrigger, focusing description",
+                        );
                         // Always move to description when Enter is pressed
                         setTimeout(() => {
-                          const descriptionField = document.getElementById('description');
-                          console.log('Description field found:', !!descriptionField);
+                          const descriptionField =
+                            document.getElementById("description");
+                          console.log(
+                            "Description field found:",
+                            !!descriptionField,
+                          );
                           descriptionField?.focus();
                         }, 50);
                         return false;
-                      } else if (e.key === 'Escape') {
+                      } else if (e.key === "Escape") {
                         // On Escape, also move to description
                         setTimeout(() => {
-                          document.getElementById('description')?.focus();
+                          document.getElementById("description")?.focus();
                         }, 50);
                       }
-                    }}
-                  >
+                    }}>
                     <SelectValue placeholder="Select category (optional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -587,9 +681,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   value={formData.description}
                   onChange={handleChange}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      document.getElementById('supplier')?.focus();
+                      document.getElementById("supplier")?.focus();
                     }
                   }}
                   placeholder="Enter product description"
@@ -606,9 +700,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   value={formData.supplier}
                   onChange={handleChange}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('quantity')?.focus();
+                      document.getElementById("quantity")?.focus();
                     }
                   }}
                   placeholder="Enter supplier name"
@@ -625,12 +719,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !formData.createdAt && "text-muted-foreground",
-                        initialData && "cursor-not-allowed opacity-60"
+                        initialData && "cursor-not-allowed opacity-60",
                       )}
-                      disabled={isSubmitting || !!initialData}
-                    >
+                      disabled={isSubmitting || !!initialData}>
                       <Calendar className="mr-2 h-4 w-4" />
-                      {formData.createdAt ? format(formData.createdAt, "PPP") : "Pick a date"}
+                      {formData.createdAt
+                        ? format(formData.createdAt, "PPP")
+                        : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -646,7 +741,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 {initialData && (
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
                     <div className="text-amber-800 text-sm">
-                      <strong>Note:</strong> To edit the creation date, please edit the initial stock history entry for this product through the inventory stock history.
+                      <strong>Note:</strong> To edit the creation date, please
+                      edit the initial stock history entry for this product
+                      through the inventory stock history.
                     </div>
                   </div>
                 )}
@@ -659,19 +756,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 <div className="flex flex-col items-center space-y-4">
                   {imagePreview ? (
                     <div className="relative w-full">
-                      <img
-                        src={imagePreview}
-                        alt="Product preview"
-                        className="w-full h-40 object-contain border rounded-md"
-                      />
+                      <div className="relative w-full h-40 border rounded-md overflow-hidden">
+                        <Image
+                          src={imagePreview}
+                          alt="Product preview"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-contain"
+                        />
+                      </div>
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
                         className="absolute top-2 right-2 rounded-full h-8 w-8"
                         onClick={removeImage}
-                        disabled={isSubmitting || compressing}
-                      >
+                        disabled={isSubmitting || compressing}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
 
@@ -681,11 +781,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           <div className="flex items-center gap-2 text-green-700">
                             <Zap className="h-4 w-4" />
                             <span className="text-xs font-medium">
-                              Optimized to {(compressionStats.compressedSize / 1024).toFixed(1)}KB
+                              Optimized to{" "}
+                              {(compressionStats.compressedSize / 1024).toFixed(
+                                1,
+                              )}
+                              KB
                             </span>
                           </div>
                           <div className="text-xs text-green-600 mt-1">
-                            {(compressionStats.originalSize / 1024).toFixed(1)}KB → {(compressionStats.compressedSize / 1024).toFixed(1)}KB ({compressionStats.reduction.toFixed(1)}% reduction)
+                            {(compressionStats.originalSize / 1024).toFixed(1)}
+                            KB →{" "}
+                            {(compressionStats.compressedSize / 1024).toFixed(
+                              1,
+                            )}
+                            KB ({compressionStats.reduction.toFixed(1)}%
+                            reduction)
                           </div>
                         </div>
                       )}
@@ -694,24 +804,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     <div
                       className={cn(
                         "border-2 border-dashed rounded-md p-8 w-full flex flex-col items-center justify-center cursor-pointer transition-colors",
-                        isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400",
-                        (isSubmitting || compressing) && "opacity-50 cursor-not-allowed"
+                        isDragging
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-300 hover:border-gray-400",
+                        (isSubmitting || compressing) &&
+                          "opacity-50 cursor-not-allowed",
                       )}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={!(isSubmitting || compressing) ? handleImageUploadClick : undefined}
-                    >
+                      onClick={
+                        !(isSubmitting || compressing)
+                          ? handleImageUploadClick
+                          : undefined
+                      }>
                       {compressing ? (
                         <>
                           <Loader2 className="h-10 w-10 text-blue-500 mb-2 animate-spin" />
-                          <p className="text-sm text-gray-500">Optimizing image...</p>
-                          <p className="text-xs text-gray-400">Compressing to under 15KB</p>
+                          <p className="text-sm text-gray-500">
+                            Optimizing image...
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Compressing to under 15KB
+                          </p>
                         </>
                       ) : uploading ? (
                         <>
                           <Loader2 className="h-10 w-10 text-blue-500 mb-2 animate-spin" />
-                          <p className="text-sm text-gray-500">Uploading image...</p>
+                          <p className="text-sm text-gray-500">
+                            Uploading image...
+                          </p>
                         </>
                       ) : (
                         <>
@@ -719,7 +841,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           <p className="text-sm text-gray-500">
                             Click to upload or drag and drop
                           </p>
-                          <p className="text-xs text-gray-400">PNG, JPG, GIF up to 20MB</p>
+                          <p className="text-xs text-gray-400">
+                            PNG, JPG, GIF up to 20MB
+                          </p>
                           <p className="text-xs text-blue-500 mt-1">
                             ⚡ Auto Image compression for instant loading
                           </p>
@@ -750,12 +874,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     value={formData.quantity}
                     onChange={handleChange}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        document.getElementById('minimumStock')?.focus();
+                        document.getElementById("minimumStock")?.focus();
                       }
                     }}
-                    className={errors.quantity ? 'border-red-500' : ''}
+                    className={errors.quantity ? "border-red-500" : ""}
                     disabled={isSubmitting}
                     placeholder="Enter initial stock quantity (can be negative)"
                   />
@@ -777,19 +901,25 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.minimumStock === undefined ? '' : formData.minimumStock}
+                    value={
+                      formData.minimumStock === undefined
+                        ? ""
+                        : formData.minimumStock
+                    }
                     onChange={handleChange}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        document.getElementById('costPrice')?.focus();
+                        document.getElementById("costPrice")?.focus();
                       }
                     }}
-                    className={errors.minimumStock ? 'border-red-500' : ''}
+                    className={errors.minimumStock ? "border-red-500" : ""}
                     disabled={isSubmitting}
                   />
                   {errors.minimumStock && (
-                    <p className="text-red-500 text-xs">{errors.minimumStock}</p>
+                    <p className="text-red-500 text-xs">
+                      {errors.minimumStock}
+                    </p>
                   )}
                 </div>
               </div>
@@ -807,15 +937,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={formData.costPrice === undefined ? '' : formData.costPrice}
+                      value={
+                        formData.costPrice === undefined
+                          ? ""
+                          : formData.costPrice
+                      }
                       onChange={handleChange}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
-                          document.getElementById('sellingPrice')?.focus();
+                          document.getElementById("sellingPrice")?.focus();
                         }
                       }}
-                      className={`rounded-l-none ${errors.costPrice ? 'border-red-500' : ''}`}
+                      className={`rounded-l-none ${
+                        errors.costPrice ? "border-red-500" : ""
+                      }`}
                       disabled={isSubmitting}
                     />
                   </div>
@@ -836,28 +972,39 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={formData.sellingPrice === undefined ? '' : formData.sellingPrice}
+                      value={
+                        formData.sellingPrice === undefined
+                          ? ""
+                          : formData.sellingPrice
+                      }
                       onChange={handleChange}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === "Enter") {
                           e.preventDefault();
-                          const submitButton = document.querySelector('button[type="submit"]') as HTMLElement;
+                          const submitButton = document.querySelector(
+                            'button[type="submit"]',
+                          ) as HTMLElement;
                           submitButton?.focus();
                         }
                       }}
-                      className={`rounded-l-none ${errors.sellingPrice ? 'border-red-500' : ''}`}
+                      className={`rounded-l-none ${
+                        errors.sellingPrice ? "border-red-500" : ""
+                      }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.sellingPrice && (
-                    <p className="text-red-500 text-xs">{errors.sellingPrice}</p>
+                    <p className="text-red-500 text-xs">
+                      {errors.sellingPrice}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="grid gap-3">
                 <p className="text-sm text-gray-500">
-                  * Required fields | Initial Stock: The starting quantity for this product
+                  * Required fields | Initial Stock: The starting quantity for
+                  this product
                 </p>
               </div>
             </div>
@@ -867,16 +1014,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
             <Button
               variant="outline"
               type="button"
-              onClick={() => router.push('/agency/inventory')}
-              disabled={isSubmitting || compressing}
-            >
+              onClick={() => router.push("/agency/inventory")}
+              disabled={isSubmitting || compressing}>
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || compressing}
-              className="min-w-[100px]"
-            >
+              className="min-w-[100px]">
               {compressing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -885,10 +1030,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
               ) : isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {uploading ? 'Uploading...' : 'Saving...'}
+                  {uploading ? "Uploading..." : "Saving..."}
                 </>
+              ) : initialData ? (
+                "Update Product"
               ) : (
-                initialData ? 'Update Product' : 'Create Product'
+                "Create Product"
               )}
             </Button>
           </div>
@@ -897,7 +1044,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
             <div className="flex flex-col md:flex-row items-center justify-end gap-4 pt-3 border-t">
               {formData.autoPrintLabel && (
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="printQuantity" className="text-sm text-muted-foreground whitespace-nowrap">
+                  <Label
+                    htmlFor="printQuantity"
+                    className="text-sm text-muted-foreground whitespace-nowrap">
                     Quantity to print:
                   </Label>
                   <Input
@@ -906,20 +1055,32 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     min="1"
                     className="w-20 h-8"
                     value={formData.printQuantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, printQuantity: parseInt(e.target.value) || 1 }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        printQuantity: parseInt(e.target.value) || 1,
+                      }))
+                    }
                     disabled={isSubmitting}
                   />
                 </div>
               )}
               <div className="flex items-center space-x-2">
                 <Printer className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="autoPrint" className="text-sm font-medium cursor-pointer">
+                <Label
+                  htmlFor="autoPrint"
+                  className="text-sm font-medium cursor-pointer">
                   Auto-print barcode label
                 </Label>
                 <Switch
                   id="autoPrint"
                   checked={formData.autoPrintLabel}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, autoPrintLabel: checked }))}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      autoPrintLabel: checked,
+                    }))
+                  }
                   disabled={isSubmitting}
                 />
               </div>

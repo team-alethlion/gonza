@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Product } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useBusiness } from '@/contexts/BusinessContext';
@@ -12,10 +12,27 @@ export const useProductsBase = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { currentBusiness } = useBusiness();
+  
+  // 🛡️ HYDRATION GUARD: Prevent multiple fetches if component re-renders quickly on mount
+  const lastFetchRef = useRef<{businessId: string, time: number} | null>(null);
 
   const loadProducts = async () => {
     try {
-      if (!userId || !currentBusiness) return;
+      if (!userId || !currentBusiness?.id) return;
+
+      const now = Date.now();
+      // Skip if we fetched (or started fetching) for THIS business in the last 60 seconds
+      if (
+        lastFetchRef.current?.businessId === currentBusiness.id && 
+        now - lastFetchRef.current.time < 60000
+      ) {
+        console.log(`[Products] Skipping fetch for ${currentBusiness.id}: Cache is fresh`);
+        setIsLoading(false);
+        return;
+      }
+
+      // 🛡️ Lock the guard IMMEDIATELY before starting the async work
+      lastFetchRef.current = { businessId: currentBusiness.id, time: now };
 
       setIsLoading(true);
       const result = await getProductsAction({
@@ -26,6 +43,7 @@ export const useProductsBase = (userId: string | undefined) => {
       });
 
       setProducts(result.products as Product[]);
+      lastFetchRef.current = { businessId: currentBusiness.id, time: Date.now() };
       return result.products as Product[];
     } catch (error) {
       console.error('Error loading products:', error);

@@ -11,7 +11,7 @@ export default function AgencyNotFound() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="text-center space-y-6 max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+      <div className="text-center space-y-6 max-w-md">
         <div className="flex justify-center">
           <div className="bg-primary/10 p-6 rounded-full">
             <FileQuestion className="w-16 h-16 text-primary" />
@@ -26,18 +26,18 @@ export default function AgencyNotFound() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
           {session ? (
             <Button 
               onClick={() => signOut({ callbackUrl: '/public/login' })}
               variant="destructive" 
-              className="w-full gap-2"
+              className="gap-2"
             >
               <LogOut className="w-4 h-4" />
               Logout of System
             </Button>
           ) : (
-            <Button asChild className="w-full gap-2">
+            <Button asChild className="gap-2">
               <Link href="/public/login">
                 <LogOut className="w-4 h-4" />
                 Return to Login
@@ -45,7 +45,7 @@ export default function AgencyNotFound() {
             </Button>
           )}
           
-          <Button asChild variant="outline" className="w-full gap-2">
+          <Button asChild variant="outline" className="gap-2">
             <Link href="/">
               <Home className="w-4 h-4" />
               Back to Website

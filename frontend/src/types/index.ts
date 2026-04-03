@@ -171,6 +171,24 @@ export interface AnalyticsData {
   pendingSalesCount: number;
   totalExpenses?: number;
   recentSales?: Sale[];
+  inventoryStats?: {
+    totalCount: number;
+    totalCostValue: number;
+    totalStockValue: number;
+    outOfStockCount: number;
+    lowStockCount: number;
+  } | null;
+  activeGoal?: {
+    id: string;
+    amountTarget: number;
+    currentAmount: number;
+    salesCountTarget: number;
+    currentSalesCount: number;
+    period: string;
+    periodName: string;
+    endDate: string;
+    progressPercentage: number;
+  } | null;
 }
 
 // Form validation errors

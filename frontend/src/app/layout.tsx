@@ -29,13 +29,7 @@ export default async function RootLayout({
       <body>
         <Providers
           initialSession={initialData?.session || null}
-          initialBusinessLocations={initialData?.locations || []}
-          initialProfiles={initialData?.profiles || []}
-          initialAccountStatus={initialData?.accountStatus || null}
-          initialBusinessSettings={initialData?.businessSettings || null}
-          initialAnalyticsSummary={initialData?.analyticsSummary || null}
-          isUnauthorized={initialData?.isUnauthorized || false}
-        >
+          isUnauthorized={initialData?.isUnauthorized || false}>
           {children}
           <Toaster />
           <Sonner />
