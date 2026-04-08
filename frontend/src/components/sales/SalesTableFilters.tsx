@@ -32,6 +32,7 @@ interface SalesTableFiltersProps {
   isSpecificDate: boolean;
   sortOrder?: string;
   setSortOrder?: (order: string) => void;
+  initialCategories?: any[];
 }
 
 const SalesTableFilters: React.FC<SalesTableFiltersProps> = ({
@@ -52,9 +53,10 @@ const SalesTableFilters: React.FC<SalesTableFiltersProps> = ({
   isCustomRange,
   isSpecificDate,
   sortOrder = 'desc',
-  setSortOrder
+  setSortOrder,
+  initialCategories
 }) => {
-  const { categories } = useSalesCategories();
+  const { categories } = useSalesCategories(initialCategories);
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };

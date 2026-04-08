@@ -18,9 +18,15 @@ import { useSalesActions } from '@/hooks/useSalesActions';
 import { RefreshCw, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import { Sale } from '@/types';
+import { Sale, SalesCategory } from '@/types';
 
-export const SalesClient = ({ initialSales }: { initialSales?: Sale[] }) => {
+export const SalesClient = ({ 
+  initialSales, 
+  initialCategories = [] 
+}: { 
+  initialSales?: Sale[],
+  initialCategories?: SalesCategory[]
+}) => {
   const [activeTab, setActiveTab] = useState('overview');
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { settings } = useBusinessSettings();
@@ -119,6 +125,7 @@ export const SalesClient = ({ initialSales }: { initialSales?: Sale[] }) => {
                 onDeleteSale={handleDeleteSale(deleteSale)}
                 currency={settings.currency}
                 isLoading={salesLoading}
+                initialCategories={initialCategories}
               />
             )}
           </TabsContent>
@@ -127,6 +134,7 @@ export const SalesClient = ({ initialSales }: { initialSales?: Sale[] }) => {
             <SalesCategoryAnalysis
               sales={sales}
               formatCurrency={formatCurrency}
+              initialCategories={initialCategories}
             />
           </TabsContent>
 

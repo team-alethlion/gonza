@@ -86,6 +86,43 @@ export const authConfig = {
         return token;
       }
 
+      // 🛡️ SILENCE REFRESH STORM: If we already know the refresh failed, don't try again
+      if (token.error === "RefreshAccessTokenError") {
+        const nowTime = Date.now();
+        const lastSync = token.lastStatusSync as number || 0;
+        const syncInterval = 60 * 1000; // 1 minute throttle
+        
+        if (token.agencyId && (nowTime - lastSync > syncInterval)) {
+          console.log(`[Auth] Orphaned Session: Attempting silent status sync for agency: ${token.agencyId}...`);
+          try {
+            // Extract agency ID string regardless of format (object or string)
+            const agId = typeof token.agencyId === 'object' ? (token.agencyId as any).id : token.agencyId;
+            
+            // 🛡️ ANONYMOUS FETCH: Bypasses the dead Bearer token
+            const res = await fetch(`${DJANGO_API_URL}/core/agencies/${agId}/`, {
+              headers: { "Content-Type": "application/json" }
+            });
+            
+            if (res.ok) {
+              const fresh = await res.json();
+              token.subscriptionStatus = fresh.subscription_status;
+              token.subscriptionExpiry = fresh.subscription_expiry;
+              token.trialEndDate = fresh.trial_end_date;
+              token.isOnboarded = fresh.is_onboarded;
+              token.lastStatusSync = nowTime;
+              console.log(`[Auth] Silent Sync Success: Status=${token.subscriptionStatus}, Onboarded=${token.isOnboarded}`);
+            } else {
+              console.warn(`[Auth] Silent Sync failed (HTTP ${res.status}). Will retry in ${syncInterval/1000}s.`);
+              token.lastStatusSync = nowTime; // Prevent spamming even on failure
+            }
+          } catch (e) {
+            console.error("[Auth] Silent Sync Critical Error:", e);
+            token.lastStatusSync = nowTime;
+          }
+        }
+        return token;
+      }
+
       // If the access token has expired, try to refresh it
       console.log(`[Auth] Access Token expired (Now: ${now}, Expires: ${expires}). Attempting refresh...`);
 
@@ -145,6 +182,7 @@ export const authConfig = {
         if (token.subscriptionExpiry) (session.user as any).subscriptionExpiry = token.subscriptionExpiry as string
         if (token.trialEndDate) (session.user as any).trialEndDate = token.trialEndDate as string
         (session as any).accessToken = token.accessToken;
+        (session as any).authError = token.error;
         
         if (token.impersonatingAgencyId) {
            (session as any).impersonatingAgencyId = token.impersonatingAgencyId;
@@ -167,7 +205,15 @@ export const authConfig = {
       const isOnboardingPath = nextUrl.pathname === "/onboarding"
       const isRootPath = nextUrl.pathname === "/"
 
-      console.log(`[Middleware] CHECK -> Path: ${nextUrl.pathname}, User: ${user?.email}, Role: ${role}, Status: ${status}, Onboarded: ${isOnboardedVal}, Sub: ${subStatus}`);
+      // 🕒 COMPUTE REAL-TIME VALIDITY FOR LOGS
+      const now = new Date();
+      const isTrialExpired = subStatus === 'trial' && trialEnd && new Date(trialEnd) < now;
+      const isSubExpired = subStatus === 'active' && subExpiry && new Date(subExpiry) < now;
+      const subLabel = (isTrialExpired || isSubExpired || subStatus === 'expired') 
+        ? `${subStatus} (EXPIRED)` 
+        : subStatus;
+
+      console.log(`[Middleware] CHECK -> Path: ${nextUrl.pathname}, User: ${user?.email}, Role: ${role}, Status: ${status}, Onboarded: ${isOnboardedVal}, Sub: ${subLabel}`);
       // 1. Handle Public Paths and Authentication via delegating to sub-proxies
       if (isPublicPath || isRootPath) {
         return publicProxy(auth, nextUrl);

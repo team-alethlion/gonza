@@ -49,6 +49,9 @@ interface SalesFormProps {
   draftData?: any;
   onClearDraft?: () => void;
   isReceiptOpen?: boolean;
+  initialAccounts?: any[];
+  initialCustomerCategories?: any[];
+  initialCategories?: any[];
 }
 
 const SalesForm: React.FC<SalesFormProps> = ({
@@ -61,6 +64,9 @@ const SalesForm: React.FC<SalesFormProps> = ({
   draftData,
   onClearDraft,
   isReceiptOpen = false,
+  initialAccounts = [],
+  initialCustomerCategories = [],
+  initialCategories = [],
 }) => {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -71,7 +77,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     setMounted(true);
   }, []);
   const { user } = useAuth();
-  const { accounts: cashAccounts } = useCashAccounts();
+  const { accounts: cashAccounts } = useCashAccounts(initialAccounts);
   const { currentBusiness } = useBusiness();
 
   const { saveDraft } = useSaleDraft();
@@ -134,6 +140,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     initialData,
     defaultPaymentStatus: initialData?.paymentStatus || "Paid",
     cashAccounts,
+    initialCategories,
   }) as any;
   const {
     createCashTransactionForSale,
@@ -322,6 +329,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onCategoryChange={handleCategoryChange}
         onClearForm={!initialData ? handleClearForm : undefined}
         onPreview={handlePreview}
+        initialCustomerCategories={initialCustomerCategories}
       />
 
       <SaleScannerSection 
@@ -376,6 +384,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onNotesChange={handleChange}
         categoryId={formData.categoryId || ""}
         onCategoryChange={handleSalesCategoryChange}
+        initialCategories={initialCategories}
       />
 
       <SalesFormActions

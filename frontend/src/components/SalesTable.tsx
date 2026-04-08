@@ -64,6 +64,7 @@ interface SalesTableProps {
   }) => void;
   isLoading?: boolean;
   mobileOptimized?: boolean;
+  initialCategories?: any[];
 }
 
 const DEFAULT_SETTINGS: BusinessSettings = {
@@ -366,6 +367,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onDateRangeChange,
   isLoading = false,
   mobileOptimized = false,
+  initialCategories
 }) => {
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<BusinessSettings>({
@@ -680,6 +682,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               setSpecificDate={setSpecificDate}
               isCustomRange={isCustomRange}
               isSpecificDate={isSpecificDate}
+              initialCategories={initialCategories}
             />
 
             {memoizedFilteredSales.length > 0 ? (

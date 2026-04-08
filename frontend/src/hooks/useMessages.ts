@@ -127,7 +127,7 @@ export const useMessages = (userId?: string) => {
       });
 
       if (result.success && result.data) {
-        fetchTemplates();
+        queryClient.invalidateQueries({ queryKey: templatesQueryKey });
         return result.data;
       }
       throw new Error(result.error);
@@ -142,7 +142,7 @@ export const useMessages = (userId?: string) => {
     try {
       const result = await updateMessageTemplateAction(id, updates);
       if (result.success) {
-        fetchTemplates();
+        queryClient.invalidateQueries({ queryKey: templatesQueryKey });
       } else {
         throw new Error(result.error);
       }
@@ -203,17 +203,22 @@ export const useMessages = (userId?: string) => {
     if (queriedMessages) setMessages(queriedMessages);
   }, [queriedMessages]);
 
-  const fetchTemplates = async () => {
-    if (!userId || !currentBusiness?.id) return;
-    try {
+  const templatesQueryKey = ['message_templates', userId, currentBusiness?.id];
+  const { data: queriedTemplates } = useQuery({
+    queryKey: templatesQueryKey,
+    queryFn: async () => {
+      if (!userId || !currentBusiness?.id) return [];
       const result = await getMessageTemplatesAction(userId, currentBusiness.id);
-      if (result.success && result.data) {
-        setTemplates(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    }
-  };
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed');
+      return result.data;
+    },
+    enabled: !!userId && !!currentBusiness?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (queriedTemplates) setTemplates(queriedTemplates);
+  }, [queriedTemplates]);
 
   const fetchPurchases = async () => {
     // Placeholder - implement when billing is migrated
@@ -279,7 +284,6 @@ export const useMessages = (userId?: string) => {
 
   useEffect(() => {
     if (userId && currentBusiness?.id) {
-      fetchTemplates();
       fetchPurchases();
       fetchLiveCredits();
     }
@@ -310,6 +314,11 @@ export const useMessages = (userId?: string) => {
     deleteTemplate,
     getMessageStats,
     initiateCreditPurchase,
-    refresh: () => { queryClient.invalidateQueries({ queryKey: messagesQueryKey }); fetchTemplates(); fetchPurchases(); fetchLiveCredits(); }
+    refresh: () => { 
+      queryClient.invalidateQueries({ queryKey: messagesQueryKey }); 
+      queryClient.invalidateQueries({ queryKey: templatesQueryKey }); 
+      fetchPurchases(); 
+      fetchLiveCredits(); 
+    }
   };
 };

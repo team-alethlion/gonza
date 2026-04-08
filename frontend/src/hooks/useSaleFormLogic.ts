@@ -13,12 +13,14 @@ interface UseSaleFormLogicProps {
   initialData?: any;
   defaultPaymentStatus: string;
   cashAccounts: any[];
+  initialCategories?: any[];
 }
 
 export const useSaleFormLogic = ({
   initialData,
   defaultPaymentStatus,
   cashAccounts: _cashAccounts, // Prefix with underscore to mark as intentionally unused for now
+  initialCategories = [],
 }: UseSaleFormLogicProps) => {
   // Form state management
   const {

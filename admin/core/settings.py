@@ -35,6 +35,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'users.middleware.UserActivityMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -77,7 +78,7 @@ DATABASES = {
 AUTH_USER_MODEL = 'users.User'
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'UTC')
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'

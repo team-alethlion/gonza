@@ -39,6 +39,7 @@ interface SalePaymentSectionProps {
   onNotesChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   categoryId?: string;
   onCategoryChange?: (value: string) => void;
+  initialCategories?: any[];
 }
 
 const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
@@ -70,6 +71,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
   onNotesChange,
   categoryId = '',
   onCategoryChange,
+  initialCategories = [],
 }) => {
   return (
     <Card className="mb-6">
@@ -138,6 +140,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
           <SaleCategorySelector
             value={categoryId}
             onChange={onCategoryChange}
+            initialCategories={initialCategories}
           />
         )}
 

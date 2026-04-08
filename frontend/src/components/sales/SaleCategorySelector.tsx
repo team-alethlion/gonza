@@ -16,15 +16,17 @@ interface SaleCategorySelectorProps {
   onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
+  initialCategories?: any[];
 }
 
 const SaleCategorySelector: React.FC<SaleCategorySelectorProps> = ({
   value,
   onChange,
   label = "Sales Source",
-  placeholder = "Select category (optional)"
+  placeholder = "Select category (optional)",
+  initialCategories
 }) => {
-  const { categories, isLoading } = useSalesCategories();
+  const { categories, isLoading } = useSalesCategories(initialCategories);
 
   if (isLoading) {
     return (

@@ -12,24 +12,29 @@ import { generateThermalReceipt } from "@/utils/generateThermalReceipt";
 import { print } from "@/utils/thermalPrinterPlug";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useProductSync } from "@/hooks/useProductSync";
-import {
-  getCustomerByNameAction,
-  updateSaleCustomerAction,
-} from "@/app/actions/sales";
+import { getCustomerByNameAction, updateSaleCustomerAction } from "@/app/actions/sales";
 
 export const useNewSaleActions = (
   editSale?: Sale,
   onSaveSuccess?: () => void,
+  initialData?: {
+    initialCustomers?: any[];
+    initialCategories?: any[];
+    initialAccounts?: any[];
+  }
 ) => {
   const router = useRouter();
   const { user } = useAuth();
   const { toast: uiToast } = useToast();
-  const { customers, createCustomer } = useCustomers();
+  const { customers, createCustomer } = useCustomers(50, { 
+    customers: initialData?.initialCustomers || [], 
+    count: initialData?.initialCustomers?.length || 0 
+  });
   const { addSale, updateSale } = useSalesData(user?.id);
   const { logActivity } = useActivityLogger();
   const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
-  const { syncProducts } = useProductSync();
+  const { syncProducts } = useProductSync({ disableLoop: true });
 
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);

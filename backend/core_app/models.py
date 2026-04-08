@@ -40,9 +40,19 @@ class Package(models.Model):
         return self.name
 
 class Agency(models.Model):
+    SUBSCRIPTION_STATUS_CHOICES = [
+        ('trial', 'Trial'),
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('suspended', 'Suspended'),
+    ]
     id = models.CharField(max_length=30, primary_key=True, default=gen_ag_id)
     name = models.CharField(max_length=200)
-    subscription_status = models.CharField(max_length=20, default='expired')
+    subscription_status = models.CharField(
+        max_length=20, 
+        choices=SUBSCRIPTION_STATUS_CHOICES, 
+        default='expired'
+    )
     had_trial_before = models.BooleanField(default=False)
     trial_end_date = models.DateTimeField(null=True, blank=True)
     subscription_expiry = models.DateTimeField(null=True, blank=True)
@@ -138,6 +148,15 @@ class SystemConfig(models.Model):
         return self.key
 
 class SubscriptionTransaction(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    BILLING_CYCLE_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+    ]
     id = models.CharField(max_length=100, primary_key=True, default=gen_st_id)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='subscription_transactions', null=True, blank=True)
     agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='subscription_transactions', null=True, blank=True)
@@ -145,8 +164,8 @@ class SubscriptionTransaction(models.Model):
     
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     type = models.CharField(max_length=50, default='subscription')
-    billing_cycle = models.CharField(max_length=50, default='monthly') 
-    status = models.CharField(max_length=50, default='pending')
+    billing_cycle = models.CharField(max_length=50, choices=BILLING_CYCLE_CHOICES, default='monthly') 
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
     
     pesapal_merchant_reference = models.CharField(max_length=100, null=True, blank=True)
     pesapal_order_tracking_id = models.CharField(max_length=100, null=True, blank=True)

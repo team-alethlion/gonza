@@ -20,7 +20,7 @@ export interface CustomerCategory {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCustomerCategories = () => {
+export const useCustomerCategories = (initialData?: CustomerCategory[]) => {
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -55,6 +55,7 @@ export const useCustomerCategories = () => {
     },
     enabled: !!currentBusiness?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: initialData,
   });
 
   const createCategory = async (name: string) => {

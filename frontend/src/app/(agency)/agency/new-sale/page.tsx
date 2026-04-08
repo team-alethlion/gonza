@@ -1,172 +1,70 @@
-"use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { auth } from "@/auth";
+import { getBusinessLocationsAction } from "@/app/actions/business";
+import { getCustomersAction, getCustomerCategoriesAction } from "@/app/actions/customers";
+import { getCashAccountsAction } from "@/app/actions/finance";
+import { getSalesCategoriesAction } from "@/app/actions/sales";
+import NewSaleClient from "./NewSaleClient";
 
-import React, { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Sale } from "@/types";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { useBusiness } from "@/contexts/BusinessContext";
-import { useNewSaleDraft } from "@/hooks/useNewSaleDraft";
-import { useNewSaleActions } from "@/hooks/useNewSaleActions";
-import NewSaleLoadingState from "@/components/sales/NewSaleLoadingState";
-import NewSaleNoBusinessState from "@/components/sales/NewSaleNoBusinessState";
-import NewSaleAuthWarning from "@/components/sales/NewSaleAuthWarning";
-import NewSaleContent from "@/components/sales/NewSaleContent";
-import { useProfiles } from "@/contexts/ProfileContext";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import LoadingSpinner from "@/components/LoadingSpinner";
+export default async function NewSalePage() {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const branchId = (session?.user as any)?.branchId;
 
-import { useProductSync } from "@/hooks/useProductSync";
+  let initialCustomers = [];
+  let initialCategories = [];
+  let initialCustomerCategories = [];
+  let initialAccounts = [];
 
-const NewSale = () => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useAuth();
-  const { settings } = useBusinessSettings();
-  const { currentBusiness, isLoading: businessLoading } = useBusiness();
-  const { hasPermission, isLoading: profilesLoading } = useProfiles();
-  const { syncProducts } = useProductSync();
+  if (userId) {
+    try {
+      let activeBranchId = branchId;
 
-  // ⚡️ INSTANT SYNC: Sync products when window gains focus
-  // This ensures that if a user added a product in another tab and came back here,
-  // the new product will be available for search immediately.
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('Window focused, triggering background product sync...');
-      syncProducts();
-    };
+      if (!activeBranchId) {
+        const locations: any = await getBusinessLocationsAction(userId);
+        if (locations && locations.length > 0) {
+          const defaultBusiness =
+            locations.find((b: any) => b.is_default) || locations[0];
+          activeBranchId = defaultBusiness.id;
+        }
+      }
 
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [syncProducts]);
+      if (activeBranchId) {
+        // Prefetch all data needed for the new sale form in parallel
+        const [customersResult, categoriesResult, customerCategoriesResult, accountsResult] = await Promise.all([
+          getCustomersAction(activeBranchId, 1, 100),
+          getSalesCategoriesAction(activeBranchId),
+          getCustomerCategoriesAction(activeBranchId),
+          getCashAccountsAction(activeBranchId)
+        ]);
 
-  // In Next.js we don't have location.state, we only have ID via searchParams.
-  // Realistically we also need to fetch the sale if editId is provided.
-  // For now, this is a placeholder.
-  const editId = searchParams.get("editId");
-  const [editSale, setEditSale] = useState<Sale | undefined>(undefined);
+        if (customersResult.success && customersResult.data?.customers) {
+          initialCustomers = customersResult.data.customers;
+        }
 
-  useEffect(() => {
-    // If we have editId, we should fetch the sale from useSalesData or similar
-    // and set it to editSale. This will be implemented separately.
-  }, [editId]);
+        if (categoriesResult.success) {
+          initialCategories = categoriesResult.data;
+        }
 
-  // Use a key to force re-mounting of the form component to clear all state
-  const [formKey, setFormKey] = useState(0);
+        if (customerCategoriesResult.success) {
+          initialCustomerCategories = customerCategoriesResult.data;
+        }
 
-  const {
-    showDraftNotification,
-    draftData,
-    handleLoadDraft,
-    handleDismissDraft,
-    clearDraft,
-    refreshDraft,
-  } = useNewSaleDraft(editSale);
-
-  const handleResetForm = useCallback(() => {
-    refreshDraft(); // Get latest data from storage before remounting
-    setFormKey((prev) => prev + 1);
-  }, [refreshDraft]);
-
-  const {
-    isReceiptOpen,
-    completedSale,
-    newCustomerDialogOpen,
-    includePaymentInfo,
-    customers,
-    handleSaleComplete,
-    handleReceiptClose,
-    handleAddCustomer,
-    handleOpenNewCustomerDialog,
-    setNewCustomerDialogOpen,
-    handlePreviewReceipt,
-    setIsReceiptOpen
-  } = useNewSaleActions(editSale, handleResetForm);
-
-  // Show loading while business context or profiles is loading
-  if (businessLoading || profilesLoading) {
-    return <NewSaleLoadingState />;
+        if (accountsResult.success) {
+          initialAccounts = accountsResult.data;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to prefetch new sale data SSR:", error);
+    }
   }
-
-  // Show message if no business is selected
-  if (!currentBusiness) {
-    return <NewSaleNoBusinessState />;
-  }
-
-  // Permission Check
-  const canEdit = editSale ? hasPermission("sales", "edit") : true;
-  const canCreate = !editSale ? hasPermission("sales", "create") : true;
-
-  if (!canEdit || !canCreate) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
-          <AlertDescription>
-            You do not have permission to{" "}
-            {editSale ? "edit this sale" : "create a new sale"}. Please contact
-            your administrator if you believe this is an error.
-          </AlertDescription>
-        </Alert>
-        <div className="mt-4">
-          <Button onClick={() => router.push("/sales")} variant="outline">
-            Back to Sales
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const wrappedHandleSaleComplete = (
-    sale: Sale,
-    showReceipt?: boolean,
-    includePaymentInfo?: boolean,
-    selectedCategoryId?: string,
-    onClearDraft?: () => void,
-    saleDate?: Date,
-    thermalPrintAfterSave?: boolean,
-  ) => {
-    return handleSaleComplete(
-      sale,
-      showReceipt,
-      includePaymentInfo,
-      selectedCategoryId,
-      clearDraft || onClearDraft,
-      saleDate,
-      thermalPrintAfterSave,
-    );
-  };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {!user && <NewSaleAuthWarning />}
-
-      <NewSaleContent
-        key={formKey}
-        editSale={editSale}
-        currency={settings.currency}
-        showDraftNotification={showDraftNotification}
-        draftData={draftData}
-        onLoadDraft={handleLoadDraft}
-        onDismissDraft={handleDismissDraft}
-        onSaleComplete={wrappedHandleSaleComplete}
-        onPreviewReceipt={handlePreviewReceipt}
-        onClearDraft={clearDraft}
-        customers={customers || []}
-        onAddNewCustomer={handleOpenNewCustomerDialog}
-        isReceiptOpen={isReceiptOpen}
-        completedSale={completedSale}
-        includePaymentInfo={includePaymentInfo}
-        onReceiptClose={handleReceiptClose}
-        newCustomerDialogOpen={newCustomerDialogOpen}
-        onCloseNewCustomerDialog={() => setNewCustomerDialogOpen(false)}
-        onAddCustomer={handleAddCustomer}
-      />
-    </div>
+    <NewSaleClient 
+      initialCustomers={initialCustomers}
+      initialCategories={initialCategories}
+      initialCustomerCategories={initialCustomerCategories}
+      initialAccounts={initialAccounts}
+    />
   );
-};
-
-export default NewSale;
+}

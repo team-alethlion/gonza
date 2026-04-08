@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { getSalesAction } from "@/app/actions/sales";
+import { getSalesAction, getSalesCategoriesAction } from "@/app/actions/sales";
 import { getBusinessLocationsAction } from "@/app/actions/business";
 import { SalesClient } from "@/components/sales/SalesClient";
-import { Sale, mapDbSaleToSale } from "@/types";
+import { Sale, mapDbSaleToSale, SalesCategory } from "@/types";
 
 export default async function SalesPage() {
   const session = await auth();
@@ -11,6 +11,7 @@ export default async function SalesPage() {
   const branchId = (session?.user as any)?.branchId;
 
   let initialSales: Sale[] = [];
+  let initialCategories: SalesCategory[] = [];
 
   if (userId) {
     try {
@@ -26,15 +27,14 @@ export default async function SalesPage() {
       }
 
       if (activeBranchId) {
-        const result: any = await getSalesAction(
-          activeBranchId,
-          1,
-          50,
-          { ordering: "-date" }
-        );
+        // Fetch sales and categories in parallel for speed
+        const [salesResult, categoriesResult] = await Promise.all([
+          getSalesAction(activeBranchId, 1, 50, { ordering: "-date" }),
+          getSalesCategoriesAction(activeBranchId)
+        ]);
 
-        if (result && result.success && result.data?.sales) {
-          const rawSales = Array.isArray(result.data.sales) ? result.data.sales : [];
+        if (salesResult && salesResult.success && salesResult.data?.sales) {
+          const rawSales = Array.isArray(salesResult.data.sales) ? salesResult.data.sales : [];
           initialSales = rawSales.map((item: any) =>
             mapDbSaleToSale({
               id: item.id,
@@ -67,11 +67,15 @@ export default async function SalesPage() {
             }),
           );
         }
+
+        if (categoriesResult && categoriesResult.success) {
+          initialCategories = categoriesResult.data as SalesCategory[];
+        }
       }
     } catch (error) {
       console.error("Failed to prefetch sales data SSR:", error);
     }
   }
 
-  return <SalesClient initialSales={initialSales} />;
+  return <SalesClient initialSales={initialSales} initialCategories={initialCategories} />;
 }

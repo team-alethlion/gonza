@@ -9,7 +9,7 @@ import { matchProductSearch } from '@/utils/searchUtils';
 // 🔒 GLOBAL LOCK: Prevent overlapping syncs across multiple hook instances
 let globalSyncLock: string | null = null;
 
-export const useProductSync = () => {
+export const useProductSync = (options?: { disableLoop?: boolean }) => {
   const { currentBusiness } = useBusiness();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export const useProductSync = () => {
 
   // Initial sync on mount or business change, plus periodic polling
   useEffect(() => {
-    if (!currentBusiness?.id) return;
+    if (!currentBusiness?.id || options?.disableLoop) return;
 
     // Initial sync (manual/on-mount)
     syncProducts(false);
@@ -96,7 +96,7 @@ export const useProductSync = () => {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBusiness?.id, SYNC_INTERVAL]); // Only re-run when business ID changes or interval changes
+  }, [currentBusiness?.id, SYNC_INTERVAL, options?.disableLoop]); // Only re-run when business ID changes, interval changes or loop option changes
 
   // Expose sync status and manual trigger
   return {

@@ -33,6 +33,9 @@ interface NewSaleContentProps {
   newCustomerDialogOpen: boolean;
   onCloseNewCustomerDialog: () => void;
   onAddCustomer: (customerData: any) => Promise<boolean>;
+  initialAccounts?: any[];
+  initialCustomerCategories?: any[];
+  initialCategories?: any[];
 }
 
 const NewSaleContent: React.FC<NewSaleContentProps> = ({
@@ -54,6 +57,9 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
   newCustomerDialogOpen,
   onCloseNewCustomerDialog,
   onAddCustomer,
+  initialAccounts = [],
+  initialCustomerCategories = [],
+  initialCategories = [],
 }) => {
   return (
     <>
@@ -75,6 +81,9 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
         draftData={draftData}
         onClearDraft={onClearDraft}
         isReceiptOpen={isReceiptOpen}
+        initialAccounts={initialAccounts}
+        initialCustomerCategories={initialCustomerCategories}
+        initialCategories={initialCategories}
       />
 
       <ReceiptDialog

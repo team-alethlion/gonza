@@ -16,8 +16,8 @@ import {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCashAccounts = () => {
-  const [accounts, setAccounts] = useState<CashAccount[]>([]);
+export const useCashAccounts = (initialData?: CashAccount[]) => {
+  const [accounts, setAccounts] = useState<CashAccount[]>(initialData || []);
   const { toast } = useToast();
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export const useCashAccounts = () => {
   // Load from Dexie cache on mount
   useEffect(() => {
     const loadFromCache = async () => {
-      if (currentBusiness?.id && accounts.length === 0) {
+      if (currentBusiness?.id && accounts.length === 0 && !initialData) {
         const cached = await localDb.cashAccounts
           .where('locationId')
           .equals(currentBusiness.id)
@@ -43,7 +43,7 @@ export const useCashAccounts = () => {
       }
     };
     loadFromCache();
-  }, [currentBusiness?.id, accounts.length]);
+  }, [currentBusiness?.id, accounts.length, initialData]);
 
   const loadAccounts = useCallback(async (): Promise<CashAccount[]> => {
     if (!currentBusiness?.id) return [];
@@ -89,6 +89,7 @@ export const useCashAccounts = () => {
     queryFn: loadAccounts,
     enabled: !!currentBusiness?.id,
     staleTime: 30_000,
+    initialData: initialData
   });
 
   useEffect(() => {

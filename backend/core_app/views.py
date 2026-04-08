@@ -72,7 +72,11 @@ class PackageViewSet(viewsets.ModelViewSet):
 class AgencyViewSet(viewsets.ModelViewSet):
     queryset = Agency.objects.all()
     serializer_class = AgencySerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action == 'retrieve':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     @action(detail=True, methods=['post'])
     def activate_trial(self, request, pk=None):

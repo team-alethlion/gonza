@@ -25,6 +25,7 @@ interface SaleFormHeaderProps {
   onCategoryChange: (categoryId: string) => void;
   onClearForm?: () => void;
   onPreview?: () => void;
+  initialCustomerCategories?: any[];
 }
 
 const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
@@ -44,6 +45,7 @@ const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
   onCategoryChange,
   onClearForm,
   onPreview,
+  initialCustomerCategories = [],
 }) => {
   const router = useRouter();
 
@@ -103,6 +105,7 @@ const SaleFormHeader: React.FC<SaleFormHeaderProps> = ({
           onSelectCustomer={onSelectCustomer}
           selectedCategoryId={selectedCategoryId}
           onCategoryChange={onCategoryChange}
+          initialCustomerCategories={initialCustomerCategories}
         />
       </CardContent>
     </Card>

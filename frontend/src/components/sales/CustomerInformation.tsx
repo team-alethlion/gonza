@@ -30,6 +30,7 @@ interface CustomerInformationProps {
   onSelectCustomer?: (customer: Customer) => void;
   selectedCategoryId?: string;
   onCategoryChange?: (categoryId: string) => void;
+  initialCustomerCategories?: any[];
 }
 
 const CustomerInformation: React.FC<CustomerInformationProps> = ({
@@ -44,11 +45,12 @@ const CustomerInformation: React.FC<CustomerInformationProps> = ({
   onSelectCustomer,
   selectedCategoryId,
   onCategoryChange,
+  initialCustomerCategories = [],
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [selectedCustomerCategory, setSelectedCustomerCategory] = useState<string>("");
-  const { categories } = useCustomerCategories();
+  const { categories } = useCustomerCategories(initialCustomerCategories);
 
   // Filter customers based on search input
   const filteredCustomers = customers?.filter((customer) =>

@@ -37,11 +37,13 @@ const InventoryClient = ({
   initialCount,
   initialStats,
   initialTopSelling,
+  initialCategories = [],
 }: {
   initialProducts?: Product[];
   initialCount?: number;
   initialStats?: any;
   initialTopSelling?: any[];
+  initialCategories?: any[];
 }) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
@@ -65,7 +67,7 @@ const InventoryClient = ({
     count: initialCount || 0,
   });
 
-  const { categories } = useCategories(user?.id);
+  const { categories } = useCategories(user?.id, initialCategories);
   const { bulkCreateProducts } = useBulkProducts();
 
   // Add state for CSV upload dialog

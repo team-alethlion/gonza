@@ -10,6 +10,7 @@ interface SalesDataTableProps {
   onDeleteSale: (sale: Sale) => void;
   currency: string;
   isLoading: boolean;
+  initialCategories?: any[];
 }
 
 const SalesDataTable: React.FC<SalesDataTableProps> = ({
@@ -18,7 +19,8 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
   onEditSale,
   onDeleteSale,
   currency,
-  isLoading
+  isLoading,
+  initialCategories
 }) => {
   return (
     <div className="space-y-6">
@@ -31,6 +33,7 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
           currency={currency}
           isLoading={isLoading}
           mobileOptimized={false} // Disable mobile optimization to show all records
+          initialCategories={initialCategories}
         />
       </Suspense>
     </div>

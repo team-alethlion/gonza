@@ -14,6 +14,17 @@ export default async function AgencyLayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  if (!session || !session.user) {
+    redirect("/public/login");
+  }
+
+  // 1. SUPER STRICT GUARD: Validates subscription and onboarding
+  // This is now the source of truth for access.
+  await enforceStrictAccess(session);
+
+  // 2. DATA HYDRATION: Fetch shell data now that we know the user is valid
   const result = await getInitialAppDataAction();
   const initialData = result.success ? result.data : null;
 
@@ -21,18 +32,8 @@ export default async function AgencyLayoutWrapper({
     redirect("/public/login");
   }
 
-  const session = initialData?.session;
-
-  if (!session || !session.user) {
-    redirect("/public/login");
-  }
-
   const branchId =
     initialData?.currentBranchId || (session.user as any).branchId;
-
-  // SUPER STRICT GUARD: Returns notFound() if status is invalid
-  // This prevents the layout from rendering if the user isn't active.
-  await enforceStrictAccess(session);
 
   // 🚀 PERMISSION CONTROL CENTER: Fetch profiles once for the entire layout
   let initialProfiles = [];

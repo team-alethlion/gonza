@@ -38,6 +38,32 @@ export async function getAgencySubscriptionAction() {
     return { success: true, data: { ...agency, package: agency.packageDetails } };
   } catch (error: any) {
     console.error("Error fetching subscription:", error);
+    
+    // 🛡️ JWT FALLBACK: If we can't reach the backend (401/403), return the cached session data
+    // This prevents the "Blind UI" problem where the user sees "No Plan Selected"
+    if (error.message?.includes("401:") || error.message?.includes("403:")) {
+      try {
+        const session = await import("@/auth").then(m => m.auth());
+        const user = session?.user as any;
+        if (user) {
+          console.log("[Subscriptions] Falling back to JWT session data due to 401/403");
+          return { 
+            success: true, 
+            data: { 
+              id: user.agencyId,
+              subscription_status: user.subscriptionStatus,
+              subscription_expiry: user.subscriptionExpiry,
+              trial_end_date: user.trialEndDate,
+              is_onboarded: user.isOnboarded,
+              isStale: true // Flag to tell the UI this is cached data
+            } 
+          };
+        }
+      } catch (fallbackError) {
+        console.error("[Subscriptions] Fallback also failed:", fallbackError);
+      }
+    }
+
     return { success: false, error: error.message };
   }
 }

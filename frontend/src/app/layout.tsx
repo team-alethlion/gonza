@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import "@/app/(agency)/agency/globals.css";
 import { Providers } from "@/components/Providers";
-import { getInitialAppDataAction } from "@/app/actions/app-init";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Gonza Systems",
@@ -15,8 +15,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const result = await getInitialAppDataAction();
-  const initialData = result.success ? result.data : null;
+  const session = await auth();
 
   return (
     <html lang="en">
@@ -28,8 +27,8 @@ export default async function RootLayout({
       </head>
       <body>
         <Providers
-          initialSession={initialData?.session || null}
-          isUnauthorized={initialData?.isUnauthorized || false}>
+          initialSession={session || null}
+          isUnauthorized={false}>
           {children}
           <Toaster />
           <Sonner />

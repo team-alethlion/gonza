@@ -23,6 +23,7 @@ import { useBusiness } from '@/contexts/BusinessContext';
 interface SalesCategoryAnalysisProps {
   sales: Sale[];
   formatCurrency: (amount: number) => string;
+  initialCategories?: any[];
 }
 const PieTooltip = ({
   active,
@@ -49,7 +50,8 @@ const PieTooltip = ({
 
 const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
   sales,
-  formatCurrency
+  formatCurrency,
+  initialCategories
 }) => {
   const { canViewProfit } = useFinancialVisibility();
   const { currentBusiness } = useBusiness();
@@ -58,7 +60,7 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
     createCategory,
     updateCategory,
     deleteCategory
-  } = useSalesCategories();
+  } = useSalesCategories(initialCategories);
   const isMobile = useIsMobile();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
