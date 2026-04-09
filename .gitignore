@@ -43,3 +43,4 @@ frontend/.yarn/
 frontend/.pnp.*
 frontend/public/lovable-uploads/
 hidden
+.hidden

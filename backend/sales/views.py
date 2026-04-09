@@ -267,6 +267,25 @@ class SaleViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"DEBUG: Error creating cash transaction: {str(e)}")
         
+        # ⚡️ FINANCIAL INTEGRATION: Create internal Installment natively
+        if final_status == 'INSTALLMENT':
+            amount_paid = pay.get('amount_paid', 0)
+            if amount_paid and float(amount_paid) > 0:
+                from .logic.installments import create_initial_installment
+                
+                item_descriptions = [str(item.get('description') or item.get('productName') or '') for item in raw_items]
+                notes = ", ".join([d for d in item_descriptions if d])
+                
+                create_initial_installment(
+                    sale=sale,
+                    amount=amount_paid,
+                    user_id=user_id,
+                    branch_id=branch_id,
+                    agency_id=sale.agency_id,
+                    account_id=cash_account_id if link_to_cash else None,
+                    notes=notes
+                )
+        
         for item in raw_items:
             qty = to_decimal(item.get('quantity', 0))
             price = to_decimal(item.get('price', 0))
