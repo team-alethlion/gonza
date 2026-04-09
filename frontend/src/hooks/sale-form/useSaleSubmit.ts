@@ -86,6 +86,11 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ⚡️ FROZEN DRAFT SNAPSHOT PATTERN ⚡️
+    // Deep clone the component state strictly at the moment of submission
+    // to insulate it entirely against asynchronous React state purges.
+    const frozenDraftState = JSON.parse(JSON.stringify(props.formData));
     const totalAmount = props.calculateTotalAmount(props.formData.items);
     const taxAmount = props.calculateTaxAmount(totalAmount);
     const grandTotal = totalAmount + taxAmount;
@@ -188,12 +193,8 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
         date: new Date(result.date),
         taxRate: result.taxRate ? Number(result.taxRate) : 0,
         cashTransactionId: result.cashTransactionId || undefined,
-        // ⚡️ FROZEN LAYOUT DATA INJECTION ⚡️
-        // Always prioritize the natively calculated draft variables directly from the UI
-        // overlaying them safely for the receipt view. This prevents the receipt from losing
-        // any temporary calculations (eg installments) while maintaining 100% full database items integrity.
-        amountPaid: Number(props.formData.amountPaid || result.amountPaid || result.amount_paid || 0),
-        amountDue: Number(props.formData.amountDue || result.amountDue || result.balance_due || 0),
+        amountPaid: Number(result.amountPaid || result.amount_paid || 0),
+        amountDue: Number(result.amountDue || result.balance_due || 0),
         notes: result.notes || "",
         categoryId: result.categoryId || undefined,
         total: Number(result.total || result.total_amount || 0),
@@ -235,9 +236,14 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
         // This guarantees database integrity by entirely eliminating partial-commit orphaned data risks.
       }
 
+      // Load the isolated presentation helper strictly to overlay the transient amounts for the receipt!
+      // This leaves the core backend logic entirely untouched as requested.
+      const { injectFrozenDraftToReceipt } = await import("./frozenDraftHelper");
+      const presentationSale = injectFrozenDraftToReceipt(sale, frozenDraftState);
+
       if (props.onSaleComplete) {
         await props.onSaleComplete(
-          sale,
+          presentationSale,
           props.printAfterSave,
           props.includePaymentInfo,
           props.selectedCustomerCategoryId,
@@ -255,15 +261,15 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
 
       if (
         props.sendSMS &&
-        props.formData.customerContact &&
+        frozenDraftState.customerContact &&
         !props.initialData
       ) {
         try {
           await props.createMessage({
-            phoneNumber: props.formData.customerContact,
+            phoneNumber: frozenDraftState.customerContact,
             content: props.smsMessage,
             customerId: props.customers.find(
-              (c) => c.phoneNumber === props.formData.customerContact,
+              (c) => c.phoneNumber === frozenDraftState.customerContact,
             )?.id,
             metadata: {
               sale_id: sale.id,
