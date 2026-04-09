@@ -21,7 +21,11 @@ export async function updateLastSeenAction(userId: string) {
 
         return { success: true };
     } catch (error: any) {
-        console.error('Error updating lastSeen:', error);
+        if (error.message?.includes("Session stale")) {
+            console.log(`[ActivityAction] Update skipped: Session is orphaned.`);
+        } else {
+            console.error('Error updating lastSeen:', error.message || error);
+        }
         return { success: false, error: error.message };
     }
 }

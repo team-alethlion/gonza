@@ -31,7 +31,11 @@ export async function getGlobalInventoryStatsAction(businessId: string) {
             }
         };
     } catch (error: any) {
-        console.error('Error fetching global inventory stats:', error);
+        if (error.message?.includes("Session stale")) {
+            console.log(`[AnalyticsAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching global inventory stats:', error.message || error);
+        }
         return { success: false, error: error.message };
     }
 }
@@ -61,7 +65,11 @@ export async function getAnalyticsSummaryAction(branchId: string, startDate?: st
             }
         };
     } catch (error: any) {
-        console.error('Error fetching analytics summary:', error);
+        if (error.message?.includes("Session stale")) {
+            console.log(`[AnalyticsAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching analytics summary:', error.message || error);
+        }
         return { success: false, error: error.message };
     }
 }

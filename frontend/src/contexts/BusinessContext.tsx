@@ -172,8 +172,10 @@ export const BusinessProvider: React.FC<{
       );
       return await getAccountStatusAction(user.id);
     },
-    enabled: !!user?.id && !isUnauthorized,
-    staleTime: 60 * 1000, // Increase stale time from 10s to 60s
+    // 🚀 OPTIMIZATION: If we have initialData from SSR, we disable the automatic fetch.
+    // This prevents the redundant 'users/me' POST on every page mount.
+    enabled: !!user?.id && !isUnauthorized && !initialAccountStatus,
+    staleTime: 5 * 60 * 1000, // Increase stale time to 5 minutes
     initialData: initialAccountStatus,
   });
 

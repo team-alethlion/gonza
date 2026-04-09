@@ -1,41 +1,53 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { getBusinessLocationsAction } from "@/app/actions/business";
+import { getInitialAppDataAction } from "@/app/actions/app-init";
 import { getCustomersAction, getCustomerCategoriesAction } from "@/app/actions/customers";
-import { getCashAccountsAction } from "@/app/actions/finance";
+import { getCashAccountsAction, getCashTransactionsAction } from "@/app/actions/finance";
 import { getSalesCategoriesAction } from "@/app/actions/sales";
+import { getMessagesAction, getMessageTemplatesAction } from "@/app/actions/messaging";
+import { getStockHistoryAction } from "@/app/actions/inventory";
 import NewSaleClient from "./NewSaleClient";
 
 export default async function NewSalePage() {
   const session = await auth();
   const userId = session?.user?.id;
-  const branchId = (session?.user as any)?.branchId;
 
   let initialCustomers = [];
   let initialCategories = [];
   let initialCustomerCategories = [];
   let initialAccounts = [];
+  let initialMessages = [];
+  let initialTemplates = [];
+  let initialStockHistory = [];
+  let initialTransactions = [];
 
   if (userId) {
     try {
-      let activeBranchId = branchId;
-
-      if (!activeBranchId) {
-        const locations: any = await getBusinessLocationsAction(userId);
-        if (locations && locations.length > 0) {
-          const defaultBusiness =
-            locations.find((b: any) => b.is_default) || locations[0];
-          activeBranchId = defaultBusiness.id;
-        }
-      }
+      // 🚀 PERFORMANCE: Use getInitialAppDataAction to leverage React.cache
+      // This deduplicates the location/branch fetch already performed in AgencyLayout.
+      const appDataResult = await getInitialAppDataAction();
+      const activeBranchId = appDataResult.success ? appDataResult.data?.currentBranchId : null;
 
       if (activeBranchId) {
         // Prefetch all data needed for the new sale form in parallel
-        const [customersResult, categoriesResult, customerCategoriesResult, accountsResult] = await Promise.all([
+        const [
+          customersResult, 
+          categoriesResult, 
+          customerCategoriesResult, 
+          accountsResult,
+          messagesResult,
+          templatesResult,
+          stockHistoryResult,
+          transactionsResult
+        ] = await Promise.all([
           getCustomersAction(activeBranchId, 1, 100),
           getSalesCategoriesAction(activeBranchId),
           getCustomerCategoriesAction(activeBranchId),
-          getCashAccountsAction(activeBranchId)
+          getCashAccountsAction(activeBranchId),
+          getMessagesAction(userId, activeBranchId),
+          getMessageTemplatesAction(userId, activeBranchId),
+          getStockHistoryAction(activeBranchId),
+          getCashTransactionsAction(activeBranchId, undefined, 1, 50)
         ]);
 
         if (customersResult.success && customersResult.data?.customers) {
@@ -53,6 +65,22 @@ export default async function NewSalePage() {
         if (accountsResult.success) {
           initialAccounts = accountsResult.data;
         }
+
+        if (messagesResult?.success) {
+          initialMessages = messagesResult.data;
+        }
+
+        if (templatesResult?.success) {
+          initialTemplates = templatesResult.data;
+        }
+
+        if (stockHistoryResult?.success) {
+          initialStockHistory = stockHistoryResult.data;
+        }
+
+        if (transactionsResult?.success && transactionsResult.data?.transactions) {
+          initialTransactions = transactionsResult.data.transactions;
+        }
       }
     } catch (error) {
       console.error("Failed to prefetch new sale data SSR:", error);
@@ -65,6 +93,10 @@ export default async function NewSalePage() {
       initialCategories={initialCategories}
       initialCustomerCategories={initialCustomerCategories}
       initialAccounts={initialAccounts}
+      initialMessages={initialMessages}
+      initialTemplates={initialTemplates}
+      initialStockHistory={initialStockHistory}
+      initialTransactions={initialTransactions}
     />
   );
 }

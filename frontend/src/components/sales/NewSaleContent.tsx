@@ -36,6 +36,10 @@ interface NewSaleContentProps {
   initialAccounts?: any[];
   initialCustomerCategories?: any[];
   initialCategories?: any[];
+  initialMessages?: any[];
+  initialTemplates?: any[];
+  initialStockHistory?: any[];
+  initialTransactions?: any[];
 }
 
 const NewSaleContent: React.FC<NewSaleContentProps> = ({
@@ -60,6 +64,10 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
   initialAccounts = [],
   initialCustomerCategories = [],
   initialCategories = [],
+  initialMessages = [],
+  initialTemplates = [],
+  initialStockHistory = [],
+  initialTransactions = [],
 }) => {
   return (
     <>
@@ -84,6 +92,10 @@ const NewSaleContent: React.FC<NewSaleContentProps> = ({
         initialAccounts={initialAccounts}
         initialCustomerCategories={initialCustomerCategories}
         initialCategories={initialCategories}
+        initialMessages={initialMessages}
+        initialTemplates={initialTemplates}
+        initialStockHistory={initialStockHistory}
+        initialTransactions={initialTransactions}
       />
 
       <ReceiptDialog

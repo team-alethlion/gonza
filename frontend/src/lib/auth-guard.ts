@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
 import { djangoFetch } from "./django-client";
+import { cache } from "react";
 
 const extractId = (obj: any): string | undefined => {
   if (!obj) return undefined;
@@ -9,7 +10,10 @@ const extractId = (obj: any): string | undefined => {
   return undefined;
 };
 
-export async function verifyUserAccess(userId: string, session?: any) {
+/**
+ * 🚀 PERFORMANCE: Wrapped in React.cache to deduplicate within the same SSR request.
+ */
+export const verifyUserAccess = cache(async (userId: string, session?: any) => {
   const activeSession = session || (await auth());
   if (!activeSession || !activeSession.user) {
     throw new Error("Unauthorized: No active session");
@@ -25,13 +29,16 @@ export async function verifyUserAccess(userId: string, session?: any) {
   }
 
   return sessionUser;
-}
+});
 
 // Server-side cache for branch ownership verification within a single request lifecycle
 // This prevents 10+ concurrent actions from hitting the DB 10+ times for the same branch check.
 const branchOwnershipCache = new Map<string, any>();
 
-export async function verifyBranchAccess(branchId: string, session?: any) {
+/**
+ * 🚀 PERFORMANCE: Wrapped in React.cache to deduplicate within the same SSR request.
+ */
+export const verifyBranchAccess = cache(async (branchId: string, session?: any) => {
   const activeSession = session || (await auth());
   if (!activeSession || !activeSession.user) {
     throw new Error("Unauthorized: No active session");
@@ -47,9 +54,14 @@ export async function verifyBranchAccess(branchId: string, session?: any) {
     return sessionUser;
   }
 
+  // ⚡️ INSTANT PASS: If user is assigned to this branch in their session, skip DB check.
+  if (userBranchId && userBranchId === targetBranchId) {
+    return sessionUser;
+  }
+
   // If user is an admin, they can access any branch within their agency
   if (userRole === "admin" && userAgencyId && targetBranchId) {
-    // 1. Check cache first
+    // 1. Check module-level cache first (persists between concurrent Server Action calls)
     const cacheKey = `${userAgencyId}_${targetBranchId}`;
     if (branchOwnershipCache.has(cacheKey)) {
         return sessionUser;
@@ -64,21 +76,20 @@ export async function verifyBranchAccess(branchId: string, session?: any) {
         branchOwnershipCache.set(cacheKey, true);
         return sessionUser;
       }
-    } catch (error) {
-      console.warn(`[AuthGuard] Could not verify branch ${targetBranchId} ownership for admin:`, error);
+    } catch (error: any) {
+      if (error.message?.includes("Session stale")) {
+        console.warn(`[AuthGuard] Verification skipped for branch ${targetBranchId}: Session is orphaned (401).`);
+      } else {
+        console.error(`[AuthGuard] Could not verify branch ${targetBranchId} ownership:`, error.message || error);
+      }
     }
-  }
-
-  // Strict check: User must be assigned to the branch or own it via agency (checked above)
-  if (userBranchId && userBranchId === targetBranchId) {
-    return sessionUser;
   }
 
   console.error(`[AuthGuard] Access Denied: User ${sessionUser.email} (Role: ${userRole}) attempted to access branch ${targetBranchId}`);
   throw new Error("Unauthorized: You do not have access to this branch");
-}
+});
 
-export async function verifyAgencyAccess(agencyId: string, session?: any) {
+export const verifyAgencyAccess = cache(async (agencyId: string, session?: any) => {
     const activeSession = session || (await auth());
     if (!activeSession || !activeSession.user) {
       throw new Error("Unauthorized: No active session");
@@ -101,4 +112,4 @@ export async function verifyAgencyAccess(agencyId: string, session?: any) {
     }
   
     return sessionUser;
-}
+});

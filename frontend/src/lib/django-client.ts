@@ -24,6 +24,13 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
     console.warn(`[djangoFetch] No accessToken found in session for protected endpoint: ${endpoint}`);
   }
 
+  // 🛡️ SESSION INTEGRITY CHECK:
+  // If we know the token is dead and this is a protected endpoint, 
+  // FAIL FAST to avoid triggering 401 logs on the backend.
+  if (isTokenDead && !isPublicFriendly) {
+    throw new Error(`401: Session stale (Orphaned). Skipping protected request to: ${endpoint}`);
+  }
+
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');

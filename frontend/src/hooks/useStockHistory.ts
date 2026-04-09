@@ -35,7 +35,7 @@ export interface ChainRepairPreview {
 
 import { localDb } from '@/lib/dexie';
 
-export const useStockHistory = (userId: string | undefined, productId?: string) => {
+export const useStockHistory = (userId: string | undefined, productId?: string, initialData?: any[]) => {
   const { currentBusiness } = useBusiness();
   const queryClient = useQueryClient();
 
@@ -44,7 +44,7 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
     : ['stock_history', currentBusiness?.id];
 
   // 🚀 REFACTORED: Use React Query for de-duplication and 5-minute caching
-  const { data: stockHistory = [], isLoading, refetch: loadStockHistory } = useQuery({
+  const { data: stockHistory = initialData || [], isLoading, refetch: loadStockHistory } = useQuery({
     queryKey,
     queryFn: async () => {
       if (!userId || !currentBusiness) return [];
@@ -79,6 +79,7 @@ export const useStockHistory = (userId: string | undefined, productId?: string) 
     },
     enabled: !!currentBusiness?.id && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: initialData
   });
 
   const createStockHistoryEntry = async (

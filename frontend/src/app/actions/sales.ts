@@ -40,8 +40,12 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
 
         // Return raw database objects to let mapDbSaleToSale handle mapping consistently
         return { success: true, data: { sales: results, count } };
-    } catch (error) {
-        console.error('Error fetching sales:', error);
+    } catch (error: any) {
+        if (error.message?.includes("Session stale")) {
+            console.log(`[SalesAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching sales:', error.message || error);
+        }
         return { success: false, data: { sales: [], count: 0 }, error: (error as Error).message };
     }
 }

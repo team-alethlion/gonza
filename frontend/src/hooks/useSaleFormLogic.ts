@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useFormState } from "./sale-form/useFormState";
 import { useFormHandlers } from "./sale-form/useFormHandlers";
 import { useItemManagement } from "./sale-form/useItemManagement";
@@ -109,6 +109,80 @@ export const useSaleFormLogic = ({
   const { calculateTotalAmount, calculateTaxAmount } = useFormCalculations({
     taxRate: formData.taxRate || 0,
   });
+
+  // 🚀 DATA INTEGRITY: Pure helper to resolve financials based on current state
+  // This can be used by both state sync effects AND immediate previews to avoid race conditions.
+  const resolveFinancials = useCallback((items: any[], taxRate: number, status: string, paidInput?: number) => {
+    const subtotal = calculateTotalAmount(items);
+    const taxAmount = calculateTaxAmount(subtotal);
+    const total = subtotal + taxAmount;
+
+    let resolvedPaid = paidInput ?? 0;
+    let resolvedDue = total;
+
+    // 🛡️ DATA INTEGRITY: Handle all status variations (Human-readable and Backend-enums)
+    const isPaid = status === 'Paid' || status === 'COMPLETED';
+    const isQuote = status === 'Quote' || status === 'QUOTE';
+    const isNotPaid = status === 'NOT PAID' || status === 'UNPAID' || status === 'PENDING';
+    const isInstallment = status === 'Installment Sale' || status === 'INSTALLMENT';
+
+    if (isPaid) {
+      resolvedPaid = total;
+      resolvedDue = 0;
+    } else if (isQuote) {
+      resolvedPaid = 0;
+      resolvedDue = 0;
+    } else if (isNotPaid) {
+      resolvedPaid = 0;
+      resolvedDue = total;
+    } else if (isInstallment) {
+      resolvedPaid = Math.min(paidInput ?? 0, total);
+      resolvedDue = Math.max(0, total - resolvedPaid);
+    }
+
+    return { total, subtotal, taxAmount, amountPaid: resolvedPaid, amountDue: resolvedDue };
+  }, [calculateTotalAmount, calculateTaxAmount]);
+
+  // 🚀 PERFORMANCE: Memoize totals to avoid heavy recalculations in hooks
+  const subtotal = useMemo(() => calculateTotalAmount(formData.items), [formData.items, calculateTotalAmount]);
+  const taxAmount = useMemo(() => calculateTaxAmount(subtotal), [subtotal, calculateTaxAmount]);
+  const grandTotal = useMemo(() => subtotal + taxAmount, [subtotal, taxAmount]);
+
+  // 🚀 DATA INTEGRITY: Centralized sync for amountPaid and amountDue
+  // This solves the "Item-Addition Blind Spot" by ensuring that when items, tax OR status changes,
+  // the financial fields in formData are recalculated based on the payment status.
+  useEffect(() => {
+    // We use the functional updater to avoid having formData in the dependency array
+    setFormData(prev => {
+      // Recalculate using the resolver with CURRENT values from state
+      const { amountPaid, amountDue } = resolveFinancials(
+        prev.items, 
+        prev.taxRate || 0, 
+        prev.paymentStatus, 
+        prev.amountPaid
+      );
+
+      // 🛡️ INTELLIGENT AUTO-SWITCH: 
+      // If we are in 'NOT PAID' mode but a payment is detected, promote to Installment.
+      let finalStatus = prev.paymentStatus;
+      if ((prev.paymentStatus === 'NOT PAID' || prev.paymentStatus === 'UNPAID') && amountPaid > 0) {
+        finalStatus = 'Installment Sale';
+      }
+
+      // Avoid infinite loops by checking if values actually need to change
+      if (amountPaid === prev.amountPaid && amountDue === prev.amountDue && finalStatus === prev.paymentStatus) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        paymentStatus: finalStatus,
+        amountPaid,
+        amountDue
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grandTotal, formData.paymentStatus, resolveFinancials]); // Removed amountPaid from deps, it's accessed via updater
 
   // Payment operations
   const {
@@ -299,6 +373,7 @@ export const useSaleFormLogic = ({
     // Utils
     calculateTotalAmount,
     calculateTaxAmount,
+    resolveFinancials,
     validateForm,
     processPendingPaymentChanges,
 

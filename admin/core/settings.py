@@ -89,10 +89,11 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 UNFOLD = {
-    "SITE_TITLE": "Professional Admin Panel",
-    "SITE_HEADER": "Gonza Systems | Database Management",
+    "SITE_TITLE": "Gonza Admin Panel",
+    "SITE_HEADER": "Gonza Systems | Management",
     "SITE_ICON": lambda request: "/static/icon.png", 
     "SITE_FAVICON": lambda request: "/static/favicon.ico",
+    "SITE_SYMBOL": "speed", # material symbols name
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     "SIDEBAR": {

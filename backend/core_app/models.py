@@ -64,6 +64,11 @@ class Agency(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def sync_status(self):
+        """Triggers the modular subscription status check."""
+        from .logic.subscription import sync_agency_subscription_status
+        return sync_agency_subscription_status(self)
+
     class Meta:
         verbose_name_plural = "Agencies"
 

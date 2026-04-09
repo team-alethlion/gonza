@@ -78,6 +78,12 @@ class AgencyViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated()]
 
+    def get_object(self):
+        obj = super().get_object()
+        # Automatically sync status on retrieval to ensure DB integrity
+        obj.sync_status()
+        return obj
+
     @action(detail=True, methods=['post'])
     def activate_trial(self, request, pk=None):
         agency = self.get_object()

@@ -52,6 +52,10 @@ interface SalesFormProps {
   initialAccounts?: any[];
   initialCustomerCategories?: any[];
   initialCategories?: any[];
+  initialMessages?: any[];
+  initialTemplates?: any[];
+  initialStockHistory?: any[];
+  initialTransactions?: any[];
 }
 
 const SalesForm: React.FC<SalesFormProps> = ({
@@ -67,6 +71,10 @@ const SalesForm: React.FC<SalesFormProps> = ({
   initialAccounts = [],
   initialCustomerCategories = [],
   initialCategories = [],
+  initialMessages = [],
+  initialTemplates = [],
+  initialStockHistory = [],
+  initialTransactions = [],
 }) => {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -81,10 +89,10 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const { currentBusiness } = useBusiness();
 
   const { saveDraft } = useSaleDraft();
-  const { updateStockHistoryDatesBySaleId } = useStockHistory(user?.id);
+  const { updateStockHistoryDatesBySaleId } = useStockHistory(user?.id, undefined, initialStockHistory);
   const isClearingRef = useRef(false);
 
-  const { createMessage } = useMessages(user?.id);
+  const { createMessage } = useMessages(user?.id, initialMessages, initialTemplates);
   const [sendSMS, setSendSMS] = useState(true);
   const [smsMessage, setSMSMessage] = useState("");
 
@@ -125,6 +133,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     handlePaymentDateChange,
     calculateTotalAmount,
     calculateTaxAmount,
+    resolveFinancials,
     validateForm,
     processPendingPaymentChanges,
     createInstallmentPayment,
@@ -217,9 +226,12 @@ const SalesForm: React.FC<SalesFormProps> = ({
     // ⚡️ PERSISTENCE: Save draft before preview to ensure latest changes are in storage
     saveDraft(formData, selectedDate, true);
 
-    const subtotal = calculateTotalAmount(formData.items);
-    const taxAmt = calculateTaxAmount(subtotal);
-    const total = subtotal + taxAmt;
+    const { total, subtotal, taxAmount: taxAmt, amountPaid, amountDue } = resolveFinancials(
+      formData.items, 
+      formData.taxRate || 0, 
+      formData.paymentStatus, 
+      formData.amountPaid
+    );
 
     const previewSale: Sale = {
       id: "preview",
@@ -243,8 +255,9 @@ const SalesForm: React.FC<SalesFormProps> = ({
       taxRate: formData.taxRate || 0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      amountPaid: formData.amountPaid,
-      amountDue: total - (formData.amountPaid || 0),
+      // 🚀 DATA INTEGRITY: Use resolved values to avoid race conditions
+      amountPaid,
+      amountDue,
     };
     onPreviewReceipt(previewSale);
   };

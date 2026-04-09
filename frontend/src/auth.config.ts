@@ -12,6 +12,7 @@ const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || "http://127.0.0
 // 🔐 REFRESH LOCK (Singleton Pattern)
 // This prevents multiple simultaneous requests from triggering a "Refresh Storm"
 let globalRefreshPromise: Promise<any> | null = null;
+let globalStatusSyncPromise: Promise<any> | null = null;
 
 export const authConfig = {
   pages: {
@@ -82,44 +83,51 @@ export const authConfig = {
       const now = Date.now();
       const expires = token.accessTokenExpires as number;
 
+      // 🛡️ RESTRICTED STATUS SYNC:
+      // If the user is currently suspended or expired, check the backend even if the token isn't expired yet.
+      // This allows them to "recover" immediately when an admin lifts a ban or a payment is processed.
+      const isRestricted = token.status === 'SUSPENDED' || token.subscriptionStatus === 'suspended' || token.status === 'EXPIRED' || token.error === "RefreshAccessTokenError";
+      const lastSync = token.lastStatusSync as number || 0;
+      const syncInterval = 60 * 1000; // 1 minute throttle
+
+      if (isRestricted && (now - lastSync > syncInterval) && token.agencyId) {
+        try {
+          if (!globalStatusSyncPromise) {
+            console.log(`[Auth] Sync Lock Acquired: Checking recovery/status for agency: ${token.agencyId}...`);
+            const agId = typeof token.agencyId === 'object' ? (token.agencyId as any).id : token.agencyId;
+            
+            globalStatusSyncPromise = fetch(`${DJANGO_API_URL}/core/agencies/${agId}/`, {
+              headers: { "Content-Type": "application/json" }
+            }).then(async (res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return await res.json();
+            }).finally(() => {
+              // Clear lock after a few seconds to allow next interval
+              setTimeout(() => { globalStatusSyncPromise = null; }, 5000);
+            });
+          }
+
+          const fresh = await globalStatusSyncPromise;
+          if (fresh) {
+            token.subscriptionStatus = fresh.subscription_status;
+            token.subscriptionExpiry = fresh.subscription_expiry;
+            token.trialEndDate = fresh.trial_end_date;
+            token.isOnboarded = fresh.is_onboarded;
+            token.lastStatusSync = now;
+            console.log(`[Auth] Sync Success: Status=${token.subscriptionStatus}, Onboarded=${token.isOnboarded}`);
+          }
+        } catch (e: any) {
+          console.error("[Auth] Sync Failed:", e.message || e);
+          token.lastStatusSync = now; // Prevent retry loop on error
+        }
+      }
+
       if (expires && now < expires) {
         return token;
       }
 
       // 🛡️ SILENCE REFRESH STORM: If we already know the refresh failed, don't try again
       if (token.error === "RefreshAccessTokenError") {
-        const nowTime = Date.now();
-        const lastSync = token.lastStatusSync as number || 0;
-        const syncInterval = 60 * 1000; // 1 minute throttle
-        
-        if (token.agencyId && (nowTime - lastSync > syncInterval)) {
-          console.log(`[Auth] Orphaned Session: Attempting silent status sync for agency: ${token.agencyId}...`);
-          try {
-            // Extract agency ID string regardless of format (object or string)
-            const agId = typeof token.agencyId === 'object' ? (token.agencyId as any).id : token.agencyId;
-            
-            // 🛡️ ANONYMOUS FETCH: Bypasses the dead Bearer token
-            const res = await fetch(`${DJANGO_API_URL}/core/agencies/${agId}/`, {
-              headers: { "Content-Type": "application/json" }
-            });
-            
-            if (res.ok) {
-              const fresh = await res.json();
-              token.subscriptionStatus = fresh.subscription_status;
-              token.subscriptionExpiry = fresh.subscription_expiry;
-              token.trialEndDate = fresh.trial_end_date;
-              token.isOnboarded = fresh.is_onboarded;
-              token.lastStatusSync = nowTime;
-              console.log(`[Auth] Silent Sync Success: Status=${token.subscriptionStatus}, Onboarded=${token.isOnboarded}`);
-            } else {
-              console.warn(`[Auth] Silent Sync failed (HTTP ${res.status}). Will retry in ${syncInterval/1000}s.`);
-              token.lastStatusSync = nowTime; // Prevent spamming even on failure
-            }
-          } catch (e) {
-            console.error("[Auth] Silent Sync Critical Error:", e);
-            token.lastStatusSync = nowTime;
-          }
-        }
         return token;
       }
 
@@ -200,8 +208,9 @@ export const authConfig = {
       const trialEnd = user?.trialEndDate
       const isOnboardedVal = user?.isOnboarded
 
-      const isPublicPath = ["/public", "/public/login", "/public/signup", "/privacy-policy", "/auth/error", "/verify-email"].includes(nextUrl.pathname)
+      const isPublicPath = ["/public", "/public/login", "/public/signup", "/privacy-policy", "/auth/error", "/verify-email", "/public/suspended"].includes(nextUrl.pathname)
       const isSubscriptionPath = nextUrl.pathname === "/subscription"
+      const isSuspendedPath = nextUrl.pathname === "/public/suspended"
       const isOnboardingPath = nextUrl.pathname === "/onboarding"
       const isRootPath = nextUrl.pathname === "/"
 
@@ -230,8 +239,16 @@ export const authConfig = {
       }
 
       // 4. Handle Account Status (Global check)
-      if ((status === 'EXPIRED' || status === 'SUSPENDED') && !isSubscriptionPath && !nextUrl.pathname.startsWith('/api/auth')) {
-        console.log(`[Middleware] Account ${status}. Redirecting to /subscription`);
+      // Check both User status and Agency subscription status for suspension
+      const isSuspended = status === 'SUSPENDED' || subStatus === 'suspended';
+      
+      if (isSuspended && !isSuspendedPath && !nextUrl.pathname.startsWith('/api/auth')) {
+        console.log(`[Middleware] Account/Agency SUSPENDED. Redirecting to /public/suspended`);
+        return Response.redirect(new URL("/public/suspended", nextUrl))
+      }
+
+      if (status === 'EXPIRED' && !isSubscriptionPath && !nextUrl.pathname.startsWith('/api/auth')) {
+        console.log(`[Middleware] Account EXPIRED. Redirecting to /subscription`);
         return Response.redirect(new URL("/subscription", nextUrl))
       }
 

@@ -22,7 +22,7 @@ import {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCashTransactions = (accountId?: string, initialPageSize: number = 50) => {
+export const useCashTransactions = (accountId?: string, initialPageSize: number = 50, initialData?: CashTransaction[]) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
   const { toast } = useToast();
@@ -30,8 +30,8 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
   
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [totalCount, setTotalCount] = useState(0);
-  const [internalTransactions, setInternalTransactions] = useState<CashTransaction[]>([]);
+  const [totalCount, setTotalCount] = useState(initialData?.length || 0);
+  const [internalTransactions, setInternalTransactions] = useState<CashTransaction[]>(initialData || []);
 
   // Load from Dexie cache on mount
   useEffect(() => {
@@ -123,7 +123,7 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
     queryFn: loadTransactions,
     enabled: !!user && !!currentBusiness?.id,
     staleTime: 30_000,
-    initialData: internalTransactions.length > 0 ? internalTransactions : undefined
+    initialData: internalTransactions
   });
 
   useEffect(() => {

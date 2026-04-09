@@ -89,16 +89,17 @@ const getCachedInitialAppData = cache(async () => {
       },
     };
   } catch (error: any) {
-    console.error("[AppInit] Error:", error);
-
-    // If we get an Unauthorized error, the session is orphaned (database changed or user deleted)
+    // If we get an Unauthorized or Stale Session error, the session is orphaned
     if (
       error.message?.includes("401:") ||
+      error.message?.includes("Session stale") ||
       error.message?.includes("Authentication credentials")
     ) {
+      console.log(`[AppInit] Request blocked: Session is orphaned (Redirection expected).`);
       return { success: true, data: { isUnauthorized: true } };
     }
 
+    console.error("[AppInit] Critical Error:", error);
     return { success: false, error: error.message };
   }
 });

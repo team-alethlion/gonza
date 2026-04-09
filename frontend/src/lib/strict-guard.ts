@@ -30,8 +30,11 @@ export async function enforceStrictAccess(session?: any) {
   let isTrialActive = subStatus === 'trial' && trialEnd && new Date(trialEnd) > now;
   let isSubActive = subStatus === 'active' && subExpiry && new Date(subExpiry) > now;
 
+  const isTokenDead = (activeSession as any).authError === "RefreshAccessTokenError";
+
   // IF SESSION SEEMS EXPIRED, DO A REAL-TIME BACKEND CHECK AS A FALLBACK
-  if (!isTrialActive && !isSubActive) {
+  // 🛡️ BUT ONLY IF the token is actually still healthy!
+  if (!isTrialActive && !isSubActive && !isTokenDead) {
     console.log(`[StrictGuard] Session stale (expired). Re-verifying via djangoFetch for user ${user.id}...`);
     try {
       // Using djangoFetch is safer as it handles tokens and base URL correctly

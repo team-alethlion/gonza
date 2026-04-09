@@ -22,7 +22,8 @@ export const useSalesData = (
   sortOrder: string = 'desc',
   pageSize?: number,
   enabled: boolean = true,
-  initialData?: Sale[]
+  initialData?: Sale[],
+  options?: { disableFetch?: boolean }
 ) => {
 
   const queryClient = useQueryClient();
@@ -32,6 +33,7 @@ export const useSalesData = (
 
   // Load from Dexie cache on mount
   useEffect(() => {
+    if (options?.disableFetch) return;
     const loadFromCache = async () => {
       if (currentBusiness?.id) {
         const query = localDb.sales.where('locationId').equals(currentBusiness.id);
@@ -47,11 +49,11 @@ export const useSalesData = (
       }
     };
     loadFromCache();
-  }, [currentBusiness?.id]);
+  }, [currentBusiness?.id, options?.disableFetch]);
 
   const loadSales = useCallback(async (): Promise<Sale[]> => {
     try {
-      if (!userId || !currentBusiness) {
+      if (!userId || !currentBusiness || options?.disableFetch) {
         return [];
       }
 
@@ -79,18 +81,18 @@ export const useSalesData = (
       console.error('Error loading sales:', error);
       return [];
     }
-  }, [userId, currentBusiness, pageSize]);
+  }, [userId, currentBusiness, pageSize, options?.disableFetch]);
 
   // Use a stable initial value to prevent re-renders
   const memoizedInitialData = useMemo(() => {
-    if (!initialData) return undefined;
+    if (!initialData || options?.disableFetch) return undefined;
     return initialData.map(s => ({
       ...s,
       date: new Date(s.date),
       createdAt: new Date(s.createdAt),
       updatedAt: new Date(s.updatedAt || s.createdAt)
     }));
-  }, [initialData]);
+  }, [initialData, options?.disableFetch]);
 
   // React Query caching
   const baseQueryKey = useMemo(() => ['sales', currentBusiness?.id, userId], [currentBusiness?.id, userId]);
@@ -104,7 +106,7 @@ export const useSalesData = (
   } = useQuery({
     queryKey,
     queryFn: loadSales,
-    enabled: enabled && !!userId && !!currentBusiness?.id,
+    enabled: enabled && !!userId && !!currentBusiness?.id && !options?.disableFetch,
     staleTime: 30_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
@@ -117,11 +119,11 @@ export const useSalesData = (
   const { data: topCustomers = [] } = useQuery({
     queryKey: ['top_customers', currentBusiness?.id],
     queryFn: async () => {
-      if (!currentBusiness?.id) return [];
+      if (!currentBusiness?.id || options?.disableFetch) return [];
       const result = await getTopCustomersAction(currentBusiness.id);
       return result.success ? (result.data as TopCustomer[]) : [];
     },
-    enabled: enabled && !!currentBusiness?.id,
+    enabled: enabled && !!currentBusiness?.id && !options?.disableFetch,
     staleTime: 5 * 60_000,
   });
 

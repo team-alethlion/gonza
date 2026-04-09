@@ -37,29 +37,71 @@ export const useFormHandlers = ({
 
   const handleSelectChange = useCallback((value: string) => {
     const newPaymentStatus = value as 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale';
-    setFormData(prev => ({ ...prev, paymentStatus: newPaymentStatus }));
-
+    
     if (value !== 'Paid' && value !== 'Installment Sale') {
       setLinkToCash(false);
     }
 
-    if (value !== 'Installment Sale') {
-      setFormData(prev => ({
+    setFormData(prev => {
+      // Calculate total for the current items to set correct defaults
+      const subtotal = prev.items.reduce((sum, item) => {
+        const itemSubtotal = item.price * item.quantity;
+        const discountAmount = item.discountType === 'amount' 
+          ? (item.discountAmount || 0)
+          : (itemSubtotal * (item.discountPercentage || 0)) / 100;
+        return sum + (itemSubtotal - discountAmount);
+      }, 0);
+      const taxAmount = subtotal * ((prev.taxRate || 0) / 100);
+      const grandTotal = subtotal + taxAmount;
+
+      let amountPaid = prev.amountPaid;
+      let amountDue = prev.amountDue;
+
+      if (newPaymentStatus === 'Paid') {
+        amountPaid = grandTotal;
+        amountDue = 0;
+      } else if (newPaymentStatus === 'Quote') {
+        // 🚀 LOGIC REFINEMENT: Quotes should not carry debt
+        amountPaid = 0;
+        amountDue = 0;
+      } else if (newPaymentStatus === 'NOT PAID') {
+        amountPaid = 0;
+        amountDue = grandTotal;
+      } else if (newPaymentStatus === 'Installment Sale') {
+        // Keep existing amountPaid, but update amountDue
+        amountDue = Math.max(0, grandTotal - (amountPaid || 0));
+      }
+
+      return {
         ...prev,
         paymentStatus: newPaymentStatus,
-        amountPaid: 0,
-        amountDue: 0
-      }));
-    }
+        amountPaid,
+        amountDue
+      };
+    });
   }, [setFormData, setLinkToCash]);
 
   const handleAmountPaidChange = useCallback((amount: number, grandTotal: number) => {
     const amountDue = Math.max(0, grandTotal - amount);
-    setFormData(prev => ({
-      ...prev,
-      amountPaid: amount,
-      amountDue: amountDue,
-    }));
+    setFormData(prev => {
+      // 🚀 INTELLIGENT AUTO-SWITCH:
+      // If user types a payment while in 'NOT PAID' mode, switch them to 'Installment Sale'
+      // so their payment isn't wiped by the 'NOT PAID' logic.
+      let newStatus = prev.paymentStatus;
+      if (prev.paymentStatus === 'NOT PAID' && amount > 0) {
+        newStatus = 'Installment Sale';
+      } else if (prev.paymentStatus === 'Installment Sale' && amount >= grandTotal) {
+        // Optional: could auto-promote to Paid here if preferred, 
+        // but keeping it as Installment is safer for user intent.
+      }
+
+      return {
+        ...prev,
+        paymentStatus: newStatus,
+        amountPaid: amount,
+        amountDue: amountDue,
+      };
+    });
   }, [setFormData]);
 
   const handlePaymentDateChange = useCallback((date: Date) => {

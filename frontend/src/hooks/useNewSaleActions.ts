@@ -11,7 +11,6 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { generateThermalReceipt } from "@/utils/generateThermalReceipt";
 import { print } from "@/utils/thermalPrinterPlug";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { useProductSync } from "@/hooks/useProductSync";
 import { getCustomerByNameAction, updateSaleCustomerAction } from "@/app/actions/sales";
 
 export const useNewSaleActions = (
@@ -30,11 +29,10 @@ export const useNewSaleActions = (
     customers: initialData?.initialCustomers || [], 
     count: initialData?.initialCustomers?.length || 0 
   });
-  const { addSale, updateSale } = useSalesData(user?.id);
+  const { addSale, updateSale } = useSalesData(user?.id, 'desc', undefined, true, undefined, { disableFetch: true });
   const { logActivity } = useActivityLogger();
   const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
-  const { syncProducts } = useProductSync({ disableLoop: true });
 
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -56,11 +54,8 @@ export const useNewSaleActions = (
         clearDraft();
       }
 
-      // ⚡️ SYNC INVENTORY: Trigger a background sync to update local stock counts
-      // after the server has processed the deductions.
-      setTimeout(() => {
-        syncProducts();
-      }, 500); // Small delay to let DB write complete
+      // ⚡️ NOTE: Inventory sync is now handled globally by SyncManager.
+      // No need to trigger manual sync here after sale.
 
       // Only save customer to customers database if they don't exist already
       if (user?.id && sale.customerName && typeof sale.customerName === 'string' && sale.customerName.trim()) {

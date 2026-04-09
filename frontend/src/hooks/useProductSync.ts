@@ -68,13 +68,24 @@ export const useProductSync = (options?: { disableLoop?: boolean }) => {
           lastSyncedAt: result.serverTime || Date.now()
         });
       } else {
-        // Only throw if it's a real error, not a 401 which is handled by auth-guard
+        // 🛡️ GRACEFUL ERROR HANDLING: Instead of throwing, we set the state and exit.
+        // This prevents the console from being flooded with 'fetch failed' stacks during background sync.
         if (result.error && !result.error.includes('401')) {
-          throw new Error(result.error || 'Failed to fetch delta updates');
+          const isNetworkError = result.error.includes('fetch failed') || result.error.includes('ECONNREFUSED');
+          
+          if (isNetworkError) {
+            console.warn(`[SyncManager] ⚠️ Product Sync skipped: Backend unreachable (${result.error})`);
+          } else {
+            console.error(`[SyncManager] ❌ Delta Fetch Failed:`, result.error);
+          }
+          
+          setLastSyncError(result.error);
+          return;
         }
       }
     } catch (error: any) {
-      console.error('[SyncManager] ❌ Product Sync Error:', error);
+      // This catch block now only handles unexpected code crashes, not intended fetch failures
+      console.error('[SyncManager] ❌ Unexpected Sync Exception:', error);
       setLastSyncError(error.message);
     } finally {
       setIsSyncing(false);

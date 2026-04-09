@@ -53,8 +53,12 @@ export async function getProfilesAction(branchId: string, session?: any) {
                 updated_at: u.updated_at || new Date().toISOString(),
             };
         });
-    } catch (error) {
-        console.error('Error fetching profiles:', error);
+    } catch (error: any) {
+        if (error.message?.includes("Session stale")) {
+            console.warn(`[ProfilesAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching profiles:', error.message || error);
+        }
         return [];
     }
 }

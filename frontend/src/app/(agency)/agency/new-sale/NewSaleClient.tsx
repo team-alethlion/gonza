@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
@@ -22,13 +23,21 @@ interface NewSaleClientProps {
   initialCategories?: SalesCategory[];
   initialCustomerCategories?: any[];
   initialAccounts?: any[];
+  initialMessages?: any[];
+  initialTemplates?: any[];
+  initialStockHistory?: any[];
+  initialTransactions?: any[];
 }
 
 const NewSaleClient = ({
   initialCustomers,
   initialCategories,
   initialCustomerCategories,
-  initialAccounts
+  initialAccounts,
+  initialMessages = [],
+  initialTemplates = [],
+  initialStockHistory = [],
+  initialTransactions = [],
 }: NewSaleClientProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,7 +48,7 @@ const NewSaleClient = ({
 
   // In Next.js we don't have location.state, we only have ID via searchParams.
   const editId = searchParams.get("editId");
-  const [editSale, setEditSale] = useState<Sale | undefined>(undefined);
+  const [editSale] = useState<Sale | undefined>(undefined);
 
   useEffect(() => {
     // If we have editId, we should fetch the sale from useSalesData or similar
@@ -75,12 +84,10 @@ const NewSaleClient = ({
     handleOpenNewCustomerDialog,
     setNewCustomerDialogOpen,
     handlePreviewReceipt,
-    setIsReceiptOpen
   } = useNewSaleActions(editSale, handleResetForm, {
     initialCustomers,
     initialCategories,
-    initialCustomerCategories,
-    initialAccounts
+    initialAccounts,
   });
 
   // Show loading while business context or profiles is loading
@@ -165,6 +172,10 @@ const NewSaleClient = ({
         initialAccounts={initialAccounts}
         initialCustomerCategories={initialCustomerCategories}
         initialCategories={initialCategories}
+        initialMessages={initialMessages}
+        initialTemplates={initialTemplates}
+        initialStockHistory={initialStockHistory}
+        initialTransactions={initialTransactions}
       />
     </div>
   );

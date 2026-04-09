@@ -18,25 +18,37 @@ export const useFormState = ({
   initialData,
   defaultPaymentStatus,
 }: UseFormStateProps) => {
-  const [formData, setFormData] = useState<SaleFormData>({
-    customerName: initialData?.customerName || "",
-    customerAddress: initialData?.customerAddress || "",
-    customerContact: initialData?.customerContact || "",
-    customerId: initialData?.customerId || "", // Added customerId
-    items: initialData?.items || [{ ...emptyItem }],
-    paymentStatus: defaultPaymentStatus as
-      | "Paid"
-      | "NOT PAID"
-      | "Quote"
-      | "Installment Sale",
-    taxRate: initialData?.taxRate || 0,
-    amountPaid:
-      initialData && initialData.paymentStatus === "Installment Sale"
-        ? 0
-        : initialData?.amountPaid || 0,
-    amountDue: initialData?.amountDue || 0,
-    notes: initialData?.notes || "",
-    categoryId: initialData?.categoryId || "",
+  const [formData, setFormData] = useState<SaleFormData>(() => {
+    const status = (initialData?.paymentStatus || defaultPaymentStatus) as any;
+    
+    // 🚀 SOURCE OF TRUTH: Derive initial amounts based on status if not explicitly provided
+    let amountPaid = initialData?.amountPaid ?? 0;
+    let amountDue = initialData?.amountDue ?? 0;
+
+    // If it's a new sale (or no explicit amounts provided), set sensible defaults
+    if (initialData?.amountPaid === undefined) {
+      if (status === 'Paid') {
+        // We can't calculate grandTotal here easily, so we leave it to the useEffect sync
+        // but we ensure it's not explicitly forced to 0.
+        amountPaid = 0; 
+      } else if (status === 'NOT PAID' || status === 'Quote') {
+        amountPaid = 0;
+      }
+    }
+
+    return {
+      customerName: initialData?.customerName || "",
+      customerAddress: initialData?.customerAddress || "",
+      customerContact: initialData?.customerContact || "",
+      customerId: initialData?.customerId || "",
+      items: initialData?.items || [{ ...emptyItem }],
+      paymentStatus: status,
+      taxRate: initialData?.taxRate || 0,
+      amountPaid,
+      amountDue,
+      notes: initialData?.notes || "",
+      categoryId: initialData?.categoryId || "",
+    };
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -73,13 +85,9 @@ export const useFormState = ({
       customerName: "",
       customerAddress: "",
       customerContact: "",
-      customerId: "", // Clear customerId
+      customerId: "", 
       items: [{ ...emptyItem }],
-      paymentStatus: defaultPaymentStatus as
-        | "Paid"
-        | "NOT PAID"
-        | "Quote"
-        | "Installment Sale",
+      paymentStatus: defaultPaymentStatus as any,
       taxRate: 0,
       amountPaid: 0,
       amountDue: 0,
@@ -104,41 +112,28 @@ export const useFormState = ({
   useEffect(() => {
     if (initialData) {
       const timer = setTimeout(() => {
-        setFormData((prev) => ({
-          ...prev,
-          customerName: initialData?.customerName || prev.customerName || "",
-          customerAddress:
-            initialData?.customerAddress || prev.customerAddress || "",
-          customerContact:
-            initialData?.customerContact || prev.customerContact || "",
-          customerId: initialData?.customerId || prev.customerId || "",
-          // Only override items if we have them in initialData and current items are empty/default
-          items:
-            initialData?.items && initialData.items.length > 0
-              ? initialData.items
-              : prev.items,
-          // Ensure payment status syncs
-          paymentStatus:
-            (initialData?.paymentStatus as
-              | "Paid"
-              | "NOT PAID"
-              | "Quote"
-              | "Installment Sale") || prev.paymentStatus,
-          taxRate:
-            initialData?.taxRate !== undefined
-              ? initialData.taxRate
-              : prev.taxRate,
-          amountPaid:
-            initialData?.amountPaid !== undefined
-              ? initialData.amountPaid
-              : prev.amountPaid,
-          amountDue:
-            initialData?.amountDue !== undefined
-              ? initialData.amountDue
-              : prev.amountDue,
-          notes: initialData?.notes || prev.notes || "",
-          categoryId: initialData?.categoryId || prev.categoryId || "",
-        }));
+        setFormData((prev) => {
+          // 🛡️ DATA INTEGRITY: Only update if the incoming initialData is different
+          // and respect the existing user input if we are in a 'New Sale' state.
+          const isNewSale = !initialData.id;
+          
+          return {
+            ...prev,
+            customerName: initialData?.customerName || prev.customerName || "",
+            customerAddress: initialData?.customerAddress || prev.customerAddress || "",
+            customerContact: initialData?.customerContact || prev.customerContact || "",
+            customerId: initialData?.customerId || prev.customerId || "",
+            items: initialData?.items && initialData.items.length > 0 ? initialData.items : prev.items,
+            paymentStatus: initialData?.paymentStatus || prev.paymentStatus,
+            taxRate: initialData?.taxRate !== undefined ? initialData.taxRate : prev.taxRate,
+            // Only override amountPaid if it's a real existing sale, not a draft/new sale
+            // unless the current amountPaid is still 0.
+            amountPaid: isNewSale ? (prev.amountPaid || initialData?.amountPaid || 0) : (initialData?.amountPaid ?? prev.amountPaid),
+            amountDue: initialData?.amountDue !== undefined ? initialData.amountDue : prev.amountDue,
+            notes: initialData?.notes || prev.notes || "",
+            categoryId: initialData?.categoryId || prev.categoryId || "",
+          };
+        });
 
         if (initialData?.date) {
           setSelectedDate(new Date(initialData.date));

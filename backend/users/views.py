@@ -40,6 +40,11 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         # 🚀 OPTIMIZATION: One query to get everything (User + Agency + Package)
         user = User.objects.select_related('agency', 'agency__package').get(id=request.user.id)
+        
+        # 🛡️ SELF-HEALING: Sync agency status if it exists
+        if user.agency:
+            user.agency.sync_status()
+            
         serializer = self.get_serializer(user)
         return Response(serializer.data)
 
@@ -69,20 +74,36 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(user).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
-        user = self.get_object()
-        data = request.data
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        # Handle name splitting if provided
         if 'name' in data:
             parts = data['name'].split(' ', 1)
-            user.first_name = parts[0]
-            if len(parts) > 1:
-                user.last_name = parts[1]
-                
-        if 'email' in data: user.email = data['email']
-        if 'pin' in data: user.pin = data['pin']
-        if 'status' in data: user.status = data['status']
-        if 'roleId' in data: user.role_id = data['roleId']
-        user.save()
-        return Response(self.get_serializer(user).data)
+            instance.first_name = parts[0]
+            instance.last_name = parts[1] if len(parts) > 1 else ""
+            # No need to save here, serializer.save() will handle it if we pass data correctly
+            # or we can just let the serializer handle existing first_name/last_name fields
+        
+        # Mapping frontend 'roleId' to backend 'role'
+        if 'roleId' in data:
+            data['role'] = data.pop('roleId')
+        
+        # Mapping frontend 'branchId' to backend 'branch'
+        if 'branchId' in data:
+            data['branch'] = data.pop('branchId')
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
     def request_deletion(self, request):

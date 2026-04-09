@@ -24,8 +24,12 @@ export async function getBusinessLocationsAction(userId: string, session?: any) 
       updated_at: b.updated_at,
       switch_password_hash: b.access_password,
     }));
-  } catch (error) {
-    console.error("Error fetching business locations:", error);
+  } catch (error: any) {
+    if (error.message?.includes("Session stale")) {
+      console.warn(`[BusinessAction] Request blocked: Session is orphaned (Redirection expected).`);
+    } else {
+      console.error("Error fetching business locations:", error.message || error);
+    }
     return [];
   }
 }

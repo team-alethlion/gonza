@@ -78,6 +78,8 @@ class SaleCategoryViewSet(viewsets.ModelViewSet):
 
 from .utils import generate_receipt_number, get_next_receipt_number
 
+from .logic.financials import calculate_sale_financials, resolve_payment_logic, to_decimal
+
 class SaleViewSet(viewsets.ModelViewSet):
     queryset = Sale.objects.all().prefetch_related('items', 'installments')
     serializer_class = SaleSerializer
@@ -92,42 +94,25 @@ class SaleViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-created_at')
 
-    def calculate_financials(self, items, tax_rate):
-        subtotal = Decimal('0')
-        total_cost = Decimal('0')
-        total_discount = Decimal('0')
+    @action(detail=False, methods=['post'])
+    def validate_totals(self, request):
+        """
+        🚀 API ENDPOINT: Frontend can call this to verify totals before submission.
+        """
+        data = request.data
+        items = data.get('items', [])
+        tax_rate = data.get('taxRate', 0)
+        shipping = data.get('shippingCost', 0)
+        status = data.get('paymentStatus', 'Paid')
+        paid_input = data.get('amountPaid', 0)
 
-        for item in items:
-            qty = to_decimal(item.get('quantity', 0))
-            price = to_decimal(item.get('price', 0))
-            cost = to_decimal(item.get('cost', 0))
-            item_sub = price * qty
-            
-            discount_type = item.get('discountType')
-            if discount_type == 'amount':
-                discount_amt = to_decimal(item.get('discountAmount', 0))
-            else:
-                perc = to_decimal(item.get('discountPercentage', 0))
-                discount_amt = (item_sub * perc) / Decimal('100')
-                
-            subtotal += (item_sub - discount_amt)
-            total_discount += discount_amt
-            total_cost += cost * qty
+        fin = calculate_sale_financials(items, tax_rate, shipping)
+        pay = resolve_payment_logic(status, fin['total_amount'], paid_input)
 
-        tax_amt = subtotal * (to_decimal(tax_rate) / Decimal('100'))
-        total = subtotal + tax_amt
-        # Corrected Profit Calculation: (Net Revenue - Total Cost)
-        # Tax is a liability, not part of business profit.
-        profit = subtotal - total_cost
-
-        return {
-            'subtotal': subtotal,
-            'total': total,
-            'totalCost': total_cost,
-            'profit': profit,
-            'discount': total_discount,
-            'taxAmount': tax_amt
-        }
+        return Response({
+            **fin,
+            **pay
+        })
 
     def _process_inventory(self, items, branch_id, user_id, receipt_number, date_obj):
         print(f"DEBUG: Processing inventory for Sale #{receipt_number}. Items count: {len(items)}")
@@ -199,8 +184,14 @@ class SaleViewSet(viewsets.ModelViewSet):
         
         tax_rate = to_decimal(data.get('taxRate', 0))
         branch_id = data.get('branchId')
+        shipping_cost = to_decimal(data.get('shippingCost', 0))
         
-        financials = self.calculate_financials(raw_items, tax_rate)
+        # 🚀 HEAVY LIFTING: Use centralized logic
+        fin = calculate_sale_financials(raw_items, tax_rate, shipping_cost)
+        pay = resolve_payment_logic(status_val, fin['total_amount'], data.get('amountPaid', 0))
+        
+        # 🛡️ STATUS SYNC: Use the status resolved by logic (handles auto-transitions)
+        final_status = pay['status']
         
         import uuid
         receipt_number = data.get('receiptNumber')
@@ -229,20 +220,20 @@ class SaleViewSet(viewsets.ModelViewSet):
             customer_address=data.get('customerAddress'),
             customer_id=customer_id,
             category_id=data.get('categoryId'),
-            status=status_val,
-            amount_paid=to_decimal(data.get('amountPaid', 0)),
-            balance_due=to_decimal(data.get('amountDue', 0)),
+            status=final_status,
+            amount_paid=pay['amount_paid'],
+            balance_due=pay['balance_due'],
             notes=data.get('notes'),
-            shipping_cost=to_decimal(data.get('shippingCost', 0)),
+            shipping_cost=fin['shipping_cost'],
             discount_reason=data.get('discountReason'),
             payment_reference=data.get('paymentReference'),
             cash_transaction_id=data.get('cashTransactionId'),
-            tax_amount=financials['taxAmount'],
-            subtotal=financials['subtotal'],
-            discount_amount=financials['discount'],
-            total_amount=financials['total'] + to_decimal(data.get('shippingCost', 0)),
-            total_cost=financials['totalCost'],
-            profit=financials['profit'],
+            tax_amount=fin['tax_amount'],
+            subtotal=fin['subtotal'],
+            discount_amount=fin['discount_amount'],
+            total_amount=fin['total_amount'],
+            total_cost=fin['total_cost'],
+            profit=fin['profit'],
         )
 
         # ⚡️ FINANCIAL INTEGRATION: Create Cash Transaction if linked and Paid
@@ -359,10 +350,16 @@ class SaleViewSet(viewsets.ModelViewSet):
         if new_status == 'Installment Sale': new_status = 'INSTALLMENT'
         
         old_status = sale.status
+        shipping_cost = to_decimal(data.get('shippingCost', sale.shipping_cost))
         
-        financials = self.calculate_financials(items, tax_rate)
+        # 🚀 HEAVY LIFTING: Use centralized logic
+        fin = calculate_sale_financials(items, tax_rate, shipping_cost)
+        pay = resolve_payment_logic(new_status, fin['total_amount'], data.get('amountPaid', sale.amount_paid))
         
-        if old_status != 'QUOTE' or new_status != 'QUOTE':
+        # 🛡️ STATUS SYNC: Use resolved status
+        final_status = pay['status']
+        
+        if old_status != 'QUOTE' or final_status != 'QUOTE':
             old_items = list(sale.items.all())
             
             if old_status != 'QUOTE':
@@ -376,7 +373,7 @@ class SaleViewSet(viewsets.ModelViewSet):
                         except Product.DoesNotExist:
                             pass
             
-            if new_status != 'QUOTE':
+            if final_status != 'QUOTE':
                 self._process_inventory(items, branch_id, user_id, sale.receipt_number, timezone.now())
         
         sale.items.all().delete()
@@ -411,25 +408,25 @@ class SaleViewSet(viewsets.ModelViewSet):
                 cost_price=to_decimal(item.get('cost', 0))
             )
 
-        sale.status = new_status
-        sale.amount_paid = to_decimal(data.get('amountPaid', sale.amount_paid))
-        sale.balance_due = to_decimal(data.get('amountDue', sale.balance_due))
+        sale.status = final_status
+        sale.amount_paid = pay['amount_paid']
+        sale.balance_due = pay['balance_due']
         if 'customerContact' in data: sale.customer_phone = data['customerContact']
         if 'customerAddress' in data: sale.customer_address = data['customerAddress']
         if 'customerName' in data: sale.customer_name = data['customerName']
         if 'customerId' in data: sale.customer_id = data['customerId']
         if 'categoryId' in data: sale.category_id = data['categoryId']
-        if 'shippingCost' in data: sale.shipping_cost = to_decimal(data['shippingCost'])
+        if 'shippingCost' in data: sale.shipping_cost = fin['shipping_cost']
         if 'discountReason' in data: sale.discount_reason = data['discountReason']
         if 'paymentReference' in data: sale.payment_reference = data['paymentReference']
         if 'cashTransactionId' in data: sale.cash_transaction_id = data['cashTransactionId']
         
-        sale.subtotal = financials['subtotal']
-        sale.total_amount = financials['total'] + sale.shipping_cost
-        sale.discount_amount = financials['discount']
-        sale.tax_amount = financials['taxAmount']
-        sale.total_cost = financials['totalCost']
-        sale.profit = financials['profit']
+        sale.subtotal = fin['subtotal']
+        sale.total_amount = fin['total_amount']
+        sale.discount_amount = fin['discount_amount']
+        sale.tax_amount = fin['tax_amount']
+        sale.total_cost = fin['total_cost']
+        sale.profit = fin['profit']
 
         # ⚡️ FINANCIAL INTEGRATION: Manage Cash Transaction
         link_to_cash = data.get('linkToCash', False)
