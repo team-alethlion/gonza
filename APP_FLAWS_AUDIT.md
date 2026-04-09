@@ -1,38 +1,30 @@
-1. The "Category Storm" (Critical Redundancy)
-   In your backend logs between 07:48:19 and 07:48:21, the endpoint
-   api/sales/categories/ was hit 4 times in 2 seconds.
 
-   - The Cause: It appears that multiple independent components (the Sales
-     Table, the Filter Dropdown, and likely a "New Sale" or "Edit" dialog) are
-     all calling a useSaleCategories hook simultaneously.
-   - The Impact: Every time a user opens the sales list, your server does 4x
-     more work than necessary to fetch a list that rarely changes.
 
-2. The "History Double-Fetch"
-   The api/core/activity-history/ endpoint was hit 2 times (07:48:20 and
-   07:48:22).
+## Recent Findings: 
+## Recent Findings: 
 
-- The Cause: This is likely used to track "Deleted Sales" or audit logs.
-  Having two identical requests indicates that two different parts of the UI
-  are asking for the same audit trail independently.
+### 5. Installment Sale Component Calculations & State Disconnect
+Your logic was perfectly correct: the UI components are calculating financial values on-the-fly during rendering instead of relying on the drafted `formData` state, which leads to diverging outcomes.
 
-3. Missing SSR Optimization
-   I noticed that GET /api/sales/sales/ (the actual list of sales) is firing
-   after the page loads (at 07:48:16).
+**A. Form State vs. Rendered State (The Disconnect)**
+When a user inputs `980,000`, `useSaleFormLogic.ts` successfully stores `amountPaid = 980,000` and `amountDue = 220,000` in the `formData`. However, **neither the Payment Information UI nor the Receipt Preview actually use the `amountDue` key for Installment Sales!**
 
-- The Observation: Unlike the Dashboard, the Sales Page doesn't seem to be
-  "Pre-filling" the data during Server-Side Rendering (SSR). This is why the
-  user might see a loading spinner for a moment before the data appears.
+**B. Payment Information Section (`InstallmentPaymentInput.tsx`)**
+Instead of displaying the `amountDue` property it receives via props, it calculates it dynamically for the screen using its own formula:
+`Math.max(0, remainingAmount - displayAmountPaid)`
+(Where `remainingAmount = grandTotal - totalPaidFromHistory`).
+Since it subtracts both `totalPaidFromHistory` (0) and `displayAmountPaid` (980,000) from `grandTotal` (1,200,000), it results in exactly `220,000`. This is why the UI looks perfectly correct on the screen.
 
-4. Investigation Verdict: The "Level Up" opportunity
-   The Sales page is currently using the "Independent Component" architecture
-   that we just fixed on the Dashboard. Each widget is "waking up" and firing its
-   own API calls.
+**C. Receipt Preview Section (`PrintableReceipt.tsx` & `ThermalReceipt.tsx`)**
+Like the Payment section, the Receipt also ignores the `sale.amountDue` key from the draft. It performs its own rogue calculation specifically for Installment Sales:
+`const displayAmountDue = Math.max(0, totalAmount - totalPaidFromHistory)`
+Unlike the Payment form, this formula forgets to subtract the "current payment" (`sale.amountPaid`). For a new draft, there is no payment history (0), so it incorrectly displays `Total - 0` (1,200,000) as the Amount Due.
 
-Recommended Strategy:
+**D. How Other Payment Statuses Behave (Paid, Not Paid, Quote)**
+The bug *only* happens for Installment Sales because it is the only status with rogue on-the-fly calculations.
+- **Paid:** Both the Payment form and Receipt safely rely on the `formData.amountDue` key (which the logic hook safely sets to `0`).
+- **NOT PAID:** Both safely rely on the `formData.amountDue` key (which safely evaluates to the full `grandTotal`).
+- **Quote:** Both safely rely on the `formData.amountDue` key (safely set to `0`).
 
-1.  Consolidate Categories: We should use React.cache or a "Hydration Guard"
-    on the Sale Categories fetch so that the 4 calls become 1.
-2.  SSR for Sales: We should "Level Up" the initial sales fetch to the
-    page.tsx so the table is populated instantly.
-3.  Harden Activity History: Add a hydration guard to the audit log fetch.
+**Investigation Verdict & Strategy:**
+The miscommunication is caused by child components rewriting financial rules. The solution is removing these redundant display calculations from both `InstallmentPaymentInput` and the Receipt components. They should behave strictly as "dumb components" layout engines that render the `amountPaid` and `amountDue` keys provided directly by the `useSaleFormLogic` hook. All actual number crunching should be centralized in `resolveFinancials`.

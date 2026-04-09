@@ -100,15 +100,13 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   );
 
   const displayAmountPaid =
-    sale.paymentStatus === "Installment Sale" ||
-    (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
+    sale.paymentStatus === "Installment Sale"
+      ? totalPaidFromHistory + (sale.amountPaid || 0)
+      : (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
       : sale.amountPaid || totalAmount;
 
-  const displayAmountDue =
-    sale.paymentStatus === "Installment Sale"
-      ? Math.max(0, totalAmount - totalPaidFromHistory)
-      : sale.amountDue || 0;
+  const displayAmountDue = sale.amountDue || 0;
 
   const paymentMethods = settings.paymentInfo
     ? parsePaymentInfo(settings.paymentInfo)

@@ -81,8 +81,8 @@ export const useFormHandlers = ({
     });
   }, [setFormData, setLinkToCash]);
 
-  const handleAmountPaidChange = useCallback((amount: number, grandTotal: number) => {
-    const amountDue = Math.max(0, grandTotal - amount);
+  const handleAmountPaidChange = useCallback((amount: number, grandTotal: number, totalPaidFromHistory: number = 0) => {
+    const amountDue = Math.max(0, grandTotal - (totalPaidFromHistory + amount));
     setFormData(prev => {
       // 🚀 INTELLIGENT AUTO-SWITCH:
       // If user types a payment while in 'NOT PAID' mode, switch them to 'Installment Sale'

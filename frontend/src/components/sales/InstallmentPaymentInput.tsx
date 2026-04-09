@@ -190,7 +190,7 @@ const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
             </div>
             <div className="flex justify-between sm:block">
               <span className="text-sm text-muted-foreground">Amount Due:</span>
-              <span className="text-sm font-semibold text-red-600 sm:block">{currency} {formatNumber(Math.max(0, remainingAmount - displayAmountPaid))}</span>
+              <span className="text-sm font-semibold text-red-600 sm:block">{currency} {formatNumber(Math.max(0, amountDue))}</span>
             </div>
           </div>
 

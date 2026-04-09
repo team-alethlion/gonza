@@ -110,9 +110,23 @@ export const useSaleFormLogic = ({
     taxRate: formData.taxRate || 0,
   });
 
+  // Payment operations
+  const {
+    payments,
+    pendingChanges,
+    hasChanges,
+    createInstallmentPayment,
+    updateInstallmentPayment,
+    deleteInstallmentPayment,
+    addPaymentChange,
+    clearChanges,
+    getModifiedPayments,
+    processPendingPaymentChanges,
+  } = usePaymentOperations({ initialDataId: initialData?.id });
+
   // 🚀 DATA INTEGRITY: Pure helper to resolve financials based on current state
   // This can be used by both state sync effects AND immediate previews to avoid race conditions.
-  const resolveFinancials = useCallback((items: any[], taxRate: number, status: string, paidInput?: number) => {
+  const resolveFinancials = useCallback((items: any[], taxRate: number, status: string, paidInput?: number, totalHistoryPaid: number = 0) => {
     const subtotal = calculateTotalAmount(items);
     const taxAmount = calculateTaxAmount(subtotal);
     const total = subtotal + taxAmount;
@@ -136,8 +150,8 @@ export const useSaleFormLogic = ({
       resolvedPaid = 0;
       resolvedDue = total;
     } else if (isInstallment) {
-      resolvedPaid = Math.min(paidInput ?? 0, total);
-      resolvedDue = Math.max(0, total - resolvedPaid);
+      resolvedPaid = Math.min(paidInput ?? 0, Math.max(0, total - totalHistoryPaid));
+      resolvedDue = Math.max(0, total - (totalHistoryPaid + resolvedPaid));
     }
 
     return { total, subtotal, taxAmount, amountPaid: resolvedPaid, amountDue: resolvedDue };
@@ -154,12 +168,15 @@ export const useSaleFormLogic = ({
   useEffect(() => {
     // We use the functional updater to avoid having formData in the dependency array
     setFormData(prev => {
+      const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      
       // Recalculate using the resolver with CURRENT values from state
       const { amountPaid, amountDue } = resolveFinancials(
         prev.items, 
         prev.taxRate || 0, 
         prev.paymentStatus, 
-        prev.amountPaid
+        prev.amountPaid,
+        totalHistoryPaid
       );
 
       // 🛡️ INTELLIGENT AUTO-SWITCH: 
@@ -182,21 +199,7 @@ export const useSaleFormLogic = ({
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grandTotal, formData.paymentStatus, resolveFinancials]); // Removed amountPaid from deps, it's accessed via updater
-
-  // Payment operations
-  const {
-    payments,
-    pendingChanges,
-    hasChanges,
-    createInstallmentPayment,
-    updateInstallmentPayment,
-    deleteInstallmentPayment,
-    addPaymentChange,
-    clearChanges,
-    getModifiedPayments,
-    processPendingPaymentChanges,
-  } = usePaymentOperations({ initialDataId: initialData?.id });
+  }, [grandTotal, formData.paymentStatus, resolveFinancials, payments, getModifiedPayments]); // Removed amountPaid from deps, it's accessed via updater
 
   // Enhanced payment date change handler
   const handlePaymentDateChangeEnhanced = useCallback(

@@ -162,14 +162,11 @@ export async function generateThermalReceipt(
     : 0;
 
   const amountPaid =
-    sale.paymentStatus === "Installment Sale" && totalPaidFromHistory > 0
-      ? totalPaidFromHistory
+    sale.paymentStatus === "Installment Sale"
+      ? totalPaidFromHistory + (Number(sale.amountPaid) || 0)
       : Number(sale.amountPaid) || 0;
 
-  const amountDue =
-    sale.paymentStatus === "Installment Sale"
-      ? Math.max(0, totalAmount - totalPaidFromHistory)
-      : Math.max(0, totalAmount - amountPaid);
+  const amountDue = Number(sale.amountDue) || 0;
 
   encoder.newline();
 

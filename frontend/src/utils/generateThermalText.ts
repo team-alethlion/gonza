@@ -150,13 +150,11 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
     ? sale.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
     : 0;
 
-  const amountPaid = (sale.paymentStatus === 'Installment Sale' && totalPaidFromHistory > 0)
-    ? totalPaidFromHistory
+  const amountPaid = sale.paymentStatus === 'Installment Sale'
+    ? totalPaidFromHistory + (Number(sale.amountPaid) || 0)
     : (Number(sale.amountPaid) || 0);
 
-  const amountDue = sale.paymentStatus === 'Installment Sale'
-    ? Math.max(0, totalAmount - totalPaidFromHistory)
-    : Math.max(0, totalAmount - amountPaid);
+  const amountDue = Number(sale.amountDue) || 0;
 
   addLine("Subtotal:");
   addLine(`${displayCurrency} ${formatNumber(subtotalBeforeDiscount)}`);

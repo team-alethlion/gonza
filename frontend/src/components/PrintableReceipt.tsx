@@ -155,14 +155,12 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     0,
   );
   const displayAmountPaid =
-    sale.paymentStatus === "Installment Sale" ||
-    (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
+    sale.paymentStatus === "Installment Sale"
+      ? totalPaidFromHistory + toSafeNum(sale.amountPaid)
+      : (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
       : toSafeNum(sale.amountPaid || totalAmount);
-  const displayAmountDue =
-    sale.paymentStatus === "Installment Sale"
-      ? Math.max(0, totalAmount - totalPaidFromHistory)
-      : toSafeNum(sale.amountDue);
+  const displayAmountDue = toSafeNum(sale.amountDue);
 
   // Get the total amount in words
   const totalAmountInWords = numberToWords(totalAmount);

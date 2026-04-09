@@ -226,11 +226,13 @@ const SalesForm: React.FC<SalesFormProps> = ({
     // ⚡️ PERSISTENCE: Save draft before preview to ensure latest changes are in storage
     saveDraft(formData, selectedDate, true);
 
+    const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
     const { total, subtotal, taxAmount: taxAmt, amountPaid, amountDue } = resolveFinancials(
       formData.items, 
       formData.taxRate || 0, 
       formData.paymentStatus, 
-      formData.amountPaid
+      formData.amountPaid,
+      totalHistoryPaid
     );
 
     const previewSale: Sale = {
@@ -376,7 +378,10 @@ const SalesForm: React.FC<SalesFormProps> = ({
         amountDue={formData.amountDue || 0}
         grandTotal={grandTotal}
         currency={currency}
-        onAmountPaidChange={(amount) => handleAmountPaidChange(amount, grandTotal)}
+        onAmountPaidChange={(amount) => {
+          const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          handleAmountPaidChange(amount, grandTotal, totalHistoryPaid);
+        }}
         onPaymentDateChange={handlePaymentDateChange}
         paymentDate={paymentDate}
         saleId={initialData?.id}
