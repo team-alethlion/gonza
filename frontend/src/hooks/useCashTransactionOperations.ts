@@ -145,15 +145,19 @@ export const useCashTransactionOperations = () => {
         return await createInstallmentPayment({
           saleId,
           amount,
+          notes: saleDescription,
+          locationId,
+          paymentDate: new Date(),
         });
       }
 
       return await createInstallmentPayment({
         saleId,
         amount,
+        notes: saleDescription,
         accountId: selectedCashAccountId,
         locationId,
-        date: new Date(),
+        paymentDate: new Date(),
       });
     },
     [],

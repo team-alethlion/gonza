@@ -86,8 +86,10 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       case "Quote":
         return "QUOTATION";
       case "Paid":
+      case "COMPLETED":
         return "SALES RECEIPT";
       case "Installment Sale":
+      case "INSTALLMENT":
         return "INVOICE";
       case "NOT PAID":
       default:
@@ -100,8 +102,10 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       case "Quote":
         return "Quote #:";
       case "Paid":
+      case "COMPLETED":
         return "Receipt #:";
       case "Installment Sale":
+      case "INSTALLMENT":
         return "Installment #:";
       case "NOT PAID":
       default:
@@ -120,7 +124,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   };
 
   // Calculate subtotal with discounts - using server values if available
-  const subtotal = sale.subtotal !== undefined ? toSafeNum(sale.subtotal) : sale.items.reduce((total, item) => {
+  const subtotal = sale.subtotal !== undefined ? toSafeNum(sale.subtotal) : sale.items.reduce((total: number, item: any) => {
     const itemPrice = toSafeNum(item.price);
     const itemQty = toSafeNum(item.quantity);
     const itemSubtotal = itemPrice * itemQty;
@@ -133,7 +137,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   }, 0);
 
   // Total discount from server or items
-  const totalDiscount = sale.discount !== undefined ? toSafeNum(sale.discount) : sale.items.reduce((total, item) => {
+  const totalDiscount = sale.discount !== undefined ? toSafeNum(sale.discount) : sale.items.reduce((total: number, item: any) => {
     const itemSubtotal = toSafeNum(item.quantity) * toSafeNum(item.price);
     const discountAmount =
       item.discountType === "amount"
@@ -151,13 +155,13 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
   // For installment sales, use payment history total; for others use the provided amounts
   const totalPaidFromHistory = payments.reduce(
-    (sum, payment) => sum + toSafeNum(payment.amount),
+    (sum: number, payment: { amount: any; }) => sum + toSafeNum(payment.amount),
     0,
   );
   const displayAmountPaid =
-    sale.paymentStatus === "Installment Sale"
+    (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT")
       ? totalPaidFromHistory + toSafeNum(sale.amountPaid)
-      : (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
+      : ((sale.paymentStatus === "Paid" || sale.paymentStatus === "COMPLETED") && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
       : toSafeNum(sale.amountPaid || totalAmount);
   const displayAmountDue = toSafeNum(sale.amountDue);
@@ -169,7 +173,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   const showTaxRow = taxRate > 0;
 
   // Check if this is an installment sale
-  const isInstallmentSale = sale.paymentStatus === "Installment Sale";
+  const isInstallmentSale = sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT";
 
   // Parse payment info into structured format
   const paymentMethods = activeSettings.paymentInfo
@@ -225,7 +229,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       customerName: sale.customerName,
       customerAddress: sale.customerAddress,
       customerContact: sale.customerContact,
-      items: sale.items.map((item) => {
+      items: sale.items.map((item: any) => {
         const itemPrice = toSafeNum(item.price);
         const itemQty = toSafeNum(item.quantity);
         const itemSubtotal = itemPrice * itemQty;
@@ -674,7 +678,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                 } uppercase tracking-wider text-gray-900`}>
                 {sale.paymentStatus === "Quote"
                   ? "QUOTATION"
-                  : sale.paymentStatus === "Paid"
+                  : (sale.paymentStatus === "Paid" || sale.paymentStatus === "COMPLETED")
                   ? "SALES RECEIPT"
                   : "INVOICE"}
               </h1>
@@ -725,7 +729,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {sale.items.map((item, index) => {
+                    {sale.items.map((item: any, index: any) => {
                       const itemPrice = toSafeNum(item.price);
                       const itemQty = toSafeNum(item.quantity);
                       const itemSubtotal = itemPrice * itemQty;
@@ -857,7 +861,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                 <div className="border-b-2 border-black mb-2 pb-1 font-bold">
                   Items
                 </div>
-                {sale.items.map((item, index) => {
+                {sale.items.map((item: any, index: any) => {
                   const itemPrice = toSafeNum(item.price);
                   const itemQty = toSafeNum(item.quantity);
                   const itemSubtotal = itemPrice * itemQty;

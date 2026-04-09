@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { SaleFormData, FormErrors } from '@/types';
+import { useCallback } from 'react';
 
 interface UseFormHandlersProps {
   formData: SaleFormData;
@@ -25,13 +27,13 @@ export const useFormHandlers = ({
       setTaxRateInput(value);
       const normalizedValue = value.replace(/,/g, '');
       const numValue = normalizedValue === '' ? 0 : parseFloat(normalizedValue);
-      setFormData(prev => ({ ...prev, taxRate: isNaN(numValue) ? 0 : numValue }));
+      setFormData((prev: any) => ({ ...prev, taxRate: isNaN(numValue) ? 0 : numValue }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev: any) => ({ ...prev, [name]: value }));
     }
 
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev: any) => ({ ...prev, [name]: undefined }));
     }
   }, [errors, setFormData, setErrors, setTaxRateInput]);
 
@@ -42,9 +44,9 @@ export const useFormHandlers = ({
       setLinkToCash(false);
     }
 
-    setFormData(prev => {
+    setFormData((prev) => {
       // Calculate total for the current items to set correct defaults
-      const subtotal = prev.items.reduce((sum, item) => {
+      const subtotal = prev.items.reduce((sum: number, item: any) => {
         const itemSubtotal = item.price * item.quantity;
         const discountAmount = item.discountType === 'amount' 
           ? (item.discountAmount || 0)
@@ -83,7 +85,7 @@ export const useFormHandlers = ({
 
   const handleAmountPaidChange = useCallback((amount: number, grandTotal: number, totalPaidFromHistory: number = 0) => {
     const amountDue = Math.max(0, grandTotal - (totalPaidFromHistory + amount));
-    setFormData(prev => {
+    setFormData((prev) => {
       // 🚀 INTELLIGENT AUTO-SWITCH:
       // If user types a payment while in 'NOT PAID' mode, switch them to 'Installment Sale'
       // so their payment isn't wiped by the 'NOT PAID' logic.

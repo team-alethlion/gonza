@@ -167,7 +167,7 @@ export const useSaleFormLogic = ({
   // the financial fields in formData are recalculated based on the payment status.
   useEffect(() => {
     // We use the functional updater to avoid having formData in the dependency array
-    setFormData(prev => {
+    setFormData((prev: { items: any; taxRate: any; paymentStatus: string; amountPaid: any; amountDue: any; }) => {
       const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       
       // Recalculate using the resolver with CURRENT values from state
@@ -319,7 +319,7 @@ export const useSaleFormLogic = ({
       if (formRecentlyCleared) {
         setFormRecentlyCleared(false);
       }
-      setFormData((prev) => ({ ...prev, categoryId }));
+      setFormData((prev: any) => ({ ...prev, categoryId }));
     },
     [formRecentlyCleared, setFormRecentlyCleared, setFormData],
   );

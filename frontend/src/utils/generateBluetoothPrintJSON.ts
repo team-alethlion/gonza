@@ -61,7 +61,9 @@ export function generateBluetoothPrintJSON(sale: Sale, settings: BusinessSetting
     const titleMap: Record<string, string> = {
         "Quote": "QUOTATION",
         "Paid": "SALES RECEIPT",
+        "COMPLETED": "SALES RECEIPT",
         "Installment Sale": "INSTALLMENT SALE",
+        "INSTALLMENT": "INSTALLMENT SALE",
         "NOT PAID": "INVOICE",
     };
     const docTitle = titleMap[sale.paymentStatus] || "INVOICE";
@@ -134,7 +136,7 @@ export function generateBluetoothPrintJSON(sale: Sale, settings: BusinessSetting
     }
     addText(`TOTAL: ${displayCurrency} ${formatNumber(totalAmount)}`, 1, 2, 1);
 
-    if (sale.paymentStatus === "Installment Sale") {
+    if (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") {
         addText(`Paid: ${displayCurrency} ${formatNumber(totalPaid)}`, 0, 2);
         addText(`Due: ${displayCurrency} ${formatNumber(totalDue)}`, 0, 2);
     }

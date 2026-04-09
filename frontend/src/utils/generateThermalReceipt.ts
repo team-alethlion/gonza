@@ -52,7 +52,9 @@ export async function generateThermalReceipt(
   const titleMap: Record<string, string> = {
     Quote: "QUOTATION",
     Paid: "SALES RECEIPT",
+    COMPLETED: "SALES RECEIPT",
     "Installment Sale": "INSTALLMENT SALE",
+    INSTALLMENT: "INSTALLMENT SALE",
     "NOT PAID": "INVOICE",
   };
   const docTitle = titleMap[sale.paymentStatus] || "INVOICE";
@@ -162,7 +164,7 @@ export async function generateThermalReceipt(
     : 0;
 
   const amountPaid =
-    sale.paymentStatus === "Installment Sale"
+    (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT")
       ? totalPaidFromHistory + (Number(sale.amountPaid) || 0)
       : Number(sale.amountPaid) || 0;
 
@@ -201,7 +203,7 @@ export async function generateThermalReceipt(
     ])
     .bold(false);
 
-  if (sale.paymentStatus === "Installment Sale") {
+  if (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") {
     encoder.table(totalsColumns, [
       ["Amount Paid:", `${displayCurrency} ${formatNumber(amountPaid)}`],
       ["Amount Due:", `${displayCurrency} ${formatNumber(amountDue)}`],

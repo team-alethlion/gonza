@@ -224,20 +224,11 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
             props.selectedDate,
           );
       } else {
-        if (
-          props.formData.paymentStatus === "Installment Sale" &&
-          props.formData.amountPaid
-        ) {
-          await props.createInstallmentPaymentWithCash(
-            sale.id,
-            props.formData.amountPaid,
-            sale.items.map((i) => i.description).join(", "),
-            props.linkToCash,
-            props.selectedCashAccountId,
-            props.currentBusiness?.id || "",
-            props.createInstallmentPayment,
-          );
-        }
+        // ⚡️ ARCHITECTURAL UPDATE: 
+        // We no longer manually create the initial Installment Payment over the network here!
+        // The Django Backend now intercepts the 'amountPaid' property sequentially during 'upsertSaleAction'
+        // and safely resolves the Installment Payment globally inside an @transaction.atomic block.
+        // This guarantees database integrity by entirely eliminating partial-commit orphaned data risks.
       }
 
       if (props.onSaleComplete) {

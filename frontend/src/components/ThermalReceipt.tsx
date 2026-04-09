@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
@@ -44,8 +45,10 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
       case "Quote":
         return "QUOTATION";
       case "Paid":
+      case "COMPLETED":
         return "SALES RECEIPT";
       case "Installment Sale":
+      case "INSTALLMENT":
         return "INSTALLMENT SALE";
       case "NOT PAID":
       default:
@@ -58,8 +61,10 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
       case "Quote":
         return "Quote #:";
       case "Paid":
+      case "COMPLETED":
         return "Receipt #:";
       case "Installment Sale":
+      case "INSTALLMENT":
         return "Installment #:";
       default:
         return "Invoice #:";
@@ -69,7 +74,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   const subtotalAfterDiscount =
     sale.subtotal !== undefined
       ? Number(sale.subtotal)
-      : sale.items.reduce((total, item) => {
+      : sale.items.reduce((total: number, item: any) => {
           const itemSubtotal = item.price * item.quantity;
           const discountAmount =
             item.discountType === "amount"
@@ -81,7 +86,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   const totalDiscountAmount =
     sale.discount !== undefined
       ? Number(sale.discount)
-      : sale.items.reduce((total, item) => {
+      : sale.items.reduce((total: any, item: any) => {
           const itemSubtotal = item.price * item.quantity;
           const discountAmount =
             item.discountType === "amount"
@@ -95,14 +100,14 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   const taxAmount = subtotalAfterDiscount * (taxRate / 100);
   const totalAmount = subtotalAfterDiscount + taxAmount;
   const totalPaidFromHistory = (payments || []).reduce(
-    (sum, p) => sum + (p.amount || 0),
+    (sum: any, p: { amount: any; }) => sum + (p.amount || 0),
     0,
   );
 
   const displayAmountPaid =
-    sale.paymentStatus === "Installment Sale"
+    (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT")
       ? totalPaidFromHistory + (sale.amountPaid || 0)
-      : (sale.paymentStatus === "Paid" && totalPaidFromHistory > 0)
+      : ((sale.paymentStatus === "Paid" || sale.paymentStatus === "COMPLETED") && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
       : sale.amountPaid || totalAmount;
 
@@ -240,7 +245,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
             <span className="w-[25%] text-right">Amt</span>
           </div>
 
-          {sale.items.map((item, index) => {
+          {sale.items.map((item: any, index: any) => {
             const itemSubtotal = item.quantity * item.price;
             const discountAmount =
               item.discountType === "amount"
@@ -312,7 +317,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
             </span>
           </div>
 
-          {sale.paymentStatus === "Installment Sale" && (
+          {(sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") && (
             <div className="mt-2 pt-1 border-t border-gray-200 border-dotted">
               <div className="flex justify-between font-bold">
                 <span>PAID:</span>

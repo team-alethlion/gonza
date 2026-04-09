@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { format } from "date-fns";
 import { formatNumber } from "@/lib/utils";
 import { numberToWords } from "@/utils/numberToWords";
@@ -69,7 +70,9 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
   const titleMap: Record<string, string> = {
     "Quote": "QUOTATION",
     "Paid": "SALES RECEIPT",
+    "COMPLETED": "SALES RECEIPT",
     "Installment Sale": "INSTALLMENT SALE",
+    "INSTALLMENT": "INSTALLMENT SALE",
     "NOT PAID": "INVOICE",
   };
   const docTitle = titleMap[sale.paymentStatus] || "INVOICE";
@@ -150,7 +153,7 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
     ? sale.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
     : 0;
 
-  const amountPaid = sale.paymentStatus === 'Installment Sale'
+  const amountPaid = (sale.paymentStatus === 'Installment Sale' || sale.paymentStatus === 'INSTALLMENT')
     ? totalPaidFromHistory + (Number(sale.amountPaid) || 0)
     : (Number(sale.amountPaid) || 0);
 
@@ -172,7 +175,7 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
   addLine("TOTAL:");
   addLine(`${displayCurrency} ${formatNumber(totalAmount)}`);
 
-  if (sale.paymentStatus === "Installment Sale") {
+  if (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") {
     addLine("Amount Paid:");
     addLine(`${displayCurrency} ${formatNumber(amountPaid)}`);
 
