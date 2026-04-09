@@ -188,8 +188,12 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
         date: new Date(result.date),
         taxRate: result.taxRate ? Number(result.taxRate) : 0,
         cashTransactionId: result.cashTransactionId || undefined,
-        amountPaid: Number(result.amountPaid || result.amount_paid || 0),
-        amountDue: Number(result.amountDue || result.balance_due || 0),
+        // ⚡️ FROZEN LAYOUT DATA INJECTION ⚡️
+        // Always prioritize the natively calculated draft variables directly from the UI
+        // overlaying them safely for the receipt view. This prevents the receipt from losing
+        // any temporary calculations (eg installments) while maintaining 100% full database items integrity.
+        amountPaid: Number(props.formData.amountPaid || result.amountPaid || result.amount_paid || 0),
+        amountDue: Number(props.formData.amountDue || result.amountDue || result.balance_due || 0),
         notes: result.notes || "",
         categoryId: result.categoryId || undefined,
         total: Number(result.total || result.total_amount || 0),
