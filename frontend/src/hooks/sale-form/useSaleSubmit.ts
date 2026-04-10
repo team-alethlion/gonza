@@ -170,38 +170,40 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
 
       const sale: Sale = {
         id: result.id,
-        receiptNumber: result.receipt_number || result.receiptNumber,
-        customerName: props.formData.customerName || result.customer_name || result.customerName || "Valued Customer",
-        customerAddress: props.formData.customerAddress || result.customer_address || result.customerAddress || "",
-        customerContact: props.formData.customerContact || result.customer_phone || result.customerContact || "",
-        customerId: props.formData.customerId || result.customer_id || result.customerId || undefined,
-        items: (result.items || props.formData.items || []).map((si: any) => ({
+        receiptNumber: result.receiptNumber,
+        customerName: result.customerName,
+        customerAddress: result.customerAddress || "",
+        customerContact: result.customerContact || "",
+        customerId: result.customerId || undefined,
+        items: (result.items || []).map((si: any) => ({
           ...si,
-          description: si.product_name || si.description || si.productName || "Product",
-          price: Number(si.unit_price || si.price || 0),
+          description: si.description || si.product_name || "Product",
+          price: Number(si.price || si.unit_price || 0),
           quantity: Number(si.quantity || 0),
           total: Number(si.total || 0),
-          cost: Number(si.cost_price || si.cost || 0),
-          discountType: si.discount_type || si.discountType || "percentage",
-          discountPercentage: Number(si.discount_percentage || si.discountPercentage || 0),
+          cost: Number(si.cost || si.cost_price || 0),
+          discountType: si.discount_type || si.discountType,
+          discountPercentage: Number(
+            si.discount_percentage || si.discountPercentage || 0,
+          ),
           discountAmount: Number(si.discount || si.discountAmount || 0),
         })),
-        paymentStatus: result.status || result.paymentStatus || props.formData.paymentStatus,
+        paymentStatus: result.paymentStatus,
         profit: Number(result.profit || 0),
-        date: new Date(result.date || result.created_at || props.selectedDate || Date.now()),
-        taxRate: Number(result.tax_rate || result.taxRate || props.formData.taxRate || 0),
-        cashTransactionId: result.cash_transaction_id || result.cashTransactionId || undefined,
-        amountPaid: Number(props.formData.amountPaid || result.amount_paid || result.amountPaid || 0),
-        amountDue: Number(props.formData.amountDue || result.balance_due || result.amountDue || 0),
-        notes: props.formData.notes || result.notes || "",
-        categoryId: props.formData.categoryId || result.category_id || result.categoryId || undefined,
-        total: Number(result.total_amount || result.total || 0),
-        totalCost: Number(result.total_cost || result.totalCost || 0),
+        date: new Date(result.date),
+        taxRate: result.taxRate ? Number(result.taxRate) : 0,
+        cashTransactionId: result.cashTransactionId || undefined,
+        amountPaid: Number(result.amountPaid || result.amount_paid || 0),
+        amountDue: Number(result.amountDue || result.balance_due || 0),
+        notes: result.notes || "",
+        categoryId: result.categoryId || undefined,
+        total: Number(result.total || result.total_amount || 0),
+        totalCost: Number(result.totalCost || result.total_cost || 0),
         subtotal: Number(result.subtotal || 0),
-        discount: Number(result.discount_amount || result.discount || 0),
-        taxAmount: Number(result.tax_amount || result.taxAmount || 0),
-        createdAt: new Date(result.created_at || result.createdAt || Date.now()),
-        updatedAt: new Date(result.updated_at || result.updatedAt || result.created_at || result.createdAt || Date.now()),
+        discount: Number(result.discount || result.discount_amount || 0),
+        taxAmount: Number(result.taxAmount || result.tax_amount || 0),
+        createdAt: new Date(result.createdAt),
+        updatedAt: new Date(result.updatedAt || result.createdAt),
       };
 
       if (props.initialData) {
@@ -234,9 +236,14 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
         // This guarantees database integrity by entirely eliminating partial-commit orphaned data risks.
       }
 
+      // Load the isolated presentation helper strictly to overlay the transient amounts for the receipt!
+      // This leaves the core backend logic entirely untouched as requested.
+      const { injectFrozenDraftToReceipt } = await import("./frozenDraftHelper");
+      const presentationSale = injectFrozenDraftToReceipt(sale, frozenDraftState);
+
       if (props.onSaleComplete) {
         await props.onSaleComplete(
-          sale,
+          presentationSale,
           props.printAfterSave,
           props.includePaymentInfo,
           props.selectedCustomerCategoryId,
