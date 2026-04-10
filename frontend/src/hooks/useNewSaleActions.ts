@@ -188,8 +188,8 @@ export const useNewSaleActions = (
         }
       });
 
-      // Store the completed sale
-      setCompletedSale(sale);
+      // Store the completed sale mathematically mapped for pure Visuals inside the Receipt Modal
+      setCompletedSale(finalReceiptSale);
 
       // ⚡️ INSTANT UPDATE: Add/update sale in cache immediately (like your campaign example)
       if (editSale) {

@@ -1,7 +1,9 @@
-import { logActivityAction, ActivityLogInput } from '@/app/actions/activity';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { logActivityAction } from '@/app/actions/activity';
 import { useCurrentUser } from './useCurrentUser';
 import { useBusiness } from '@/contexts/BusinessContext';
-import { useProfiles } from '@/contexts/ProfileContext';
+import { ProfileContext } from '@/contexts/ProfileContext';
+import { useContext } from 'react';
 
 export type ActivityType = 'CREATE' | 'UPDATE' | 'DELETE';
 export type ModuleType = 'SALES' | 'INVENTORY' | 'EXPENSES' | 'FINANCE' | 'CUSTOMERS' | 'TASKS';
@@ -20,15 +22,9 @@ export const useActivityLogger = () => {
   const { userId } = useCurrentUser();
   const { currentBusiness } = useBusiness();
 
-  // Safely get current profile, handle case where ProfileProvider isn't available
-  let currentProfile = null;
-  try {
-    const { currentProfile: profile } = useProfiles();
-    currentProfile = profile;
-  } catch {
-    // ProfileProvider not available, continue without profile
-    currentProfile = null;
-  }
+  // Safely get current profile without throwing hooks out of bounds
+  const profileContext = useContext(ProfileContext);
+  const currentProfile = profileContext?.currentProfile || null;
 
   const logActivity = async (data: ActivityLogData) => {
     if (!userId || !currentBusiness?.id) {

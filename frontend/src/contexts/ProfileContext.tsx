@@ -53,7 +53,7 @@ interface ProfileContextType {
   dismissFirstTimeSetup: () => void;
 }
 
-const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
+export const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfiles?: BusinessProfile[] }> = ({ children, initialProfiles = [] }) => {
   const { user, signOut } = useAuth();
