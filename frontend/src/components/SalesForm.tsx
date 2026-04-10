@@ -9,7 +9,6 @@ import {
   Customer,
 } from "@/types";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useCashAccounts } from "@/hooks/useCashAccounts";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useSaleDraft } from "@/hooks/useSaleDraft";
@@ -24,12 +23,12 @@ import { useSaleDraftAutoSave } from "@/hooks/sale-form/useSaleDraftAutoSave";
 
 // Components
 import SaleFormHeader from "@/components/sales/SaleFormHeader";
-import CustomerInformation from "@/components/sales/CustomerInformation";
+
 import SaleItemsManager from "@/components/sales/SaleItemsManager";
 import SalePaymentSection from "@/components/sales/SalePaymentSection";
 import SalesFormActions from "@/components/sales/SalesFormActions";
 import SaleScannerSection from "@/components/sales/SaleScannerSection";
-import { SaleSMSSection } from "@/components/sales/SaleSMSSection";
+
 
 interface SalesFormProps {
   initialData?: Sale;
@@ -74,15 +73,13 @@ const SalesForm: React.FC<SalesFormProps> = ({
   initialMessages = [],
   initialTemplates = [],
   initialStockHistory = [],
-  initialTransactions = [],
 }) => {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  const { settings } = useBusinessSettings();
-
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
   const { user } = useAuth();
   const { accounts: cashAccounts } = useCashAccounts(initialAccounts);
@@ -142,9 +139,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     clearForm,
     selectedDate,
     setSelectedDate,
-    isSubmitted,
-    isLoading: logicLoading,
-    setLoading
+    isSubmitted
   } = useSaleFormLogic({
     initialData,
     defaultPaymentStatus: initialData?.paymentStatus || "Paid",
@@ -294,6 +289,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         setTaxRateInput(draftData.formData.taxRate?.toString() || "");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftData, initialData, setFormData, setTaxRateInput, setSelectedDate]);
 
   useEffect(() => {

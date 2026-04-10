@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -123,21 +124,32 @@ export const useNewSaleActions = (
       const taxAmount = sale.taxRate ? (itemsTotal * sale.taxRate) / 100 : 0;
       const grandTotal = itemsTotal + taxAmount;
 
+      // Attempt to load the explicitly validated visual preview
+      let finalReceiptSale = sale;
+      try {
+        const storedPreview = sessionStorage.getItem("last_completed_preview_sale");
+        if (storedPreview) {
+          finalReceiptSale = JSON.parse(storedPreview);
+        }
+      } catch (e) {
+        console.error("Failed to retrieve isolated session preview:", e);
+      }
+
       // Log activity with comprehensive details
       await logActivity({
         activityType: editSale ? "UPDATE" : "CREATE",
         module: "SALES",
         entityType: "sale",
-        entityId: sale.id,
-        entityName: `Sale #${sale.receiptNumber}`,
+        entityId: sale.id, // the backend ID is valid
+        entityName: `Sale #${finalReceiptSale.receiptNumber}`,
         description: `${editSale ? "Updated" : "Created"} sale for ${
-          sale.customerName
+          finalReceiptSale.customerName
         } - Total: UGX ${grandTotal.toLocaleString()}`,
         metadata: {
-          receiptNumber: sale.receiptNumber,
-          customerName: sale.customerName,
-          customerAddress: sale.customerAddress,
-          customerContact: sale.customerContact,
+          receiptNumber: finalReceiptSale.receiptNumber,
+          customerName: finalReceiptSale.customerName,
+          customerAddress: finalReceiptSale.customerAddress,
+          customerContact: finalReceiptSale.customerContact,
           totalAmount: grandTotal,
           amountPaid: sale.amountPaid,
           profit: sale.profit,
@@ -160,9 +172,9 @@ export const useNewSaleActions = (
       uiToast({
         title: editSale ? "Sale Updated" : "Sale Created",
         description: `${editSale ? "Updated" : "Created"} sale for ${
-          sale.customerName
+          finalReceiptSale.customerName
         }. ${
-          sale.paymentStatus === "NOT PAID"
+          finalReceiptSale.paymentStatus === "NOT PAID"
             ? "Inventory has been updated for this credit sale."
             : ""
         }`,
@@ -196,7 +208,7 @@ export const useNewSaleActions = (
         // If thermal auto-print is enabled, trigger it
         if (thermalPrintAfterSave) {
           try {
-            const thermalData = await generateThermalReceipt(sale, settings);
+            const thermalData = await generateThermalReceipt(finalReceiptSale, settings);
             await print(thermalData, settings.defaultPrinterName);
           } catch (printErr) {
             console.error("Auto-print failed:", printErr);

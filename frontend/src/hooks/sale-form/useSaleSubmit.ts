@@ -7,6 +7,7 @@ import { upsertSaleAction } from "@/app/actions/sales";
 import { queueOfflineSale } from "@/hooks/useOfflineSync";
 import { updateSaleCashTransactionAction } from "@/app/actions/products";
 import { localDb } from "@/lib/dexie";
+import { cachePreviewSaleToSession } from "./previewSessionHelper";
 
 interface UseSaleSubmitProps {
   initialData?: Sale;
@@ -240,6 +241,7 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
       // This leaves the core backend logic entirely untouched as requested.
       const { injectFrozenDraftToReceipt } = await import("./frozenDraftHelper");
       const presentationSale = injectFrozenDraftToReceipt(sale, frozenDraftState);
+      cachePreviewSaleToSession(null, props, result);
 
       if (props.onSaleComplete) {
         await props.onSaleComplete(
