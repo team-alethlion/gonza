@@ -67,6 +67,14 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
 
 
   // ===== Document Title =====
+  const sAny = sale as any;
+  const t_status = sale.paymentStatus || sAny.status || "";
+  const t_receiptNumber = sale.receiptNumber || sAny.receipt_number || "";
+  const t_customerName = sale.customerName || sAny.customer_name || "";
+  const t_customerAddress = sale.customerAddress || sAny.customer_address || "";
+  const t_amountPaid = sale.amountPaid !== undefined ? sale.amountPaid : (sAny.amount_paid || 0);
+  const t_amountDue = sale.amountDue !== undefined ? sale.amountDue : (sAny.balance_due || 0);
+
   const titleMap: Record<string, string> = {
     "Quote": "QUOTATION",
     "Paid": "SALES RECEIPT",
@@ -75,7 +83,7 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
     "INSTALLMENT": "INSTALLMENT SALE",
     "NOT PAID": "INVOICE",
   };
-  const docTitle = titleMap[sale.paymentStatus] || "INVOICE";
+  const docTitle = titleMap[t_status] || "INVOICE";
   text += docTitle + "\n";
   text += line() + "\n";
 
@@ -96,15 +104,15 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
   }
   // currentPadding = "      ";
   // activeContentWidth = 26; // Reduce content width (32 - 6 spaces = 26)
-  addLine(padRight("Receipt #:", 13) + padLeft(sale.receiptNumber || '', 13));
+  addLine(padRight("Receipt #:", 13) + padLeft(t_receiptNumber, 13));
   addLine(padRight("Date:", 13) + padLeft(format(new Date(sale.date || Date.now()), "dd/MM/yy HH:mm"), 13));
-  addLine(padRight("Status:", 13) + padLeft(sale.paymentStatus || '', 13));
+  addLine(padRight("Status:", 13) + padLeft(t_status, 13));
   addLine(line());
 
   // ===== Customer Info =====
-  if (sale.customerName) {
-    addLine(padRight("Cust:", 10) + padLeft(sale.customerName || '', 16));
-    if (sale.customerAddress) addLine(padRight("Addr:", 10) + padLeft(sale.customerAddress, 16));
+  if (t_customerName) {
+    addLine(padRight("Cust:", 10) + padLeft(t_customerName, 16));
+    if (t_customerAddress) addLine(padRight("Addr:", 10) + padLeft(t_customerAddress, 16));
     addLine(line());
   }
 
@@ -123,22 +131,24 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
   let subtotalBeforeDiscount = 0;
   let totalDiscountAmount = 0;
 
-  Array.isArray(sale.items) && sale.items.forEach((item: any) => {
-    const quantity = item.quantity || 0;
-    const price = item.price || 0;
-    const subtotal = quantity * price;
-    const discount = item.discountAmount ?? ((subtotal * (item.discountPercentage || 0)) / 100);
-    const total = subtotal - discount;
+  if (Array.isArray(sale.items)) {
+    sale.items.forEach((item: any) => {
+      const quantity = item.quantity || 0;
+      const price = item.price || 0;
+      const subtotal = quantity * price;
+      const discount = item.discountAmount ?? ((subtotal * (item.discountPercentage || 0)) / 100);
+      const total = subtotal - discount;
 
-    subtotalBeforeDiscount += subtotal;
-    totalDiscountAmount += discount;
+      subtotalBeforeDiscount += subtotal;
+      totalDiscountAmount += discount;
 
-    addLine(padRight(item.description || '', itemW) + itemGap + padLeft(String(quantity), qtyW) + padLeft(formatNumber(total), totW));
-    if (discount > 0) {
-      const discText = item.discountType === "amount" ? "" : `(${item.discountPercentage || 0}%)`;
-      addLine(padRight(`Disc ${discText}`, itemW) + itemGap + padLeft("", qtyW) + padLeft(`-${formatNumber(discount)}`, totW));
-    }
-  });
+      addLine(padRight(item.description || '', itemW) + itemGap + padLeft(String(quantity), qtyW) + padLeft(formatNumber(total), totW));
+      if (discount > 0) {
+        const discText = item.discountType === "amount" ? "" : `(${item.discountPercentage || 0}%)`;
+        addLine(padRight(`Disc ${discText}`, itemW) + itemGap + padLeft("", qtyW) + padLeft(`-${formatNumber(discount)}`, totW));
+      }
+    });
+  }
 
   addLine(line());
 
@@ -153,11 +163,11 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
     ? sale.payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
     : 0;
 
-  const amountPaid = (sale.paymentStatus === 'Installment Sale' || sale.paymentStatus === 'INSTALLMENT')
-    ? totalPaidFromHistory + (Number(sale.amountPaid) || 0)
-    : (Number(sale.amountPaid) || 0);
+  const amountPaid = (t_status === 'Installment Sale' || t_status === 'INSTALLMENT')
+    ? totalPaidFromHistory + (Number(t_amountPaid) || 0)
+    : (Number(t_amountPaid) || 0);
 
-  const amountDue = Number(sale.amountDue) || 0;
+  const amountDue = Number(t_amountDue) || 0;
 
   addLine("Subtotal:");
   addLine(`${displayCurrency} ${formatNumber(subtotalBeforeDiscount)}`);
@@ -175,7 +185,7 @@ export function generateThermalText(sale: any, settings: any, currency?: string)
   addLine("TOTAL:");
   addLine(`${displayCurrency} ${formatNumber(totalAmount)}`);
 
-  if (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") {
+  if (t_status === "Installment Sale" || t_status === "INSTALLMENT") {
     addLine("Amount Paid:");
     addLine(`${displayCurrency} ${formatNumber(amountPaid)}`);
 

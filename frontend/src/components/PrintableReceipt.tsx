@@ -160,11 +160,11 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
   );
   const displayAmountPaid =
     (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT")
-      ? totalPaidFromHistory + toSafeNum(sale.amountPaid)
+      ? totalPaidFromHistory + toSafeNum(sale.amountPaid || (sale as any).amount_paid)
       : ((sale.paymentStatus === "Paid" || sale.paymentStatus === "COMPLETED") && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
-      : toSafeNum(sale.amountPaid || totalAmount);
-  const displayAmountDue = toSafeNum(sale.amountDue);
+      : toSafeNum(sale.amountPaid || (sale as any).amount_paid || totalAmount);
+  const displayAmountDue = toSafeNum(sale.amountDue !== undefined ? sale.amountDue : (sale as any).balance_due);
 
   // Get the total amount in words
   const totalAmountInWords = numberToWords(totalAmount);
@@ -216,19 +216,19 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
     return {
       documentTitle: getDocumentTitle(),
       documentNumberLabel: getDocumentNumberLabel(),
-      receiptNumber: sale.receiptNumber,
+      receiptNumber: sale.receiptNumber || (sale as any).receipt_number,
       date: format(receiptDate, "MMM dd, yyyy"),
       time: format(currentDateTime, "hh:mm a"),
-      status: sale.paymentStatus,
+      status: sale.paymentStatus || (sale as any).status,
       businessName: activeSettings.businessName,
       businessAddress: activeSettings.businessAddress,
       businessPhone: activeSettings.businessPhone,
       businessEmail: activeSettings.businessEmail,
       businessLogo: activeSettings.businessLogo,
       signature: activeSettings.signature,
-      customerName: sale.customerName,
-      customerAddress: sale.customerAddress,
-      customerContact: sale.customerContact,
+      customerName: sale.customerName || (sale as any).customer_name,
+      customerAddress: sale.customerAddress || (sale as any).customer_address,
+      customerContact: sale.customerContact || (sale as any).customer_phone,
       items: sale.items.map((item: any) => {
         const itemPrice = toSafeNum(item.price);
         const itemQty = toSafeNum(item.quantity);

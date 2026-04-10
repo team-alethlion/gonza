@@ -40,8 +40,14 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
     );
   }
 
+  const t_status = sale.paymentStatus || (sale as any).status;
+  const t_receiptNumber = sale.receiptNumber || (sale as any).receipt_number;
+  const t_customerName = sale.customerName || (sale as any).customer_name;
+  const t_customerAddress = sale.customerAddress || (sale as any).customer_address;
+  const t_customerContact = sale.customerContact || (sale as any).customer_phone;
+
   const getDocumentTitle = () => {
-    switch (sale.paymentStatus) {
+    switch (t_status) {
       case "Quote":
         return "QUOTATION";
       case "Paid":
@@ -57,7 +63,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   };
 
   const getDocumentNumberLabel = () => {
-    switch (sale.paymentStatus) {
+    switch (t_status) {
       case "Quote":
         return "Quote #:";
       case "Paid":
@@ -105,13 +111,13 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   );
 
   const displayAmountPaid =
-    (sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT")
-      ? totalPaidFromHistory + (sale.amountPaid || 0)
-      : ((sale.paymentStatus === "Paid" || sale.paymentStatus === "COMPLETED") && totalPaidFromHistory > 0)
+    (t_status === "Installment Sale" || t_status === "INSTALLMENT")
+      ? totalPaidFromHistory + (sale.amountPaid || (sale as any).amount_paid || 0)
+      : ((t_status === "Paid" || t_status === "COMPLETED") && totalPaidFromHistory > 0)
       ? totalPaidFromHistory
-      : sale.amountPaid || totalAmount;
+      : sale.amountPaid || (sale as any).amount_paid || totalAmount;
 
-  const displayAmountDue = sale.amountDue || 0;
+  const displayAmountDue = sale.amountDue !== undefined ? sale.amountDue : ((sale as any).balance_due || 0);
 
   const paymentMethods = settings.paymentInfo
     ? parsePaymentInfo(settings.paymentInfo)
@@ -199,7 +205,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
           </div>
           <div className="flex justify-between text-[9px] font-bold">
             <span>{getDocumentNumberLabel()}</span>
-            <span>{sale.receiptNumber}</span>
+            <span>{t_receiptNumber}</span>
           </div>
           <div className="flex justify-between text-[9px]">
             <span>DATE:</span>
@@ -211,25 +217,25 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
           </div>
           <div className="flex justify-between text-[9px] font-black">
             <span>STATUS:</span>
-            <span>{sale.paymentStatus.toUpperCase()}</span>
+            <span>{t_status?.toUpperCase()}</span>
           </div>
         </div>
 
         {/* Customer Section */}
-        {sale.customerName && (
+        {t_customerName && (
           <div className="mb-3 bg-gray-50 p-1.5 border border-gray-100 italic">
             <div className="font-black text-[9px] not-italic uppercase mb-0.5">
               Customer:
             </div>
-            <div className="font-bold">{sale.customerName}</div>
-            {sale.customerAddress && (
+            <div className="font-bold">{t_customerName}</div>
+            {t_customerAddress && (
               <div className="text-[9px] opacity-70">
-                {sale.customerAddress}
+                {t_customerAddress}
               </div>
             )}
-            {sale.customerContact && (
+            {t_customerContact && (
               <div className="text-[9px] opacity-70">
-                {sale.customerContact}
+                {t_customerContact}
               </div>
             )}
           </div>
@@ -317,7 +323,7 @@ const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
             </span>
           </div>
 
-          {(sale.paymentStatus === "Installment Sale" || sale.paymentStatus === "INSTALLMENT") && (
+          {(t_status === "Installment Sale" || t_status === "INSTALLMENT") && (
             <div className="mt-2 pt-1 border-t border-gray-200 border-dotted">
               <div className="flex justify-between font-bold">
                 <span>PAID:</span>

@@ -239,7 +239,7 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
       // Load the isolated presentation helper strictly to overlay the transient amounts for the receipt!
       // This leaves the core backend logic entirely untouched as requested.
       const { injectFrozenDraftToReceipt } = await import("./frozenDraftHelper");
-      const presentationSale = injectFrozenDraftToReceipt(props, result);
+      const presentationSale = injectFrozenDraftToReceipt(sale, frozenDraftState);
 
       if (props.onSaleComplete) {
         await props.onSaleComplete(
