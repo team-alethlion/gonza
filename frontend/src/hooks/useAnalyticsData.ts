@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Sale, AnalyticsData } from '@/types';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Sale, AnalyticsData } from "@/types";
 import {
   startOfDay,
   endOfDay,
@@ -12,31 +13,39 @@ import {
   subDays,
   subWeeks,
   subMonths,
-} from 'date-fns';
-import { useBusiness } from '@/contexts/BusinessContext';
-import { getAnalyticsSummaryAction } from '@/app/actions/analytics';
+} from "date-fns";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { getAnalyticsSummaryAction } from "@/app/actions/analytics";
 
 interface UseAnalyticsDataProps {
   sales: Sale[];
   dateFilter: string;
-  dateRange: { from: Date | undefined; to: Date | undefined; };
+  dateRange: { from: Date | undefined; to: Date | undefined };
   specificDate?: Date | undefined;
   isCustomRange: boolean;
   isSpecificDate?: boolean;
   initialAnalytics?: AnalyticsData | null;
 }
 
-import { localDb } from '@/lib/dexie';
+import { localDb } from "@/lib/dexie";
 
-export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, specificDate, isCustomRange, isSpecificDate, initialAnalytics }: UseAnalyticsDataProps) {
+export function useAnalyticsData({
+  sales: initialSales,
+  dateFilter,
+  dateRange,
+  specificDate,
+  isCustomRange,
+  isSpecificDate,
+  initialAnalytics,
+}: UseAnalyticsDataProps) {
   const { currentBusiness } = useBusiness();
-  
+
   // 🛡️ HYDRATION GUARD: Prevent redundant fetches if server data is fresh
   const lastFetchTimeRef = useRef<number>(initialAnalytics ? Date.now() : 0);
   const hasInitializedFromContext = useRef(false);
 
   const [summary, setSummary] = useState<AnalyticsData | null>(() => {
-    if (dateFilter === 'all' && initialAnalytics) {
+    if (dateFilter === "all" && initialAnalytics) {
       hasInitializedFromContext.current = true;
       return initialAnalytics;
     }
@@ -45,7 +54,11 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
 
   // Sync summary instantly if context data arrives after mount
   useEffect(() => {
-    if (dateFilter === 'all' && initialAnalytics && !hasInitializedFromContext.current) {
+    if (
+      dateFilter === "all" &&
+      initialAnalytics &&
+      !hasInitializedFromContext.current
+    ) {
       setSummary(initialAnalytics);
       hasInitializedFromContext.current = true;
       lastFetchTimeRef.current = Date.now();
@@ -66,11 +79,13 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
       }
 
       // 🛡️ HYDRATION CHECK: If it's the 'all' view and we have fresh data, skip this fetch
-      const isInitialAll = dateFilter === 'all' && initialAnalytics;
+      const isInitialAll = dateFilter === "all" && initialAnalytics;
       const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
-      
+
       if (isInitialAll && timeSinceLastFetch < 60000) {
-        console.log('[Analytics] Skipping background refresh: SSR data is fresh (< 60s)');
+        console.log(
+          "[Analytics] Skipping background refresh: SSR data is fresh (< 60s)",
+        );
         setIsLoadingSummary(false);
         return;
       }
@@ -89,65 +104,74 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
         } else if (isSpecificDate && specificDate) {
           startDate = startOfDay(specificDate).toISOString();
           endDate = endOfDay(specificDate).toISOString();
-        } else if (dateFilter !== 'all') {
+        } else if (dateFilter !== "all") {
           const today = new Date();
           switch (dateFilter) {
-            case 'today':
+            case "today":
               startDate = startOfDay(today).toISOString();
               endDate = endOfDay(today).toISOString();
               break;
-            case 'yesterday':
+            case "yesterday":
               const yesterday = subDays(today, 1);
               startDate = startOfDay(yesterday).toISOString();
               endDate = endOfDay(yesterday).toISOString();
               break;
-            case 'this-week':
+            case "this-week":
               startDate = startOfWeek(today, { weekStartsOn: 1 }).toISOString();
               endDate = endOfWeek(today, { weekStartsOn: 1 }).toISOString();
               break;
-            case 'last-week':
-              const lastWeekStart = subWeeks(startOfWeek(today, { weekStartsOn: 1 }), 1);
+            case "last-week":
+              const lastWeekStart = subWeeks(
+                startOfWeek(today, { weekStartsOn: 1 }),
+                1,
+              );
               startDate = lastWeekStart.toISOString();
-              endDate = endOfWeek(lastWeekStart, { weekStartsOn: 1 }).toISOString();
+              endDate = endOfWeek(lastWeekStart, {
+                weekStartsOn: 1,
+              }).toISOString();
               break;
-            case 'this-month':
+            case "this-month":
               startDate = startOfMonth(today).toISOString();
               endDate = endOfMonth(today).toISOString();
               break;
-            case 'last-month':
+            case "last-month":
               const lastMonth = subMonths(today, 1);
               startDate = startOfMonth(lastMonth).toISOString();
               endDate = endOfMonth(lastMonth).toISOString();
               break;
-            case 'this-year':
+            case "this-year":
               startDate = startOfYear(today).toISOString();
               endDate = endOfYear(today).toISOString();
               break;
           }
         }
 
-        const result = await getAnalyticsSummaryAction(currentBusiness.id, startDate, endDate);
+        const result = await getAnalyticsSummaryAction(
+          currentBusiness.id,
+          startDate,
+          endDate,
+        );
 
         if (isMounted && result.success && result.data) {
           lastFetchTimeRef.current = Date.now(); // Update timestamp
           // Only update if the data is different to avoid unnecessary re-renders
           const newData = result.data as AnalyticsData;
-          setSummary(prev => {
+          setSummary((prev) => {
             if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
             return newData;
           });
 
           // Only cache the 'all' view (main dashboard)
-          if (dateFilter === 'all') {
+          if (dateFilter === "all") {
             await localDb.dashboardAnalytics.put({
               id: currentBusiness.id,
               summary: result.data,
-              updatedAt: Date.now()
+              updatedAt: Date.now(),
             });
           }
         }
       } catch (error) {
-        console.error('Failed to fetch analytics summary:', error);
+        console.error("Failed to fetch analytics summary:", error);
       } finally {
         if (isMounted) setIsLoadingSummary(false);
       }
@@ -158,63 +182,53 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     return () => {
       isMounted = false;
     };
-  }, [dateFilter, isCustomRange, isSpecificDate, dateRange.from, dateRange.to, specificDate, currentBusiness?.id, initialAnalytics]);
+  }, [
+    dateFilter,
+    isCustomRange,
+    isSpecificDate,
+    dateRange.from,
+    dateRange.to,
+    specificDate,
+    currentBusiness?.id,
+    initialAnalytics,
+  ]);
 
-  // 1. Calculate INSTANT client-side analytics from the local sales list
-  // This ensures the cards and bar chart show data the exact millisecond they mount
-  const localAnalytics = useMemo(() => {
-    const activeSales = initialSales.filter(s => (s.paymentStatus || '').toUpperCase() !== 'QUOTE');
-    
-    const totalSales = activeSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
-    const totalCost = activeSales.reduce((sum, s) => sum + (Number(s.totalCost) || 0), 0);
-    const totalProfit = activeSales.reduce((sum, s) => sum + (Number(s.profit) || 0), 0);
-    
-    const paidCount = activeSales.filter(s => (s.paymentStatus || '').toUpperCase() === 'PAID').length;
-    const pendingCount = activeSales.length - paidCount;
-
-    return {
-      totalSales,
-      totalCost,
-      totalProfit,
-      paidSalesCount: paidCount,
-      pendingSalesCount: pendingCount,
-      totalExpenses: 0, // Expenses still need server data
-    };
-  }, [initialSales]);
-
-  // 2. Merge local instant data with server-side summary
-  // We prioritize server data once it arrives, but use local data as the "Instant View"
+  // 1. Resolve display summary
+  // We trust the backend summary as the sole source of truth for global aggregates.
   const displaySummary = useMemo(() => {
     if (summary) return summary;
-    
-    // If no server summary yet, use our instant local calculations
-    return {
-      ...localAnalytics,
-      recentSales: [...initialSales].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20)
-    } as AnalyticsData;
-  }, [summary, localAnalytics, initialSales]);
+    return null; // Return null while loading to trigger skeleton states in UI
+  }, [summary]);
 
-  // Memoize bar chart data using the merged summary
-  const barChartData = useMemo(() => [
-    { name: 'Total Sales', amount: displaySummary.totalSales || 0 },
-    { name: 'Total Cost', amount: displaySummary.totalCost || 0 },
-    { name: 'Total Expenses', amount: displaySummary.totalExpenses || 0 },
-    { name: 'Total Profit', amount: displaySummary.totalProfit || 0 },
-  ], [displaySummary]);
+  // Memoize bar chart data only when summary is available
+  const barChartData = useMemo(() => {
+    if (!displaySummary) return [];
+    return [
+      { name: "Total Sales", amount: displaySummary.totalSales || 0 },
+      { name: "Total Cost", amount: displaySummary.totalCost || 0 },
+      { name: "Total Expenses", amount: displaySummary.totalExpenses || 0 },
+      { name: "Total Profit", amount: displaySummary.totalProfit || 0 },
+    ];
+  }, [displaySummary]);
 
   // Prioritize initialSales (formatted data) over summary.recentSales (raw data)
+  // KEEPING THIS EXACTLY AS REQUESTED: DO NOT CHANGE THIS LOGIC
   const recentSales = useMemo(() => {
     if (initialSales && initialSales.length > 0) {
-        return [...initialSales]
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 20);
+      return [...initialSales]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 20);
     }
     return summary?.recentSales || [];
   }, [initialSales, summary?.recentSales]);
 
-  // Non-quote count
+  // Non-quote count from summary
   const nonQuoteSalesCount = useMemo(() => {
-    return displaySummary.paidSalesCount + displaySummary.pendingSalesCount;
+    if (!displaySummary) return 0;
+    return (
+      (displaySummary.paidSalesCount || 0) +
+      (displaySummary.pendingSalesCount || 0)
+    );
   }, [displaySummary]);
 
   return {
@@ -223,9 +237,10 @@ export function useAnalyticsData({ sales: initialSales, dateFilter, dateRange, s
     barChartData,
     recentSales,
     nonQuoteSalesCount,
-    expenses: displaySummary.totalExpenses || 0,
-    isLoadingExpenses: isLoadingSummary && !summary,
-    inventoryStats: displaySummary.inventoryStats || null,
-    activeGoal: displaySummary.activeGoal || null
+    expenses: displaySummary?.totalExpenses || 0,
+    isLoadingExpenses: isLoadingSummary,
+    inventoryStats: displaySummary?.inventoryStats || null,
+    activeGoal: displaySummary?.activeGoal || null,
+    activeGoals: (displaySummary as any)?.activeGoals || {},
   };
 }

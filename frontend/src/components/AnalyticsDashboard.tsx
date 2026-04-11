@@ -71,7 +71,8 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
       expenses,
       isLoadingExpenses,
       inventoryStats,
-      activeGoal
+      activeGoal,
+      activeGoals
     } = useAnalyticsData({
       sales,
       dateFilter,
@@ -210,7 +211,11 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
           </div>
 
           <div className="xl:col-span-1">
-            <SalesGoalTracker initialGoal={activeGoal} isSummaryLoading={isLoadingExpenses} />
+            <SalesGoalTracker 
+              initialGoal={activeGoal} 
+              initialGoals={activeGoals} 
+              isSummaryLoading={isLoadingExpenses} 
+            />
           </div>
         </div>
 

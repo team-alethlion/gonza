@@ -328,6 +328,36 @@ export async function getSalesGoalAction(
     }
 }
 
+export async function getSalesGoalProgressAction(
+    branchId: string,
+    periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    startDate: Date,
+    endDate: Date
+) {
+    try {
+        await verifyBranchAccess(branchId);
+        
+        let periodId = '';
+        const dateStr = startDate.toISOString().split('T')[0];
+        if (periodType === 'DAILY') {
+            periodId = `DAILY-${dateStr}`;
+        } else if (periodType === 'WEEKLY') {
+            periodId = `WEEKLY-${dateStr}`;
+        } else {
+            periodId = `MONTHLY-${dateStr.substring(0, 7)}`;
+        }
+
+        const data = await djangoFetch(
+            `sales/goals/progress/?branchId=${branchId}&period_name=${periodId}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
+        );
+        
+        return { success: true, data };
+    } catch (error: unknown) {
+        const err = error as Error;
+        return { success: false, error: err.message };
+    }
+}
+
 export async function upsertSalesGoalAction(
     userId: string,
     branchId: string,
@@ -416,6 +446,29 @@ export async function getSalesCategorySummaryAction(branchId: string, startDate?
     } catch (error: any) {
         console.error('Error in getSalesCategorySummaryAction:', error);
         return { success: false, error: error.message, data: [] };
+    }
+}
+
+export async function getPerformanceChartAction(
+    branchId: string,
+    timeframe: 'daily' | 'weekly' | 'monthly',
+    year?: string,
+    startDate?: string,
+    endDate?: string
+) {
+    try {
+        await verifyBranchAccess(branchId);
+        
+        let url = `sales/sales/performance_chart/?branchId=${branchId}&timeframe=${timeframe}`;
+        if (year) url += `&year=${year}`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+
+        const data = await djangoFetch<any>(url);
+        return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+        console.error('Error in getPerformanceChartAction:', error);
+        return [];
     }
 }
 

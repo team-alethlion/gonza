@@ -49,6 +49,40 @@ class SalesGoalViewSet(viewsets.ModelViewSet):
             qs = qs.filter(period_name=period_name)
         return qs.order_by('-start_date')
 
+    @action(detail=False, methods=['get'])
+    def progress(self, request):
+        branch_id = request.query_params.get('branchId')
+        period_name = request.query_params.get('period_name')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not branch_id or not period_name:
+            return Response({"error": "branchId and period_name required"}, status=400)
+
+        # 1. Get the goal
+        goal = SalesGoal.objects.filter(branch_id=branch_id, period_name=period_name).first()
+        
+        # 2. Get current sales aggregate for this period
+        sales_qs = Sale.objects.filter(branch_id=branch_id, is_deleted=False).exclude(status='QUOTE')
+        if start_date:
+            sales_qs = sales_qs.filter(date__gte=start_date)
+        if end_date:
+            sales_qs = sales_qs.filter(date__lte=end_date)
+            
+        aggregate = sales_qs.aggregate(total=Sum('total_amount'))
+        current_sales = float(aggregate['total'] or 0)
+
+        return Response({
+            "goal": {
+                "id": goal.id if goal else None,
+                "target": float(goal.amount_target) if goal else 0,
+                "period": goal.period if goal else None,
+                "period_name": goal.period_name if goal else period_name,
+            },
+            "current_sales": current_sales,
+            "progress_percentage": float((current_sales / goal.amount_target * 100)) if (goal and goal.amount_target > 0) else 0
+        })
+
     def perform_create(self, serializer):
         branch_id = self.request.data.get('branch')
         start_date = self.request.data.get('start_date')
@@ -639,6 +673,46 @@ class SaleViewSet(viewsets.ModelViewSet):
             
         # Sort by revenue descending
         results.sort(key=lambda x: x['revenue'], reverse=True)
+        
+        return Response(results)
+
+    @action(detail=False, methods=['get'])
+    def performance_chart(self, request):
+        branch_id = request.query_params.get('branchId')
+        timeframe = request.query_params.get('timeframe', 'monthly') # daily, weekly, monthly
+        year = request.query_params.get('year', str(timezone.now().year))
+        start_date = request.query_params.get('startDate')
+        end_date = request.query_params.get('endDate')
+
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        # 1. Base Queryset
+        qs = self.get_queryset().filter(branch_id=branch_id).exclude(status='QUOTE')
+        
+        if start_date and end_date:
+            qs = qs.filter(date__range=[start_date, end_date])
+        else:
+            qs = qs.filter(date__year=year)
+
+        # 2. Aggregation by period
+        from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
+        
+        trunc_func = TruncMonth
+        if timeframe == 'daily': trunc_func = TruncDay
+        elif timeframe == 'weekly': trunc_func = TruncWeek
+        
+        stats = qs.annotate(period=trunc_func('date')).values('period').annotate(
+            amount=Sum('total_amount')
+        ).order_by('period')
+
+        results = [
+            {
+                "date": item['period'].strftime('%Y-%m-%d'),
+                "amount": float(item['amount'] or 0)
+            }
+            for item in stats
+        ]
         
         return Response(results)
 

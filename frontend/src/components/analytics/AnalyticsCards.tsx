@@ -35,12 +35,20 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
 }) => {
   const isMobile = useIsMobile();
 
+  // 🛡️ DATA HARDENING: Ensure we don't crash if analyticsData is null (loading)
+  const safeData = analyticsData || {
+    totalSales: 0,
+    totalProfit: 0,
+    paidSalesCount: 0,
+    pendingSalesCount: 0
+  };
+
   const cards = [
     {
       title: "Total Sales",
-      value: canViewTotalSales ? `${currency} ${formatNumber(analyticsData.totalSales)}` : '•••',
+      value: canViewTotalSales ? `${currency} ${formatNumber(safeData.totalSales)}` : '•••',
       description: canViewTotalSales
-        ? `From ${nonQuoteSalesCount} transactions (excluding quotes)`
+        ? (analyticsData ? `From ${nonQuoteSalesCount} transactions (excluding quotes)` : "Loading calculations...")
         : "Requires permission",
       color: "text-sales-primary",
       bgColor: "bg-blue-50",
@@ -49,11 +57,11 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Total Gross Profit",
-      value: canViewProfit ? `${currency} ${formatNumber(analyticsData.totalProfit)}` : '•••',
+      value: canViewProfit ? `${currency} ${formatNumber(safeData.totalProfit)}` : '•••',
       description: canViewProfit
-        ? (analyticsData.totalProfit > 0
-          ? `${(analyticsData.totalProfit / analyticsData.totalSales * 100).toFixed(1)}% profit margin`
-          : "No profit yet")
+        ? (safeData.totalProfit > 0 && safeData.totalSales > 0
+          ? `${(safeData.totalProfit / safeData.totalSales * 100).toFixed(1)}% profit margin`
+          : (analyticsData ? "No profit yet" : "Loading..."))
         : "Requires permission",
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -64,9 +72,9 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
       title: "Total Expenses",
       value: canViewTotalExpenses ? `${currency} ${formatNumber(expenses)}` : '•••',
       description: canViewTotalExpenses
-        ? (expenses > 0 && analyticsData.totalSales > 0
-          ? `${(expenses / analyticsData.totalSales * 100).toFixed(1)}% of sales`
-          : "No expenses recorded")
+        ? (expenses > 0 && safeData.totalSales > 0
+          ? `${(expenses / safeData.totalSales * 100).toFixed(1)}% of sales`
+          : (analyticsData ? "No expenses recorded" : "Loading..."))
         : "Requires permission",
       color: "text-[#f05a29]",
       bgColor: "bg-orange-50",
@@ -84,11 +92,11 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Cash Sales",
-      value: canViewSalesTypes ? analyticsData.paidSalesCount.toString() : '•••',
+      value: canViewSalesTypes ? safeData.paidSalesCount.toString() : '•••',
       description: canViewSalesTypes
-        ? (analyticsData.paidSalesCount + analyticsData.pendingSalesCount > 0
-          ? `${(analyticsData.paidSalesCount / (analyticsData.paidSalesCount + analyticsData.pendingSalesCount) * 100).toFixed(1)}% of total`
-          : "No sales yet")
+        ? (safeData.paidSalesCount + safeData.pendingSalesCount > 0
+          ? `${(safeData.paidSalesCount / (safeData.paidSalesCount + safeData.pendingSalesCount) * 100).toFixed(1)}% of total`
+          : (analyticsData ? "No sales yet" : "Loading..."))
         : "Requires permission",
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -97,11 +105,11 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Credit Sales",
-      value: canViewSalesTypes ? analyticsData.pendingSalesCount.toString() : '•••',
+      value: canViewSalesTypes ? safeData.pendingSalesCount.toString() : '•••',
       description: canViewSalesTypes
-        ? (analyticsData.pendingSalesCount > 0
-          ? `${(analyticsData.pendingSalesCount / (analyticsData.paidSalesCount + analyticsData.pendingSalesCount) * 100).toFixed(1)}% of total`
-          : "No credit sales")
+        ? (safeData.pendingSalesCount > 0
+          ? `${(safeData.pendingSalesCount / (safeData.paidSalesCount + safeData.pendingSalesCount) * 100).toFixed(1)}% of total`
+          : (analyticsData ? "No credit sales" : "Loading..."))
         : "Requires permission",
       color: "text-amber-500",
       bgColor: "bg-amber-50",

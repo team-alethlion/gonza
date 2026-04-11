@@ -17,9 +17,10 @@ import {
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 import { getExpensesForChartAction } from '@/app/actions/expenses';
+import { getPerformanceChartAction } from '@/app/actions/sales';
 
 interface SalesPerformanceChartProps {
-  sales: Sale[];
+  sales: Sale[]; // Keep for compatibility but prefer backend aggregation
   formatCurrency: (value: any) => string;
   dateFilter?: string;
   dateRange?: { from: Date | undefined; to: Date | undefined };
@@ -31,7 +32,6 @@ interface DataPoint {
   displayDate: string;
   amount: number;
   expenses: number;
-  rawDate: Date;
 }
 
 const CustomTooltip = ({ active, payload, formatCurrency }: any) => {
@@ -50,7 +50,7 @@ const CustomTooltip = ({ active, payload, formatCurrency }: any) => {
 };
 
 const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
-  sales,
+  sales: initialSales,
   formatCurrency,
   dateFilter = 'this-month',
   dateRange = { from: undefined, to: undefined },
@@ -61,6 +61,8 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
   const [timeFrame, setTimeFrame] = useState('monthly');
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [expensesData, setExpensesData] = useState<{ date: string; amount: number }[]>([]);
+  const [serverSalesData, setServerSalesData] = useState<{ date: string; amount: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 🛡️ HYDRATION GUARD: Prevent redundant fetches during re-renders
   const lastFetchRef = React.useRef<{
@@ -73,57 +75,35 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
 
   const currentYear = new Date().getFullYear();
   const years = [
-    ...new Set(sales.map(s => new Date(s.date).getFullYear()))
+    ...new Set(initialSales.map(s => new Date(s.date).getFullYear()))
   ].sort((a, b) => b - a);
   if (years.length === 0) years.push(currentYear);
 
-  const getFilteredSales = () => {
-    const nonQuote = sales.filter(s => s.paymentStatus !== 'Quote');
-    if (isCustomRange && dateRange.from && dateRange.to) {
-      return nonQuote.filter(s => {
-        const d = new Date(s.date);
-        return d >= startOfDay(dateRange.from!) && d <= endOfDay(dateRange.to!);
-      });
-    }
-    if (dateFilter && dateFilter !== 'all' && dateFilter !== 'this-month') {
-      const today = new Date();
-      return nonQuote.filter(s => {
-        const d = new Date(s.date);
-        switch (dateFilter) {
-          case 'today': return d >= startOfDay(today) && d <= endOfDay(today);
-          case 'yesterday': { const y = subDays(today, 1); return d >= startOfDay(y) && d <= endOfDay(y); }
-          case 'this-week': return d >= startOfWeek(today, { weekStartsOn: 1 }) && d <= endOfWeek(today, { weekStartsOn: 1 });
-          case 'last-week': { const lws = subWeeks(startOfWeek(today, { weekStartsOn: 1 }), 1); return d >= lws && d <= endOfWeek(lws, { weekStartsOn: 1 }); }
-          case 'last-month': { const lm = subMonths(today, 1); return d >= startOfMonth(lm) && d <= endOfMonth(lm); }
-          case 'this-year': return d >= startOfYear(today) && d <= endOfYear(today);
-          default: return true;
-        }
-      });
-    }
-    return nonQuote.filter(s => new Date(s.date).getFullYear() === parseInt(yearFilter));
-  };
-
   useEffect(() => {
-    const fetchExpenses = async () => {
-      if (!currentBusiness?.id) { setExpensesData([]); return; }
+    const fetchData = async () => {
+      if (!currentBusiness?.id) { 
+        setExpensesData([]); 
+        setServerSalesData([]);
+        return; 
+      }
 
       // 🛡️ HYDRATION CHECK
       const now = Date.now();
       if (
         lastFetchRef.current?.businessId === currentBusiness.id &&
-        lastFetchRef.current?.timeFrame === timeFrame &&
+        lastFetchRef.current?.timeFrame === timeframeFromState(timeFrame) &&
         lastFetchRef.current?.year === yearFilter &&
         lastFetchRef.current?.dateFilter === dateFilter &&
-        now - lastFetchRef.current.time < 60000
+        now - lastFetchRef.current.time < 30000
       ) {
-        console.log('[PerformanceChart] Skipping expense fetch: Request is redundant');
         return;
       }
 
-      // Lock guard
+      setIsLoading(true);
+
       lastFetchRef.current = {
         businessId: currentBusiness.id,
-        timeFrame,
+        timeFrame: timeframeFromState(timeFrame),
         year: yearFilter,
         dateFilter,
         time: now
@@ -135,13 +115,14 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
       if (isCustomRange && dateRange.from && dateRange.to) {
         from = dateRange.from.toISOString();
         to = dateRange.to.toISOString();
-      } else if (dateFilter && dateFilter !== 'all' && dateFilter !== 'this-month') {
+      } else if (dateFilter && dateFilter !== 'all') {
         const today = new Date();
         switch (dateFilter) {
           case 'today': from = startOfDay(today).toISOString(); to = endOfDay(today).toISOString(); break;
           case 'yesterday': { const y = subDays(today, 1); from = startOfDay(y).toISOString(); to = endOfDay(y).toISOString(); break; }
           case 'this-week': from = startOfWeek(today, { weekStartsOn: 1 }).toISOString(); to = endOfWeek(today, { weekStartsOn: 1 }).toISOString(); break;
           case 'last-week': { const lws = subWeeks(startOfWeek(today, { weekStartsOn: 1 }), 1); from = lws.toISOString(); to = endOfWeek(lws, { weekStartsOn: 1 }).toISOString(); break; }
+          case 'this-month': from = startOfMonth(today).toISOString(); to = endOfMonth(today).toISOString(); break;
           case 'last-month': { const lm = subMonths(today, 1); from = startOfMonth(lm).toISOString(); to = endOfMonth(lm).toISOString(); break; }
           case 'this-year': from = startOfYear(today).toISOString(); to = endOfYear(today).toISOString(); break;
           default: { const yr = parseInt(yearFilter); from = new Date(yr, 0, 1).toISOString(); to = new Date(yr, 11, 31).toISOString(); }
@@ -153,61 +134,86 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
       }
 
       try {
-        const result = await getExpensesForChartAction(currentBusiness.id, from, to);
-        setExpensesData(result || []);
+        const [expenses, sales] = await Promise.all([
+          getExpensesForChartAction(currentBusiness.id, from, to),
+          getPerformanceChartAction(
+            currentBusiness.id, 
+            timeframeFromState(timeFrame) as any, 
+            yearFilter, 
+            from, 
+            to
+          )
+        ]);
+        
+        setExpensesData(expenses || []);
+        setServerSalesData(sales || []);
       } catch (e) {
-        console.error('Error fetching expenses data:', e);
+        console.error('Error fetching chart data:', e);
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchExpenses();
+    fetchData();
   }, [timeFrame, yearFilter, dateFilter, dateRange, isCustomRange, currentBusiness?.id]);
 
-  const salesTotal = (arr: Sale[]) =>
-    arr.reduce((sum, s) => sum + (Array.isArray(s.items) ? (s.items as any[]).reduce((a: number, i: any) => a + i.price * i.quantity, 0) : 0), 0);
-  const expTotal = (arr: { date: string; amount: number }[]) =>
-    arr.reduce((sum, e) => sum + Number(e.amount), 0);
+  function timeframeFromState(state: string) {
+    if (state === 'weekly') return 'daily'; 
+    if (state === 'monthly') return 'monthly';
+    if (state === 'yearly') return 'monthly'; 
+    return 'monthly';
+  }
 
   const prepareChartData = (): DataPoint[] => {
-    const filtered = getFilteredSales();
+    if (timeFrame === 'monthly') {
+      const yr = parseInt(yearFilter);
+      return Array.from({ length: 12 }, (_, monthIdx) => {
+        const d = new Date(yr, monthIdx, 1);
+        const dateKey = format(d, 'yyyy-MM');
+        
+        const monthSales = serverSalesData.filter(s => s.date.startsWith(dateKey))
+          .reduce((sum, s) => sum + s.amount, 0);
+          
+        const monthExpenses = expensesData.filter(e => e.date.startsWith(dateKey))
+          .reduce((sum, e) => sum + e.amount, 0);
 
-    if (timeFrame === 'weekly') {
-      const ws = startOfWeek(new Date(), { weekStartsOn: 1 });
-      return Array.from({ length: 7 }, (_, i) => {
-        const day = new Date(ws); day.setDate(ws.getDate() + i);
-        const ds = day.toDateString();
         return {
-          date: format(day, 'yyyy-MM-dd'), displayDate: format(day, 'EEE'),
-          amount: salesTotal(filtered.filter(s => new Date(s.date).toDateString() === ds)),
-          expenses: expTotal(expensesData.filter(e => new Date(e.date).toDateString() === ds)),
-          rawDate: day,
+          date: dateKey, displayDate: format(d, 'MMM'),
+          amount: monthSales,
+          expenses: monthExpenses
         };
       });
     }
 
-    if (timeFrame === 'monthly') {
-      const yr = parseInt(yearFilter);
-      return Array.from({ length: 12 }, (_, month) => {
-        const d = new Date(yr, month, 1);
-        const ms = startOfMonth(d), me = endOfMonth(d);
-        return {
-          date: format(d, 'yyyy-MM'), displayDate: format(d, 'MMM'),
-          amount: salesTotal(filtered.filter(s => { const sd = new Date(s.date); return sd >= ms && sd <= me; })),
-          expenses: expTotal(expensesData.filter(e => { const ed = new Date(e.date); return ed >= ms && ed <= me; })),
-          rawDate: d,
-        };
-      });
+    if (timeFrame === 'weekly') {
+        const today = new Date();
+        const ws = startOfWeek(today, { weekStartsOn: 1 });
+        return Array.from({ length: 7 }, (_, i) => {
+          const day = new Date(ws); day.setDate(ws.getDate() + i);
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const daySales = serverSalesData.find(s => s.date === dateKey)?.amount || 0;
+          const dayExpenses = expensesData.find(e => e.date === dateKey)?.amount || 0;
+          
+          return {
+            date: dateKey, displayDate: format(day, 'EEE'),
+            amount: daySales,
+            expenses: dayExpenses
+          };
+        });
     }
 
     if (timeFrame === 'yearly') {
-      return years.map(year => {
-        const ys = startOfYear(new Date(year, 0, 1)), ye = endOfYear(new Date(year, 0, 1));
-        return {
-          date: year.toString(), displayDate: year.toString(),
-          amount: salesTotal(filtered.filter(s => { const sd = new Date(s.date); return sd >= ys && sd <= ye; })),
-          expenses: expTotal(expensesData.filter(e => { const ed = new Date(e.date); return ed >= ys && ed <= ye; })),
-          rawDate: new Date(year, 0, 1),
-        };
-      });
+        return years.slice(0, 5).reverse().map(year => {
+          const yearSales = serverSalesData.filter(s => s.date.startsWith(year.toString()))
+            .reduce((sum, s) => sum + s.amount, 0);
+          const yearExpenses = expensesData.filter(e => e.date.startsWith(year.toString()))
+            .reduce((sum, e) => sum + e.amount, 0);
+            
+          return {
+            date: year.toString(), displayDate: year.toString(),
+            amount: yearSales,
+            expenses: yearExpenses
+          };
+        });
     }
 
     return [];
@@ -216,14 +222,19 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
   const chartData = prepareChartData();
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 relative">
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-lg">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      )}
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <ChartLine className="h-5 w-5" /> Performance Analysis
             </CardTitle>
-            <CardDescription>Visualize your sales and expenses over time</CardDescription>
+            <CardDescription>Visualize your sales and expenses over time (fully aggregated)</CardDescription>
           </div>
           <Select value={yearFilter} onValueChange={setYearFilter}>
             <SelectTrigger className="w-[100px]"><SelectValue placeholder="Year" /></SelectTrigger>
@@ -264,7 +275,7 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                No data available for this time period
+                No data available for this selection
               </div>
             )}
           </div>

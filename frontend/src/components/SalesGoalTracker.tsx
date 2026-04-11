@@ -27,6 +27,7 @@ import {
   getSalesGoalAction,
   upsertSalesGoalAction,
   getPeriodSalesAction,
+  getSalesGoalProgressAction,
 } from "@/app/actions/sales";
 
 type GoalType = "daily" | "weekly" | "monthly";
@@ -141,9 +142,11 @@ GoalContent.displayName = "GoalContent";
 
 const SalesGoalTracker = ({ 
   initialGoal, 
+  initialGoals = {},
   isSummaryLoading = false 
 }: { 
   initialGoal?: any; 
+  initialGoals?: Record<string, any>;
   isSummaryLoading?: boolean;
 }) => {
   const { user } = useAuth();
@@ -153,7 +156,7 @@ const SalesGoalTracker = ({
   const queryClient = useQueryClient();
 
   // 🚀 PERF: Detect if we have any data (even null) from SSR
-  const hasInitialGoalData = initialGoal !== undefined;
+  const hasInitialGoalData = initialGoal !== undefined || Object.keys(initialGoals).length > 0;
 
   const [currentDate] = useState(() => new Date());
   const currentMonth = currentDate.getMonth() + 1;
@@ -188,19 +191,17 @@ const SalesGoalTracker = ({
     }
   }, [currentBusiness?.id]);
 
-  // Fetch current sales goal
-  const { data: salesGoal, isLoading: goalLoading } = useQuery({
+  // 🚀 OPTIMIZED: Combined Fetch for Goal and Progress
+  const { data: progressData, isLoading: isProgressLoading } = useQuery({
     queryKey: [
-      "sales-goal",
-      user?.id,
+      "sales-goal-progress",
       currentBusiness?.id,
       selectedGoalType,
       currentPeriod.startDate.toISOString(),
     ],
     queryFn: async () => {
-      if (!user?.id || !currentBusiness?.id) return null;
-      const result = await getSalesGoalAction(
-        user.id,
+      if (!currentBusiness?.id) return null;
+      const result = await getSalesGoalProgressAction(
         currentBusiness.id,
         selectedGoalType.toUpperCase() as any,
         currentPeriod.startDate,
@@ -209,45 +210,45 @@ const SalesGoalTracker = ({
       if (!result.success) throw new Error(result.error);
       return result.data;
     },
-    enabled: !!user?.id && !!currentBusiness?.id,
-    // Use a longer staleTime if we have SSR data to prevent immediate background refetch
-    staleTime: (selectedGoalType === 'monthly' && hasInitialGoalData) ? 300000 : 60000,
-    // 🚀 PERF: Trust the SSR data (even if it is null)
-    initialData: (selectedGoalType === 'monthly' && hasInitialGoalData) ? (initialGoal ? {
-        id: initialGoal.id,
-        target: initialGoal.amountTarget,
-        current_amount: initialGoal.currentAmount,
-        period: initialGoal.period,
-        period_name: initialGoal.periodName,
-        end_date: initialGoal.endDate
-    } : null) : undefined
-  });
-
-  // Fetch current period sales
-  const { data: currentSales, isLoading: salesLoading } = useQuery({
-    queryKey: [
-      "current-period-sales",
-      currentBusiness?.id,
-      selectedGoalType,
-      currentPeriod.startDate.toISOString(),
-    ],
-    queryFn: async () => {
-      if (!currentBusiness?.id) return 0;
-
-      const result = await getPeriodSalesAction(
-        currentBusiness.id,
-        currentPeriod.startDate,
-        currentPeriod.endDate,
-      );
-      if (!result.success) throw new Error(result.error);
-      return result.data ?? 0;
-    },
     enabled: !!currentBusiness?.id,
-    // Use a longer staleTime if we have SSR data
-    staleTime: (selectedGoalType === 'monthly' && hasInitialGoalData) ? 300000 : 60000,
-    // 🚀 PERF: If initialGoal exists, we can derive the current monthly sales from it
-    initialData: (selectedGoalType === 'monthly' && hasInitialGoalData) ? (initialGoal?.currentAmount || 0) : undefined
+    staleTime: (hasInitialGoalData) ? 300000 : 60000,
+    // 🚀 PERF: Trust the pre-fetched map for ANY selected period
+    initialData: () => {
+      const type = selectedGoalType.toLowerCase();
+      const mappedGoal = initialGoals[type];
+      
+      if (mappedGoal) {
+        return {
+          goal: {
+            id: mappedGoal.id,
+            target: mappedGoal.amountTarget,
+            period: mappedGoal.period,
+            period_name: mappedGoal.periodName,
+          },
+          current_sales: mappedGoal.currentAmount || 0,
+          progress_percentage: mappedGoal.progressPercentage || 0
+        };
+      }
+      
+      // Fallback to legacy single initialGoal if it matches the current type
+      if (selectedGoalType === 'monthly' && initialGoal) {
+        return {
+          goal: {
+            id: initialGoal.id,
+            target: initialGoal.amountTarget,
+            period: initialGoal.period,
+            period_name: initialGoal.periodName,
+          },
+          current_sales: initialGoal?.currentAmount || 0,
+          progress_percentage: initialGoal ? (initialGoal.currentAmount / initialGoal.amountTarget * 100) : 0
+        };
+      }
+      return undefined;
+    }
   });
+
+  const salesGoal = progressData?.goal;
+  const currentSales = progressData?.current_sales ?? 0;
 
   // Update sales goal mutation
   const updateGoalMutation = useMutation({
@@ -274,16 +275,7 @@ const SalesGoalTracker = ({
       );
       queryClient.invalidateQueries({
         queryKey: [
-          "sales-goal",
-          user?.id,
-          currentBusiness?.id,
-          selectedGoalType,
-          currentPeriod.startDate.toISOString(),
-        ],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [
-          "current-period-sales",
+          "sales-goal-progress",
           currentBusiness?.id,
           selectedGoalType,
           currentPeriod.startDate.toISOString(),
@@ -320,14 +312,8 @@ const SalesGoalTracker = ({
   };
 
   const currentGoal = Number(salesGoal?.target ?? 0);
-  const progress = useMemo(
-    () =>
-      currentGoal > 0
-        ? Math.min(((currentSales ?? 0) / currentGoal) * 100, 100)
-        : 0,
-    [currentGoal, currentSales],
-  );
-  const isLoading = goalLoading || salesLoading;
+  const progress = Math.min(progressData?.progress_percentage ?? 0, 100);
+  const isLoading = isProgressLoading;
 
   const periodLabel = useMemo(() => {
     switch (selectedGoalType) {

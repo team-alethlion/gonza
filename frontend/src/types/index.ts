@@ -548,6 +548,7 @@ export const mapSaleToDbSale = (
       const itemSubtotal = item.price * item.quantity;
       return sum + (item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100);
     }, 0),
+    profit: profit, // Trust the profit passed from the validated UI state
   };
 };
 
