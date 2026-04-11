@@ -10,7 +10,8 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     Consolidated analytics summary including sales, expenses, inventory stats, and active goals.
     This reduces multiple round-trips from the frontend.
     """
-    cache_key = f"analytics_summary_v2_{branch_id}_{start_date}_{end_date}"
+    # Bump cache version to v4 to ensure fresh data schema
+    cache_key = f"analytics_summary_v4_{branch_id}_{start_date}_{end_date}"
     cached_data = cache.get(cache_key)
     if cached_data:
         return cached_data
@@ -49,7 +50,7 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     total_expenses = float(expenses_stats['total'] or 0)
 
     # 4. Recent Sales (Optimized)
-    recent_sales = sales_qs.select_related('customer').order_by('-date')[:5]
+    recent_sales = sales_qs.select_related('customer').order_by('-date')[:20]
     recent_sales_data = []
     for s in recent_sales:
         recent_sales_data.append({
@@ -64,23 +65,33 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     # 5. Inventory Stats (Value, Low Stock, etc.)
     inventory_stats = get_inventory_stats(branch_id)
 
-    # 6. Active Goal Progress
-    # Typically the dashboard wants the current month's progress
+    # 6. Active Goals Progress
     now = timezone.now()
     current_month_name = f"MONTHLY-{now.strftime('%Y-%m')}"
     
-    # Check for current month goal first
+    # NEW: Fetch ALL active goals for the location to support instant switching in UI
+    all_active_goals = SalesGoal.objects.filter(branch_id=branch_id, status='ACTIVE')
+    goals_map = {}
+    for g in all_active_goals:
+        goals_map[g.period.lower()] = {
+            "id": g.id,
+            "amountTarget": float(g.amount_target),
+            "currentAmount": float(g.current_amount),
+            "salesCountTarget": g.sales_count_target,
+            "period": g.period,
+            "periodName": g.period_name,
+            "endDate": g.end_date.isoformat() if g.end_date else None,
+            "progressPercentage": float((g.current_amount / g.amount_target * 100)) if g.amount_target > 0 else 0
+        }
+
+    # LEGACY: Preserve the single goal selection logic for shared parts
     goal = SalesGoal.objects.filter(
         branch_id=branch_id, 
         period_name=current_month_name
     ).first()
     
-    # If no current month goal, find any active goal
     if not goal:
-        goal = SalesGoal.objects.filter(
-            branch_id=branch_id, 
-            status='ACTIVE'
-        ).order_by('-start_date').first()
+        goal = all_active_goals.order_by('-start_date').first()
 
     goal_data = None
     if goal:
@@ -105,7 +116,8 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
         "totalExpenses": total_expenses,
         "recentSales": recent_sales_data,
         "inventoryStats": inventory_stats,
-        "activeGoal": goal_data
+        "activeGoal": goal_data,
+        "activeGoals": goals_map
     }
 
     # Cache for 5 minutes
