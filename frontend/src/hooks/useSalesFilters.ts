@@ -6,64 +6,46 @@ import { isSameDay } from 'date-fns';
 
 
 export const useSalesFilters = (sales: Sale[]) => {
-  // Load persisted state from localStorage
-  const getPersistedState = () => {
-    // 🛡️ SSR Guard: Only run in the browser
-    if (typeof window === 'undefined') {
-      return {
-        searchQuery: '',
-        dateFilter: 'this-month',
-        paymentFilter: 'all',
-        cashTransactionFilter: 'all',
-        categoryFilter: 'all',
-        dateRange: { from: undefined, to: undefined },
-        specificDate: undefined
-      };
-    }
+  // 🛡️ HYDRATION GUARD: Initialize with server-safe defaults
+  const [searchQuery, setSearchQuery] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [cashTransactionFilter, setCashTransactionFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<string>('this-month');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined; }>({ from: undefined, to: undefined });
+  const [specificDate, setSpecificDate] = useState<Date | undefined>(undefined);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load persisted state from localStorage AFTER mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
     try {
       const saved = localStorage.getItem('salesFilters');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return {
-          searchQuery: parsed.searchQuery || '',
-          dateFilter: parsed.dateFilter || 'this-month',
-          paymentFilter: parsed.paymentFilter || 'all',
-          cashTransactionFilter: parsed.cashTransactionFilter || 'all',
-          categoryFilter: parsed.categoryFilter || 'all',
-          dateRange: parsed.dateRange ? {
+        if (parsed.searchQuery) setSearchQuery(parsed.searchQuery);
+        if (parsed.paymentFilter) setPaymentFilter(parsed.paymentFilter);
+        if (parsed.cashTransactionFilter) setCashTransactionFilter(parsed.cashTransactionFilter);
+        if (parsed.categoryFilter) setCategoryFilter(parsed.categoryFilter);
+        if (parsed.dateFilter) setDateFilter(parsed.dateFilter);
+        if (parsed.dateRange) {
+          setDateRange({
             from: parsed.dateRange.from ? new Date(parsed.dateRange.from) : undefined,
             to: parsed.dateRange.to ? new Date(parsed.dateRange.to) : undefined
-          } : { from: undefined, to: undefined },
-          specificDate: parsed.specificDate ? new Date(parsed.specificDate) : undefined
-        };
+          });
+        }
+        if (parsed.specificDate) setSpecificDate(new Date(parsed.specificDate));
       }
     } catch (error) {
       console.error('Error loading persisted sales filters:', error);
     }
-    return {
-      searchQuery: '',
-      dateFilter: 'this-month',
-      paymentFilter: 'all',
-      cashTransactionFilter: 'all',
-      categoryFilter: 'all',
-      dateRange: { from: undefined, to: undefined },
-      specificDate: undefined
-    };
-  };
+    setIsHydrated(true);
+  }, []);
 
-  const persistedState = getPersistedState();
-  const [searchQuery, setSearchQuery] = useState(persistedState.searchQuery);
-  const [paymentFilter, setPaymentFilter] = useState(persistedState.paymentFilter);
-  const [cashTransactionFilter, setCashTransactionFilter] = useState(persistedState.cashTransactionFilter);
-  const [categoryFilter, setCategoryFilter] = useState(persistedState.categoryFilter);
-  const [dateFilter, setDateFilter] = useState<string>(persistedState.dateFilter);
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined; }>(persistedState.dateRange);
-  const [specificDate, setSpecificDate] = useState<Date | undefined>(persistedState.specificDate);
-
-  // Persist state to localStorage whenever filters change
+  // Persist state to localStorage only AFTER hydration is complete
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!isHydrated || typeof window === 'undefined') return;
 
     const stateToSave = {
       searchQuery,
@@ -78,7 +60,7 @@ export const useSalesFilters = (sales: Sale[]) => {
       specificDate: specificDate?.toISOString()
     };
     localStorage.setItem('salesFilters', JSON.stringify(stateToSave));
-  }, [searchQuery, dateFilter, paymentFilter, cashTransactionFilter, categoryFilter, dateRange, specificDate]);
+  }, [searchQuery, dateFilter, paymentFilter, cashTransactionFilter, categoryFilter, dateRange, specificDate, isHydrated]);
 
   const isCustomRange = dateFilter === 'custom';
   const isSpecificDate = dateFilter === 'specific';

@@ -392,7 +392,10 @@ const SalesTable: React.FC<SalesTableProps> = ({
   const { transactions } = useCashTransactions();
   const { settings: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const isMobileDevice = useIsMobile();
+  
+  // 🛡️ Ensure isMobile respects the mobileOptimized prop
+  const isMobile = mobileOptimized || isMobileDevice;
 
   const {
     searchQuery,

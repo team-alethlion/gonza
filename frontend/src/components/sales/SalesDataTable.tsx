@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Sale } from '@/types';
 import SalesTable from '@/components/SalesTable';
 import SalesTableSkeleton from './SalesTableSkeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SalesDataTableProps {
   sales: Sale[];
@@ -22,6 +23,8 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
   isLoading,
   initialCategories
 }) => {
+  const isMobile = useIsMobile();
+
   return (
     <div className="space-y-6">
       <Suspense fallback={<SalesTableSkeleton />}>
@@ -32,7 +35,7 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
           onDeleteSale={onDeleteSale}
           currency={currency}
           isLoading={isLoading}
-          mobileOptimized={false} // Disable mobile optimization to show all records
+          mobileOptimized={isMobile}
           initialCategories={initialCategories}
         />
       </Suspense>
