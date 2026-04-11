@@ -29,6 +29,9 @@ interface UseAnalyticsDataProps {
 
 import { localDb } from "@/lib/dexie";
 
+// 🛡️ CACHE VERSIONING: Prevent schema drift crashes
+const ANALYTICS_SCHEMA_VERSION = "v1.1";
+
 export function useAnalyticsData({
   sales: initialSales,
   dateFilter,
@@ -66,6 +69,26 @@ export function useAnalyticsData({
   }, [initialAnalytics, dateFilter]);
 
   const [isLoadingSummary, setIsLoadingSummary] = useState(!summary);
+
+  // 🚀 PERFORMANCE: Load from Dexie cache on mount for instant "all" view
+  useEffect(() => {
+    if (dateFilter !== "all" || initialAnalytics || !currentBusiness?.id) return;
+
+    const loadFromCache = async () => {
+      try {
+        const cached = await localDb.dashboardAnalytics.get(currentBusiness.id);
+        if (cached && (cached as any).version === ANALYTICS_SCHEMA_VERSION) {
+          console.log("[Analytics] Loaded from local cache (Speed Boost)");
+          setSummary(cached.summary);
+          // Set fetch time to far past so revalidation triggers immediately
+          lastFetchTimeRef.current = 0; 
+        }
+      } catch (err) {
+        console.warn("[Analytics] Cache read failed:", err);
+      }
+    };
+    loadFromCache();
+  }, [currentBusiness?.id, dateFilter, initialAnalytics]);
 
   // Fetch analytics summary from server based on filters
   useEffect(() => {
@@ -167,7 +190,8 @@ export function useAnalyticsData({
               id: currentBusiness.id,
               summary: result.data,
               updatedAt: Date.now(),
-            });
+              version: ANALYTICS_SCHEMA_VERSION // Track version to prevent drift
+            } as any);
           }
         }
       } catch (error) {
