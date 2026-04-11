@@ -28,7 +28,6 @@ export default function AgencyDashboardClient({
     settings,
     sales,
     pageTitle,
-    nonQuoteSalesCount,
     isLoading,
     settingsLoading,
     updateAvailable,
