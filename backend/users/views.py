@@ -247,8 +247,14 @@ class UserViewSet(viewsets.ModelViewSet):
                 role = Role.objects.create(
                     name='admin', 
                     description='Agency Admin',
-                    branch=branch
+                    branch=branch,
+                    pin_required=True
                 )
+                
+                # 🚀 AUTO-PERMISSION: Assign all existing permissions to this first Admin
+                # This ensures the owner has full access by default.
+                all_perms = Permission.objects.all()
+                role.permissions.add(*all_perms)
                 
                 # Update user with branch and role
                 user.branch = branch
@@ -295,9 +301,15 @@ class RoleViewSet(viewsets.ModelViewSet):
         branch_id = data.get('branchId')
         name = data.get('name')
         description = data.get('description', '')
+        pin_required = data.get('pinRequired', True)
         permissions_data = data.get('permissions', [])
         
-        role = Role.objects.create(name=name, description=description, branch_id=branch_id)
+        role = Role.objects.create(
+            name=name, 
+            description=description, 
+            branch_id=branch_id,
+            pin_required=pin_required
+        )
         
         for perm_name in permissions_data:
             perm, _ = Permission.objects.get_or_create(name=perm_name)
@@ -311,6 +323,7 @@ class RoleViewSet(viewsets.ModelViewSet):
         data = request.data
         if 'name' in data: role.name = data['name']
         if 'description' in data: role.description = data['description']
+        if 'pinRequired' in data: role.pin_required = data['pinRequired']
         
         if 'permissions' in data:
             permissions_data = data.get('permissions', [])

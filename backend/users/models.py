@@ -8,6 +8,7 @@ class Role(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
     branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, null=True, blank=True, related_name='roles')
+    pin_required = models.BooleanField(default=True, help_text="If False, users with this role can bypass PIN verification")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
