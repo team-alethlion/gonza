@@ -39,6 +39,13 @@ class TaskCategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ActivityHistorySerializer(serializers.ModelSerializer):
+    profile_name = serializers.SerializerMethodField()
+
     class Meta:
         model = ActivityHistory
         fields = '__all__'
+
+    def get_profile_name(self, obj):
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
+        return "Unknown"

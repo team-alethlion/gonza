@@ -108,7 +108,9 @@ export const useSalesData = (
     queryKey,
     queryFn: loadSales,
     enabled: enabled && !!userId && !!currentBusiness?.id && !options?.disableFetch,
-    staleTime: 30_000,
+    // 🚀 PERFORMANCE: Use a longer staleTime if we have initial SSR data
+    // This prevents an immediate background re-fetch of the same 50 items.
+    staleTime: memoizedInitialData ? 5 * 60_000 : 30_000, 
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
     initialData: memoizedInitialData

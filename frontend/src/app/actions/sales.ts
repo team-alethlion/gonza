@@ -66,17 +66,24 @@ export async function deleteSaleAction(id: string, businessId: string, reason?: 
     }
 }
 
+// 🛡️ LOGIC INTEGRITY: Standardized status mapping to prevent drift
+const mapFrontendStatusToBackend = (status: string) => {
+    switch (status) {
+        case 'NOT PAID': return 'UNPAID';
+        case 'Installment Sale': return 'INSTALLMENT';
+        case 'Paid': return 'COMPLETED';
+        case 'Quote': return 'QUOTE';
+        default: return status;
+    }
+};
+
 export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updateId?: string) {
     try {
         if (!saleDbData.location_id) throw new Error("Location ID is required");
         const sessionUser = await verifyBranchAccess(saleDbData.location_id);
         const userId = sessionUser.id;
 
-        let status = saleDbData.payment_status;
-        if (status === 'NOT PAID') status = 'UNPAID';
-        else if (status === 'Installment Sale') status = 'INSTALLMENT';
-        else if (status === 'Paid') status = 'COMPLETED';
-        else if (status === 'Quote') status = 'QUOTE';
+        const status = mapFrontendStatusToBackend(saleDbData.payment_status);
 
         const payload = {
             userId: userId,

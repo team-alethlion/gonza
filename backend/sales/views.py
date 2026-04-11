@@ -633,7 +633,8 @@ class SaleViewSet(viewsets.ModelViewSet):
             sales_qs = sales_qs.filter(date__lte=end_date)
             
         # 2. Get Aggregated Stats for existing sales
-        stats = sales_qs.values('category_id').annotate(
+        # 🛡️ FIX: Clear default order_by to prevent Django from adding it to the GROUP BY clause
+        stats = sales_qs.order_by().values('category_id').annotate(
             revenue=Sum('total_amount'),
             profit=Sum('profit'),
             transactions=Count('id')
