@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { clearInventoryCaches } from '@/utils/inventoryCacheUtils';
+import { invalidateDashboardCache } from '@/utils/dashboardCacheUtils';
 import { getSalesAction, deleteSaleAction, getTopCustomersAction } from '@/app/actions/sales';
 import { getCustomerLifetimeStatsAction } from '@/app/actions/customers';
 
@@ -214,6 +215,7 @@ export const useSalesData = (
         description: "The sale record and associated data have been successfully deleted."
       });
 
+      invalidateDashboardCache(currentBusiness.id);
       clearInventoryCaches();
       return true;
     } catch (error) {
@@ -233,18 +235,20 @@ export const useSalesData = (
       return oldData ? [newSale, ...oldData] : [newSale];
     });
     queryClient.invalidateQueries({ queryKey: baseQueryKey });
+    invalidateDashboardCache(currentBusiness?.id);
     clearSoldItemsCache();
     clearInventoryCaches();
-  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache]);
+  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache, currentBusiness?.id]);
 
   const updateSale = useCallback((updatedSale: Sale) => {
     queryClient.setQueryData(queryKey, (oldData: Sale[] | undefined) => {
       return oldData ? oldData.map(s => s.id === updatedSale.id ? updatedSale : s) : [updatedSale];
     });
     queryClient.invalidateQueries({ queryKey: baseQueryKey });
+    invalidateDashboardCache(currentBusiness?.id);
     clearSoldItemsCache();
     clearInventoryCaches();
-  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache]);
+  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache, currentBusiness?.id]);
 
   return {
     sales,
