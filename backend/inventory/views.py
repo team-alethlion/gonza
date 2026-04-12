@@ -964,7 +964,8 @@ class RequisitionViewSet(viewsets.ModelViewSet):
                     product_id=p_id, # 🚀 LINK TO ACTUAL PRODUCT
                     product_name=item.get('productName'),
                     sku=item.get('sku'),
-                    quantity=item.get('quantity')
+                    quantity=item.get('quantity'),
+                    urgent_item=item.get('urgentItem', False)
                 )
         
         # 🚀 PERFORMANCE: Calculate total for the response immediately

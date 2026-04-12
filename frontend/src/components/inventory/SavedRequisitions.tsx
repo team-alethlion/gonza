@@ -357,20 +357,25 @@ const SavedRequisitions = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(selectedRequisition.items || []).map((item: any, index: number) => (
-                        <TableRow key={index} className={item.urgentItem ? "bg-orange-50" : ""}>
-                          <TableCell>{item.productName}</TableCell>
-                          <TableCell>{formatNumber(item.quantity)}</TableCell>
-                          <TableCell>
-                            {item.urgentItem && (
-                              <Badge variant="destructive" className="text-xs">
-                                <AlertTriangle size={10} className="mr-1" />
-                                Urgent
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {(selectedRequisition.items || []).map((item: any, index: number) => {
+                        const isUrgent = item.urgentItem || item.urgent_item;
+                        const productName = item.productName || item.product_name;
+                        
+                        return (
+                          <TableRow key={index} className={isUrgent ? "bg-orange-50" : ""}>
+                            <TableCell>{productName}</TableCell>
+                            <TableCell>{formatNumber(item.quantity)}</TableCell>
+                            <TableCell>
+                              {isUrgent && (
+                                <Badge variant="destructive" className="text-xs">
+                                  <AlertTriangle size={10} className="mr-1" />
+                                  Urgent
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

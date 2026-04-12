@@ -64,9 +64,13 @@ class RequisitionPDFGenerator(BaseReport):
             line_total = cost * item.quantity
             total_amount += line_total
             
+            p_name = item.product_name
+            if item.urgent_item:
+                p_name = f"[URGENT] {p_name}"
+
             table_data.append([
                 str(i + 1),
-                item.product_name,
+                Paragraph(p_name, self.styles['Normal']),
                 item.sku or '-',
                 str(item.quantity),
                 f"{cost:,.0f}",
