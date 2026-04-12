@@ -80,7 +80,7 @@ class SalesGoalViewSet(viewsets.ModelViewSet):
                 "period_name": goal.period_name if goal else period_name,
             },
             "current_sales": current_sales,
-            "progress_percentage": float((current_sales / goal.amount_target * 100)) if (goal and goal.amount_target > 0) else 0
+            "progress_percentage": float((current_sales / float(goal.amount_target) * 100)) if (goal and goal.amount_target > 0) else 0
         })
 
     def perform_create(self, serializer):
@@ -177,33 +177,24 @@ class SaleViewSet(viewsets.ModelViewSet):
             new_stock = old_stock - qty_sold
             
             product.stock = new_stock
-            # ⚡️ CRITICAL FIX: Save WITHOUT update_fields to ensure updated_at is triggered.
-            # This allows the frontend's syncProducts() to see the change in the delta API.
-            product.save() 
-            print(f"DEBUG: Updated {product.name} stock: {old_stock} -> {new_stock}")
             
+            # 🛡️ SIGNAL CONTEXT: Provide info for automated history logging
             # Determine if it's an over-sale for better logging
             oversale_note = ""
             if qty_sold > old_stock:
                 deficit = qty_sold - old_stock
                 oversale_note = f" (Oversale of {deficit} units)"
-            
-            ProductHistory.objects.create(
-                user_id=user_id,
-                branch_id=branch_id,
-                product=product,
-                old_stock=old_stock,
-                new_stock=new_stock,
-                old_price=product.selling_price,
-                new_price=product.selling_price,
-                quantity_change=-qty_sold, # ⚡️ Record the negative change
-                type='SALE',
-                change_reason='SALE',
-                reason=f"Sale #{receipt_number}{oversale_note}",
-                reference_id=receipt_number,
-                reference_type='SALE',
-                created_at=date_obj
-            )
+
+            product._history_user_id = user_id
+            product._history_type = 'SALE'
+            product._history_reason = f"Sale #{receipt_number}{oversale_note}"
+            product._history_reference_id = receipt_number
+            product._history_reference_type = 'SALE'
+            product._history_created_at = date_obj
+
+            # ⚡️ CRITICAL FIX: Save WITHOUT update_fields to ensure updated_at is triggered.
+            # The signal will catch this and record the history automatically.
+            product.save() 
 
     def _create_sale_from_data(self, data, user_id):
         raw_items = data.get('items', [])
@@ -422,7 +413,15 @@ class SaleViewSet(viewsets.ModelViewSet):
                         try:
                             prod = Product.objects.select_for_update().get(id=item.product_id)
                             prod.stock += item.quantity
-                            prod.save() # Restore and update timestamp
+                            
+                            # 🛡️ SIGNAL CONTEXT
+                            prod._history_user_id = user_id
+                            prod._history_type = 'RETURN_IN'
+                            prod._history_reason = f"Stock restored due to Sale Update #{sale.receipt_number}"
+                            prod._history_reference_id = sale.receipt_number
+                            prod._history_reference_type = 'SALE_UPDATE'
+
+                            prod.save() # Restore and update timestamp. Signal will log.
                         except Product.DoesNotExist:
                             pass
             

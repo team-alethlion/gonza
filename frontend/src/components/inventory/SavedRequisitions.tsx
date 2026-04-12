@@ -7,9 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Download,
   Eye,
-  Edit,
   Trash2,
-  Calendar,
   Package,
   AlertTriangle
 } from 'lucide-react';
@@ -18,111 +16,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
-import { Requisition } from '@/hooks/useRequisitions';
-
-// Alternative PDF generation using HTML
-const generateAlternativePDF = async (requisition: Requisition, businessName: string) => {
-  // Create a temporary HTML element for PDF generation
-  const tempDiv = document.createElement('div');
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-9999px';
-  tempDiv.style.width = '800px';
-  tempDiv.style.padding = '40px';
-  tempDiv.style.backgroundColor = 'white';
-  tempDiv.style.fontFamily = 'Arial, sans-serif';
-
-  const validItems = requisition.items.filter(item => item.quantity > 0);
-  const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
-  const urgentItems = validItems.filter(item => item.urgentItem).length;
-
-  tempDiv.innerHTML = `
-    <div style="text-align: center; margin-bottom: 40px;">
-      <h1 style="color: #2563eb; font-size: 24px; margin: 0;">PURCHASE REQUISITION</h1>
-    </div>
-    
-    <div style="margin-bottom: 30px;">
-      <p><strong>Business:</strong> ${businessName}</p>
-      <p><strong>Date:</strong> ${format(requisition.createdAt, 'PPP')}</p>
-      <p><strong>Requisition #:</strong> ${requisition.requisitionNumber}</p>
-      <p><strong>Title:</strong> ${requisition.title}</p>
-      <p><strong>Status:</strong> ${requisition.status.toUpperCase()}</p>
-    </div>
-    
-    ${validItems.length > 0 ? `
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-        <thead>
-          <tr style="background-color: #2563eb; color: white;">
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">#</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item Description</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Quantity</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Urgent</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Supplier/Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${validItems.map((item, index) => `
-            <tr style="${item.urgentItem ? 'background-color: #fef3c7;' : ''}">
-              <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${item.productName}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${Math.round(item.quantity).toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">${item.urgentItem ? 'Yes' : 'No'}</td>
-              <td style="border: 1px solid #ddd; padding: 8px;"></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      
-      <div style="margin-bottom: 30px; padding: 15px; background-color: #f8fafc; border-radius: 8px;">
-        <h3 style="margin: 0 0 10px 0; color: #1e40af;">SUMMARY</h3>
-        <p><strong>Total Items:</strong> ${validItems.length}</p>
-        <p><strong>Total Quantity:</strong> ${totalQuantity.toLocaleString()}</p>
-        <p><strong>Urgent Items:</strong> ${urgentItems}</p>
-      </div>
-    ` : `
-      <p>No items in this requisition.</p>
-    `}
-    
-    ${requisition.notes ? `
-      <div style="margin-bottom: 30px;">
-        <h3 style="color: #1e40af;">NOTES</h3>
-        <p style="padding: 10px; background-color: #f1f5f9; border-radius: 4px;">${requisition.notes}</p>
-      </div>
-    ` : ''}
-    
-    <div style="margin-top: 60px;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-        <div>
-          <p>Requested by: _____________________</p>
-          <p>Date: _____________</p>
-        </div>
-        <div>
-          <p>Approved by: _____________________</p>
-          <p>Date: _____________</p>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(tempDiv);
-
-  try {
-    const { generateVectorPDF } = await import('@/utils/generateVectorPDF');
-    await generateVectorPDF(tempDiv, {
-      filename: `Requisition_${requisition.requisitionNumber}.pdf`,
-      orientation: 'portrait',
-      format: 'a4',
-      margins: { top: 10, right: 10, bottom: 10, left: 10 }
-    });
-  } finally {
-    document.body.removeChild(tempDiv);
-  }
-};
 
 interface SavedRequisitionsProps {
-  requisitions: Requisition[];
+  requisitions: any[];
   isLoading: boolean;
   onRefresh: () => void;
   onDelete: (id: string) => void;
+  onDownloadPDF?: (id: string) => void;
   businessName?: string;
 }
 
@@ -131,10 +31,11 @@ const SavedRequisitions = ({
   isLoading,
   onRefresh,
   onDelete,
+  onDownloadPDF,
   businessName = 'Your Business Name'
 }: SavedRequisitionsProps) => {
   const isMobile = useIsMobile();
-  const [selectedRequisition, setSelectedRequisition] = useState<Requisition | null>(null);
+  const [selectedRequisition, setSelectedRequisition] = useState<any | null>(null);
 
   const {
     currentPage,
@@ -144,11 +45,12 @@ const SavedRequisitions = ({
   } = usePagination({ items: requisitions, itemsPerPage: 10 });
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
+    const s = (status || '').toLowerCase();
+    switch (s) {
+      case 'pending': return 'bg-gray-100 text-gray-800';
       case 'submitted': return 'bg-blue-100 text-blue-800';
       case 'approved': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-purple-100 text-purple-800';
+      case 'fulfilled': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -157,36 +59,25 @@ const SavedRequisitions = ({
     return Math.round(num).toLocaleString();
   };
 
-  const generateRequisitionPDF = async (requisition: Requisition) => {
-    try {
-      console.log('Starting PDF generation for requisition:', requisition.requisitionNumber);
-
-      // Use the alternative PDF generation method
-      await generateAlternativePDF(requisition, businessName);
-      console.log('PDF generated successfully using alternative method');
-
-    } catch (error: any) {
-      console.error('PDF generation failed:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-
-      // Show user-friendly error message
-      alert(`Failed to generate PDF: ${error.message || 'Unknown error occurred'}`);
-    }
+  const formatSafeDate = (dateVal: any) => {
+    if (!dateVal) return "N/A";
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "N/A";
+    return format(d, 'MMM d, yyyy');
   };
 
-  const RequisitionCard = ({ requisition }: { requisition: Requisition }) => {
-    const totalQuantity = requisition.items.reduce((sum, item) => sum + item.quantity, 0);
-    const urgentItems = requisition.items.filter(item => item.urgentItem).length;
+  const RequisitionCard = ({ requisition }: { requisition: any }) => {
+    const totalQuantity = (requisition.items || []).reduce((sum: number, item: any) => sum + item.quantity, 0);
+    const urgentItems = (requisition.items || []).filter((item: any) => item.urgentItem).length;
 
     return (
       <Card className="mb-4">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-sm font-medium">{requisition.title}</CardTitle>
+              <CardTitle className="text-sm font-medium">{requisition.title || 'Untitled Requisition'}</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                {requisition.requisitionNumber} • {format(requisition.createdAt, 'MMM d, yyyy')}
+                {requisition.requisition_number || requisition.requisitionNumber} • {formatSafeDate(requisition.createdAt || requisition.created_at || requisition.date)}
               </p>
             </div>
             <Badge className={cn('text-xs', getStatusColor(requisition.status))}>
@@ -198,12 +89,18 @@ const SavedRequisitions = ({
           <div className="space-y-2 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Items:</span>
-              <span>{requisition.items.length}</span>
+              <span>{(requisition.items || []).length}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total Qty:</span>
               <span>{formatNumber(totalQuantity)}</span>
             </div>
+            {requisition.estimated_total > 0 && (
+              <div className="flex justify-between font-medium">
+                <span className="text-muted-foreground">Est. Value:</span>
+                <span>UGX {formatNumber(requisition.estimated_total)}</span>
+              </div>
+            )}
             {urgentItems > 0 && (
               <div className="flex justify-between text-orange-600">
                 <span className="flex items-center gap-1">
@@ -228,7 +125,7 @@ const SavedRequisitions = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => generateRequisitionPDF(requisition)}
+              onClick={() => onDownloadPDF?.(requisition.id)}
               className="flex-1"
             >
               <Download size={14} className="mr-1" />
@@ -305,20 +202,21 @@ const SavedRequisitions = ({
                     <TableHead>Date</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Total Qty</TableHead>
+                    <TableHead>Est. Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedItems.map(requisition => {
-                    const totalQuantity = requisition.items.reduce((sum, item) => sum + item.quantity, 0);
-                    const urgentItems = requisition.items.filter(item => item.urgentItem).length;
+                    const totalQuantity = (requisition.items || []).reduce((sum: number, item: any) => sum + item.quantity, 0);
+                    const urgentItems = (requisition.items || []).filter((item: any) => item.urgentItem).length;
 
                     return (
                       <TableRow key={requisition.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{requisition.title}</div>
+                            <div className="font-medium">{requisition.title || 'Untitled'}</div>
                             {urgentItems > 0 && (
                               <div className="flex items-center gap-1 text-orange-600 text-xs mt-1">
                                 <AlertTriangle size={10} />
@@ -328,13 +226,16 @@ const SavedRequisitions = ({
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-sm">
-                          {requisition.requisitionNumber}
+                          {requisition.requisition_number || requisition.requisitionNumber}
                         </TableCell>
                         <TableCell>
-                          {format(requisition.createdAt, 'MMM d, yyyy')}
+                          {formatSafeDate(requisition.createdAt || requisition.created_at || requisition.date)}
                         </TableCell>
-                        <TableCell>{requisition.items.length}</TableCell>
+                        <TableCell>{(requisition.items || []).length}</TableCell>
                         <TableCell>{formatNumber(totalQuantity)}</TableCell>
+                        <TableCell className="font-medium">
+                          {requisition.estimated_total > 0 ? `UGX ${formatNumber(requisition.estimated_total)}` : '-'}
+                        </TableCell>
                         <TableCell>
                           <Badge className={cn('text-xs', getStatusColor(requisition.status))}>
                             {requisition.status}
@@ -352,7 +253,7 @@ const SavedRequisitions = ({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => generateRequisitionPDF(requisition)}
+                              onClick={() => onDownloadPDF?.(requisition.id)}
                             >
                               <Download size={14} />
                             </Button>
@@ -415,7 +316,7 @@ const SavedRequisitions = ({
               <div>
                 <CardTitle>{selectedRequisition.title}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {selectedRequisition.requisitionNumber} • {format(selectedRequisition.createdAt, 'PPP')}
+                  {selectedRequisition.requisition_number || selectedRequisition.requisitionNumber} • {formatSafeDate(selectedRequisition.createdAt || selectedRequisition.created_at || selectedRequisition.date)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -437,8 +338,15 @@ const SavedRequisitions = ({
                 </div>
               )}
 
+              {selectedRequisition.estimated_total > 0 && (
+                <div className="p-3 bg-primary/5 rounded-md border border-primary/10">
+                  <span className="text-sm font-medium">Estimated Total Value: </span>
+                  <span className="text-lg font-bold text-primary">UGX {formatNumber(selectedRequisition.estimated_total)}</span>
+                </div>
+              )}
+
               <div>
-                <h4 className="font-medium mb-2">Items ({selectedRequisition.items.length}):</h4>
+                <h4 className="font-medium mb-2">Items ({(selectedRequisition.items || []).length}):</h4>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -449,7 +357,7 @@ const SavedRequisitions = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedRequisition.items.map((item, index) => (
+                      {(selectedRequisition.items || []).map((item: any, index: number) => (
                         <TableRow key={index} className={item.urgentItem ? "bg-orange-50" : ""}>
                           <TableCell>{item.productName}</TableCell>
                           <TableCell>{formatNumber(item.quantity)}</TableCell>

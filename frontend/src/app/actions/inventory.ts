@@ -158,6 +158,30 @@ export async function getStockSummaryReportAction(
   }
 }
 
+export async function getLowStockItemsAction(locationId: string) {
+  try {
+    await verifyBranchAccess(locationId);
+    const data = await djangoFetch(
+      `inventory/products/low_stock/?branchId=${locationId}`,
+    );
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function downloadRequisitionPDFAction(requisitionId: string) {
+  try {
+    const data = await djangoFetch(
+      `inventory/requisitions/${requisitionId}/pdf/`,
+      { responseType: 'blob' } as any
+    );
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getSoldItemsReportAction(
   branchId: string,
   startDate: string,

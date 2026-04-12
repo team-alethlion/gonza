@@ -10,8 +10,8 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     Consolidated analytics summary including sales, expenses, inventory stats, and active goals.
     This reduces multiple round-trips from the frontend.
     """
-    # Bump cache version to v4 to ensure fresh data schema
-    cache_key = f"analytics_summary_v4_{branch_id}_{start_date}_{end_date}"
+    # Bump cache version to v5 to ensure fresh data schema
+    cache_key = f"analytics_summary_v5_{branch_id}_{start_date}_{end_date}"
     cached_data = cache.get(cache_key)
     if cached_data:
         return cached_data
@@ -27,12 +27,14 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
         total=Sum('total_amount'),
         tax=Sum('tax_amount'),
         discount=Sum('discount_amount'),
-        total_cost=Sum('total_cost')
+        total_cost=Sum('total_cost'),
+        profit=Sum('profit'),
+        subtotal=Sum('subtotal')
     )
 
     total_sales = float(sales_totals['total'] or 0)
     total_cost = float(sales_totals['total_cost'] or 0)
-    total_profit = total_sales - total_cost
+    total_profit = float(sales_totals['profit'] or 0)
 
     # 2. Status Counts
     counts = sales_qs.values('status').annotate(count=Count('id'))
@@ -50,16 +52,17 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     total_expenses = float(expenses_stats['total'] or 0)
 
     # 4. Recent Sales (Optimized)
+    # Keeping 20 records as requested, with camelCase keys
     recent_sales = sales_qs.select_related('customer').order_by('-date')[:20]
     recent_sales_data = []
     for s in recent_sales:
         recent_sales_data.append({
             "id": s.id,
             "receiptNumber": s.receipt_number,
-            "totalAmount": float(s.total_amount),
+            "totalAmount": float(s.total_amount or 0),
             "status": s.status,
             "date": s.date.isoformat() if s.date else None,
-            "customerName": s.customer.name if s.customer else "Guest"
+            "customerName": s.customer.name if (s.customer and s.customer.name) else (s.customer_name or "Guest")
         })
 
     # 5. Inventory Stats (Value, Low Stock, etc.)
@@ -72,16 +75,26 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
     # NEW: Fetch ALL active goals for the location to support instant switching in UI
     all_active_goals = SalesGoal.objects.filter(branch_id=branch_id, status='ACTIVE')
     goals_map = {}
+
     for g in all_active_goals:
+        # Calculate progress for each goal individually
+        goal_sales_qs = Sale.objects.filter(branch_id=branch_id, is_deleted=False).exclude(status='QUOTE')
+        goal_sales_qs = goal_sales_qs.filter(date__gte=g.start_date, date__lte=g.end_date)
+        actual = float(goal_sales_qs.aggregate(t=Sum('total_amount'))['t'] or 0)
+
+        # 🛡️ FIX: Ensure Decimal to float conversion for all operands in math operations
+        target = float(g.amount_target)
+        progress_percentage = (actual / target * 100) if target > 0 else 0
+
         goals_map[g.period.lower()] = {
             "id": g.id,
-            "amountTarget": float(g.amount_target),
-            "currentAmount": float(g.current_amount),
+            "amountTarget": target,
+            "currentAmount": actual,
             "salesCountTarget": g.sales_count_target,
             "period": g.period,
             "periodName": g.period_name,
             "endDate": g.end_date.isoformat() if g.end_date else None,
-            "progressPercentage": float((g.current_amount / g.amount_target * 100)) if g.amount_target > 0 else 0
+            "progressPercentage": float(progress_percentage)
         }
 
     # LEGACY: Preserve the single goal selection logic for shared parts
@@ -95,16 +108,21 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
 
     goal_data = None
     if goal:
+        # 🛡️ FIX: Ensure Decimal to float conversion
+        target = float(goal.amount_target)
+        actual = float(goal.current_amount)
+        progress_percentage = (actual / target * 100) if target > 0 else 0
+
         goal_data = {
             "id": goal.id,
-            "amountTarget": float(goal.amount_target),
-            "currentAmount": float(goal.current_amount),
+            "amountTarget": target,
+            "currentAmount": actual,
             "salesCountTarget": goal.sales_count_target,
             "currentSalesCount": goal.current_sales_count,
             "period": goal.period,
             "periodName": goal.period_name,
             "endDate": goal.end_date.isoformat() if goal.end_date else None,
-            "progressPercentage": float((goal.current_amount / goal.amount_target * 100)) if goal.amount_target > 0 else 0
+            "progressPercentage": float(progress_percentage)
         }
 
     data = {
@@ -116,8 +134,8 @@ def get_analytics_summary(branch_id, start_date=None, end_date=None):
         "totalExpenses": total_expenses,
         "recentSales": recent_sales_data,
         "inventoryStats": inventory_stats,
-        "activeGoal": goal_data,
-        "activeGoals": goals_map
+        "activeGoals": goals_map,
+        "activeGoal": goal_data
     }
 
     # Cache for 5 minutes

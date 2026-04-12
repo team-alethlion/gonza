@@ -26,7 +26,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatNumber(value: number | undefined | null): string {
   const num = value ?? 0;
-  return num.toLocaleString(undefined, {
+  return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   });

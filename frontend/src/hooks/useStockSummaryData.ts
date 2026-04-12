@@ -27,11 +27,22 @@ export interface StockSummaryReport {
   items: StockSummaryData[];
   summary: {
     totalOpeningStock: number;
+    totalOpeningStockValue: number;
     totalStockIn: number;
+    totalStockInValue: number;
     totalItemsSold: number;
+    totalItemsSoldValue: number;
     totalAdjustmentsIn: number;
     totalAdjustmentsOut: number;
+    totalAdjustmentsOutValue: number;
     totalClosingStock: number;
+    totalClosingStockValue: number;
+    totalReturnIn: number;
+    totalReturnInValue: number;
+    totalReturnOut: number;
+    totalReturnOutValue: number;
+    totalTransferOut: number;
+    totalTransferOutValue: number;
     totalRevaluation: number;
   } | null;
 }

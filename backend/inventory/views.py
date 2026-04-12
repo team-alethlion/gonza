@@ -14,6 +14,7 @@ import uuid
 from core_app.models import Agency
 from core_app.pdf_utils import StockSummaryGenerator, generate_pdf_response
 import io
+import uuid
 
 from .models import (
     Supplier, Category, Product, StockAudit, StockAuditItem,
@@ -25,7 +26,7 @@ from .serializers import (
     StockAuditSerializer, ProductHistorySerializer, StockTransferSerializer,
     RequisitionSerializer
 )
-from core_app.models import BranchCounter
+from core_app.models import BranchCounter, Branch
 from .filters import ProductFilter
 
 class SupplierViewSet(viewsets.ModelViewSet):
@@ -80,17 +81,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             product = serializer.save()
             
-            if product.stock > 0 and user_id and branch_id:
-                ProductHistory.objects.create(
-                    user_id=user_id,
-                    branch_id=branch_id,
-                    product=product,
-                    type='CREATED',
-                    old_stock=0,
-                    new_stock=product.stock,
-                    quantity_change=product.stock,
-                    reason=f"[{product.name}] | Initial stock",
-                )
+            # 🛡️ SIGNAL CONTEXT: Logging is handled by signals.py
+            # If stock was provided, the signal will capture it automatically.
+            # We just need to ensure the user_id is passed if available.
+            if user_id:
+                product._history_user_id = user_id
+                product.save(update_fields=[]) # Trigger signal without DB change
                 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -129,7 +125,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     elif product.stock > old_stock: change_reason = "Manual stock addition"
                     else: change_reason = "Manual stock reduction"
                 
-        # Determine type - use ADJUSTMENT for absolute setting
+                # Determine type - use ADJUSTMENT for absolute setting
                 type_enum = 'SALE' if is_from_sale else ('RESTOCK' if product.stock > old_stock else 'ADJUSTMENT')
                 if absolute_stock is not None: type_enum = 'ADJUSTMENT'
 
@@ -150,19 +146,25 @@ class ProductViewSet(viewsets.ModelViewSet):
                 if final_created_at is None:
                     final_created_at = timezone.now()
 
-                ProductHistory.objects.create(
-                    user_id=user_id,
-                    branch_id=product.branch_id,
-                    product=product,
-                    type=type_enum,
-                    old_stock=old_stock,
-                    new_stock=product.stock,
-                    quantity_change=product.stock - old_stock,
-                    reason=f"[{product.name}] | {change_reason}",
-                    reference_id=request.data.get('referenceId'),
-                    created_at=final_created_at
-                )
+                # 🛡️ SIGNAL CONTEXT
+                product._history_user_id = user_id
+                product._history_type = type_enum
+                product._history_reason = f"[{product.name}] | {change_reason}"
+                product._history_reference_id = request.data.get('referenceId')
+                product._history_created_at = final_created_at
+                
+                product.save() # Signal will catch and log automatically
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def low_stock(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from inventory.logic.requisitions import get_low_stock_items
+        items = get_low_stock_items(branch_id)
+        return Response(items)
 
     @action(detail=False, methods=['get'])
     def delta(self, request):
@@ -324,32 +326,18 @@ class ProductViewSet(viewsets.ModelViewSet):
 
                         product.save()
 
-                        # History logging
-                        hist_id = f"hist_{uuid.uuid4().hex[:10]}"
+                        # 🛡️ SIGNAL CONTEXT: Logging is handled by signals.py
+                        # We just provide the context before the final trigger save
                         if is_new:
-                            ProductHistory.objects.create(
-                                id=hist_id,
-                                user_id=user_id,
-                                branch_id=branch_id,
-                                product=product,
-                                type='CREATED',
-                                old_stock=0,
-                                new_stock=product.stock,
-                                quantity_change=product.stock,
-                                reason=f"Bulk Upload | Created",
-                            )
+                            product._history_user_id = user_id
+                            product._history_type = 'CREATED'
+                            product._history_reason = "Bulk Upload | Created"
                         elif product.stock != old_stock:
-                            ProductHistory.objects.create(
-                                id=hist_id,
-                                user_id=user_id,
-                                branch_id=branch_id,
-                                product=product,
-                                type='ADJUSTMENT',
-                                old_stock=old_stock,
-                                new_stock=product.stock,
-                                quantity_change=product.stock - old_stock,
-                                reason=f"Bulk Upload | Updated",
-                            )
+                            product._history_user_id = user_id
+                            product._history_type = 'ADJUSTMENT'
+                            product._history_reason = "Bulk Upload | Updated"
+                        
+                        product.save() # Trigger signal
 
                         results["successCount"] += 1
 
@@ -363,127 +351,19 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary_report(self, request):
         branch_id = request.query_params.get('locationId')
-        start_date = request.query_params.get('startDate')
-        end_date = request.query_params.get('endDate')
+        start_date_str = request.query_params.get('startDate')
+        end_date_str = request.query_params.get('endDate')
         
-        if not all([branch_id, start_date, end_date]):
+        if not all([branch_id, start_date_str, end_date_str]):
             return Response({"error": "Missing parameters"}, status=400)
             
         try:
-            start_date = parse_datetime(start_date) or parse_date(start_date)
-            end_date = parse_datetime(end_date) or parse_date(end_date)
-            if not start_date or not end_date:
-                raise ValueError()
-        except Exception:
-            return Response({"error": "Invalid dates"}, status=400)
-
-        query = """
-            WITH ProductMetrics AS (
-                SELECT 
-                    "product_id",
-                    SUM(CASE WHEN "type" = 'SALE' THEN ABS("new_stock" - "old_stock") ELSE 0 END) as "itemsSold",
-                    SUM(CASE WHEN "type" IN ('STOCK_IN', 'RESTOCK') THEN ("new_stock" - "old_stock") ELSE 0 END) as "stockIn",
-                    SUM(CASE WHEN ("new_stock" - "old_stock") > 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsIn",
-                    SUM(CASE WHEN ("new_stock" - "old_stock") < 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ABS("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsOut"
-                FROM inventory_producthistory
-                WHERE branch_id = %s AND created_at BETWEEN %s AND %s
-                GROUP BY "product_id"
-            ),
-            LastHistoryID AS (
-                SELECT "product_id", MAX(id) as max_id
-                FROM inventory_producthistory
-                WHERE branch_id = %s AND created_at <= %s
-                GROUP BY "product_id"
-            ),
-            ClosingStock AS (
-                SELECT h."product_id", h."new_stock" as "closingStock"
-                FROM inventory_producthistory h
-                JOIN LastHistoryID lh ON h.id = lh.max_id
-            )
-            SELECT 
-                p.id as "productId",
-                p.name as "productName",
-                p.sku as "itemNumber",
-                p.image_url as "imageUrl",
-                p.cost_price as "costPrice",
-                p.selling_price as "sellingPrice",
-                c.name as "category",
-                COALESCE(cs."closingStock", 0) as "closingStock",
-                COALESCE(pm."itemsSold", 0) as "itemsSold",
-                COALESCE(pm."stockIn", 0) as "stockIn",
-                COALESCE(pm."adjustmentsIn", 0) as "adjustmentsIn",
-                COALESCE(pm."adjustmentsOut", 0) as "adjustmentsOut"
-            FROM inventory_product p
-            LEFT JOIN inventory_category c ON p.category_id = c.id
-            LEFT JOIN ProductMetrics pm ON p.id = pm."product_id"
-            LEFT JOIN ClosingStock cs ON p.id = cs."product_id"
-            WHERE p.branch_id = %s
-        """
-        
-        with connection.cursor() as cursor:
-            # Note: MaxHistoryID needs branch_id and end_date too
-            cursor.execute(query, [branch_id, start_date, end_date, branch_id, end_date, branch_id])
-            columns = [col[0] for col in cursor.description]
-            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        formatted = []
-        summary = {
-            "totalOpeningStock": 0,
-            "totalStockIn": 0,
-            "totalItemsSold": 0,
-            "totalAdjustmentsIn": 0,
-            "totalAdjustmentsOut": 0,
-            "totalClosingStock": 0,
-            "totalRevaluation": 0
-        }
-
-        for row in results:
-            def safe_float(v):
-                try: return float(v or 0)
-                except: return 0.0
-
-            closing_stock = safe_float(row.get('closingStock'))
-            items_sold = safe_float(row.get('itemsSold'))
-            stock_in = safe_float(row.get('stockIn'))
-            adj_in = safe_float(row.get('adjustmentsIn'))
-            adj_out = safe_float(row.get('adjustmentsOut'))
-            cost_price = safe_float(row.get('costPrice'))
-            
-            opening_stock = closing_stock - (stock_in + adj_in) + (items_sold + adj_out)
-            revaluation = closing_stock * cost_price
-
-            formatted.append({
-                "productId": row.get('productId'),
-                "productName": row.get('productName'),
-                "itemNumber": row.get('itemNumber') or row.get('productId'),
-                "imageUrl": row.get('imageUrl'),
-                "costPrice": cost_price,
-                "sellingPrice": safe_float(row.get('sellingPrice')),
-                "category": row.get('category'),
-                "openingStock": opening_stock,
-                "itemsSold": items_sold,
-                "stockIn": stock_in,
-                "transferOut": 0,
-                "returnIn": 0,
-                "returnOut": 0,
-                "adjustmentsIn": adj_in,
-                "adjustmentsOut": adj_out,
-                "closingStock": closing_stock,
-                "revaluation": revaluation
-            })
-
-            summary["totalOpeningStock"] += opening_stock
-            summary["totalStockIn"] += stock_in
-            summary["totalItemsSold"] += items_sold
-            summary["totalAdjustmentsIn"] += adj_in
-            summary["totalAdjustmentsOut"] += adj_out
-            summary["totalClosingStock"] += closing_stock
-            summary["totalRevaluation"] += revaluation
-
-        return Response({
-            "items": formatted,
-            "summary": summary
-        })
+            from inventory.logic.reports import get_stock_summary_data
+            result = get_stock_summary_data(branch_id, start_date_str, end_date_str)
+            return Response(result)
+        except Exception as e:
+            print(f"[StockSummary] Error: {str(e)}")
+            return Response({"error": str(e)}, status=400)
     @action(detail=False, methods=['get'])
     def sold_items(self, request):
         branch_id = request.query_params.get('branchId')
@@ -636,32 +516,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             for adj in adjustments:
                 p_id = adj.get('productId')
-                # Optional: handle if productId is not provided but SKU is
                 sku = adj.get('sku')
                 
+                product = None
+                if p_id:
+                    product = Product.objects.filter(id=p_id, branch_id=branch_id).first()
+                elif sku:
+                    product = Product.objects.filter(sku=sku, branch_id=branch_id).first()
+
+                if not product:
+                    print(f"[BulkAdjust] Product not found: ID={p_id}, SKU={sku}")
+                    continue
+
+                # 🚀 Extract adjustment data
                 delta = Decimal(str(adj.get('quantity', 0)))
-                absolute_qty = adj.get('absoluteQuantity') # 🚀 SUPPORT ABSOLUTE SETTING
+                absolute_qty = adj.get('absoluteQuantity')
                 new_price = adj.get('price')
                 adj_type = adj.get('type', 'ADJUSTMENT')
                 reason = adj.get('reason', '')
                 created_at_raw = adj.get('createdAt')
-                
-                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
-                final_created_at = None
-                if created_at_raw:
-                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
-                    if parsed_dt:
-                        # Ensure it's not before product creation
-                        if parsed_dt < product.created_at:
-                            # Clamp to product creation + 1 second to maintain order
-                            from datetime import timedelta
-                            final_created_at = product.created_at + timedelta(seconds=1)
-                        else:
-                            final_created_at = parsed_dt
-                
-                if not product:
-                    # Log error or skip
-                    continue
 
                 # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
                 from django.utils import timezone
@@ -694,23 +567,14 @@ class ProductViewSet(viewsets.ModelViewSet):
                     new_stock = old_stock + delta
 
                 product.stock = new_stock
-                product.save()                
-                ProductHistory.objects.create(
-                    id=f"hist_{uuid.uuid4().hex[:10]}",
-                    user_id=user_id,
-                    branch_id=branch_id,
-                    product=product,
-                    type=adj_type,
-                    old_stock=old_stock,
-                    new_stock=new_stock,
-                    quantity_change=delta,
-                    reason=reason,
-                    created_at=final_created_at,
-                    old_cost=product.cost_price,
-                    new_cost=Decimal(str(new_price)) if new_price is not None else product.cost_price,
-                    old_price=product.selling_price,
-                    new_price=product.selling_price
-                )
+
+                # 🛡️ SIGNAL CONTEXT
+                product._history_user_id = user_id
+                product._history_type = adj_type
+                product._history_reason = reason
+                product._history_created_at = final_created_at
+
+                product.save()
         return Response({"status": "success"})
 
     @action(detail=False, methods=['get'])
@@ -860,30 +724,18 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
             current_stock = product.stock
             change = float(data.get('newQuantity', 0)) - float(data.get('previousQuantity', 0))
             actual_new_stock = current_stock + change
-            
-            from django.utils import timezone
-            history = ProductHistory.objects.create(
-                user=request.user,
-                branch_id=branch_id,
-                product=product,
-                old_stock=current_stock,
-                new_stock=actual_new_stock,
-                type=data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT'),
-                change_reason=data.get('changeReason'),
-                reference_id=data.get('referenceId'),
-                created_at=data.get('createdAt') or timezone.now(),
-                old_cost=product.cost_price,
-                new_cost=product.cost_price,
-                old_price=product.selling_price,
-                new_price=product.selling_price
-            )
-            
-            product.stock = actual_new_stock
-            product.save()
-            
-            serializer = self.get_serializer(history)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+            # 🛡️ SIGNAL CONTEXT
+            product._history_user_id = request.user.id
+            product._history_type = data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT')
+            product._history_reason = data.get('changeReason')
+            product._history_reference_id = data.get('referenceId')
+            product._history_created_at = data.get('createdAt')
+
+            product.stock = actual_new_stock
+            product.save() # Signal will catch and log automatically
+
+            return Response({"status": "success"}, status=status.HTTP_201_CREATED)
     @action(detail=False, methods=['delete'])
     def delete_by_reference(self, request):
         ref_id = request.query_params.get('referenceId')
@@ -926,7 +778,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
         to_branch_id = data.get('to_branch')
         user_id = data.get('user') or request.user.id
         
-        from core_app.models import BranchCounter, Branch
+        
         
         with transaction.atomic():
             if not data.get('transfer_number'):
@@ -1000,38 +852,26 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                 if src_product:
                     old_stock = src_product.stock
                     src_product.stock -= qty
-                    src_product.save()
                     
-                    ProductHistory.objects.create(
-                        id=f"hist_{uuid.uuid4().hex[:10]}",
-                        user_id=user_id,
-                        branch_id=from_branch_id,
-                        product=src_product,
-                        type='TRANSFER_OUT',
-                        old_stock=old_stock,
-                        new_stock=src_product.stock,
-                        quantity_change=-qty,
-                        reason=f"Transfer to {to_branch.name} | {transfer.transfer_number}",
-                        reference_id=transfer.id
-                    )
+                    # 🛡️ SIGNAL CONTEXT
+                    src_product._history_user_id = user_id
+                    src_product._history_type = 'TRANSFER_OUT'
+                    src_product._history_reason = f"Transfer to {to_branch.name} | {transfer.transfer_number}"
+                    src_product._history_reference_id = transfer.id
+
+                    src_product.save()
                 
                 if dest_product:
                     old_stock = dest_product.stock
                     dest_product.stock += qty
-                    dest_product.save()
                     
-                    ProductHistory.objects.create(
-                        id=f"hist_{uuid.uuid4().hex[:10]}",
-                        user_id=user_id,
-                        branch_id=to_branch_id,
-                        product=dest_product,
-                        type='TRANSFER_IN',
-                        old_stock=old_stock,
-                        new_stock=dest_product.stock,
-                        quantity_change=qty,
-                        reason=f"Transfer from {from_branch.name} | {transfer.transfer_number}",
-                        reference_id=transfer.id
-                    )
+                    # 🛡️ SIGNAL CONTEXT
+                    dest_product._history_user_id = user_id
+                    dest_product._history_type = 'TRANSFER_IN'
+                    dest_product._history_reason = f"Transfer from {from_branch.name} | {transfer.transfer_number}"
+                    dest_product._history_reference_id = transfer.id
+
+                    dest_product.save()
                 
                 StockTransferItem.objects.create(
                     id=f"titem_{uuid.uuid4().hex[:10]}",
@@ -1043,11 +883,21 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                 )
                 
         return Response(self.get_serializer(transfer).data, status=status.HTTP_201_CREATED)
-
 class RequisitionViewSet(viewsets.ModelViewSet):
     queryset = Requisition.objects.all()
     serializer_class = RequisitionSerializer
     permission_classes = [IsAuthenticated]
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        from inventory.logic.requisitions import calculate_requisition_total
+        response.data['estimated_total'] = float(calculate_requisition_total(kwargs.get('pk')))
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        from inventory.logic.requisitions import calculate_requisition_total
+        response.data['estimated_total'] = float(calculate_requisition_total(kwargs.get('pk')))
+        return response
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -1056,22 +906,71 @@ class RequisitionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-created_at')
 
-    def create(self, request, *args, **kwargs):
-        data = request.data
-        items_data = data.pop('items', [])
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # 🚀 PERFORMANCE: Add estimated total to each requisition in the list
+        from inventory.logic.requisitions import calculate_requisition_total
+        # Handle both paginated and non-paginated responses
+        data_list = response.data.get('results') if isinstance(response.data, dict) else response.data
+        if isinstance(data_list, list):
+            for req in data_list:
+                req['estimated_total'] = float(calculate_requisition_total(req['id']))
+        return response
+
+    @action(detail=True, methods=['get'])
+    def pdf(self, request, pk=None):
+        requisition = self.get_object()
+        from inventory.logic.requisitions import RequisitionPDFGenerator
+        from core_app.pdf_utils import generate_pdf_response
+        import io
         
+        buffer = io.BytesIO()
+        report = RequisitionPDFGenerator(buffer, title="Purchase Requisition")
+        elements = report.generate(requisition)
+        
+        return generate_pdf_response(elements, f"Requisition_{requisition.requisition_number}", buffer)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() # Make mutable copy
+        items_data = data.pop('items', [])
+        branch_id = data.get('locationId') or data.get('branchId') or data.get('branch')
+        
+        from core_app.models import BranchCounter
+        import uuid
+
         with transaction.atomic():
+            # 🚀 AUTO-NUMBERING: Generate requisition number on server
+            if not data.get('requisition_number'):
+                counter, _ = BranchCounter.objects.get_or_create(branch_id=branch_id, type='requisition', defaults={'count': 0})
+                counter.count += 1
+                counter.save()
+                data['requisition_number'] = f"REQ-{str(counter.count).zfill(4)}"
+
+            if not data.get('id'):
+                data['id'] = f"req_{uuid.uuid4().hex[:8]}"
+
+            # Ensure branch is correctly mapped for the serializer
+            if branch_id:
+                data['branch'] = branch_id
+
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             requisition = serializer.save(status='PENDING')
             
             for item in items_data:
+                p_id = item.get('productId')
                 RequisitionItem.objects.create(
                     requisition=requisition,
+                    product_id=p_id, # 🚀 LINK TO ACTUAL PRODUCT
                     product_name=item.get('productName'),
                     sku=item.get('sku'),
                     quantity=item.get('quantity')
                 )
+        
+        # 🚀 PERFORMANCE: Calculate total for the response immediately
+        from inventory.logic.requisitions import calculate_requisition_total
+        res_data = self.get_serializer(requisition).data
+        res_data['estimated_total'] = float(calculate_requisition_total(requisition.id))
                 
-        return Response(self.get_serializer(requisition).data, status=status.HTTP_201_CREATED)
+        return Response(res_data, status=status.HTTP_201_CREATED)
 

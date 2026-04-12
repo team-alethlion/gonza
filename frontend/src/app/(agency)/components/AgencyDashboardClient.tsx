@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, lazy } from "react";
+import dynamic from "next/dynamic";
 import { useProfiles } from "@/contexts/ProfileContext";
 import UpdateNotificationButton from "@/components/UpdateNotificationButton";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
@@ -10,9 +10,14 @@ import AccessDenied404 from "@/components/AccessDenied404";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDashboardActions } from "@/hooks/useDashboardActions";
 
-// Lazy load the heavy analytics dashboard
-const AnalyticsDashboard = lazy(
+// 🚀 FIXED: Use next/dynamic with ssr: false for components with auto-generated IDs (Radix)
+// This completely bypasses hydration mismatches by skipping server rendering for this complex piece.
+const AnalyticsDashboard = dynamic(
   () => import("@/components/AnalyticsDashboard"),
+  { 
+    ssr: false,
+    loading: () => <DashboardSkeleton />
+  }
 );
 import { Sale, AnalyticsData } from "@/types";
 
@@ -71,13 +76,11 @@ export default function AgencyDashboardClient({
 
       <QuickActionButtons onQuickCreate={handleQuickCreate} />
 
-      <Suspense fallback={<DashboardSkeleton />}>
-        <AnalyticsDashboard 
-          sales={sales} 
-          currency={settings.currency} 
-          initialAnalytics={initialAnalytics}
-        />
-      </Suspense>
+      <AnalyticsDashboard 
+        sales={sales} 
+        currency={settings.currency} 
+        initialAnalytics={initialAnalytics}
+      />
     </>
   );
 }

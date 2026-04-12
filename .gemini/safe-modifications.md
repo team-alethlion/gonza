@@ -49,3 +49,11 @@
 - **The Rule**: AVOID updating large blocks of code in a single move. If a change spans multiple unrelated functions or sections, split it into sequential, smaller `replace` calls across multiple turns.
 - **The Rule**: AVOID bulk updates that refactor many things at once. Keep every change targeted and reasonable to its specific purpose.
 - **The Rationale**: Omission placeholders and large-scale replaces are the primary causes of accidental code deletion and syntax errors. Smaller, literal updates are safer and easier to verify.
+
+## 10. Zero-Shortcut Mandate (Structural Protection)
+
+- **The Prohibition**: NEVER perform a "surgical" replace that spans across multiple method boundaries if it requires deleting the structural headers (e.g., `class Name:`, `@action`, `def method_name:`) to be "fast".
+- **The Protocol**: If you are adding a new method to a class, you MUST include the existing class header or the preceding method in your `old_string` to anchor the change, but you MUST NOT delete or replace existing structural code.
+- **The Protocol**: For large ViewSets or Components, perform additions sequentially. First, read the file to find the end of the previous method, then append the new method.
+- **The Mandate**: Speed is secondary to integrity. If a change takes 3 turns instead of 1 to ensure that NO existing code is lost, you MUST take the 3 turns.
+- **The Rationale**: Shortcuts that skip structural context frequently lead to "Orphaned Logic" or "Deleted Class Headers", which crashes the entire application. Structural integrity is the project's Tier 1 priority.

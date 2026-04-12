@@ -55,6 +55,19 @@ class Product(models.Model):
     min_stock = models.IntegerField(default=0)
     stock = models.IntegerField(default=0)
     
+    # 🛡️ SIGNAL CONTEXT: Non-DB attributes to pass info to post_save signal
+    _history_user_id = None
+    _history_type = None
+    _history_reason = None
+    _history_reference_id = None
+    _history_reference_type = None
+    _history_created_at = None
+    _original_stock = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_stock = self.stock
+    
     barcode = models.CharField(max_length=100, null=True, blank=True)
     sku = models.CharField(max_length=100, null=True, blank=True)
     image_url = models.URLField(max_length=500, null=True, blank=True)

@@ -27,7 +27,11 @@ export async function getGlobalInventoryStatsAction(businessId: string) {
                 totalCostValue: Number(result.totalCostValue || 0),
                 totalStockValue: Number(result.totalStockValue || 0),
                 outOfStockCount: Number(result.outOfStockCount || 0),
-                lowStockCount: Number(result.lowStockCount || 0)
+                lowStockCount: Number(result.lowStockCount || 0),
+                // 🚀 FIXED: Include chart aggregation fields from backend response
+                totalInStockQty: Number(result.totalInStockQty || 0),
+                totalLowStockQty: Number(result.totalLowStockQty || 0),
+                totalMinLevelQty: Number(result.totalMinLevelQty || 0)
             }
         };
     } catch (error: any) {

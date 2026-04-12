@@ -30,7 +30,7 @@ interface UseAnalyticsDataProps {
 import { localDb } from "@/lib/dexie";
 
 // 🛡️ CACHE VERSIONING: Prevent schema drift crashes
-const ANALYTICS_SCHEMA_VERSION = "v1.1";
+const ANALYTICS_SCHEMA_VERSION = "v1.2";
 
 export function useAnalyticsData({
   sales: initialSales,

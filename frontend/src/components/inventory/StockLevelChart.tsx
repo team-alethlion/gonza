@@ -1,17 +1,23 @@
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Legend,
+  Cell,
+  ReferenceLine
 } from 'recharts';
 import { Product } from '@/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface StockLevelChartProps {
   products: Product[];
@@ -32,26 +38,18 @@ const StockLevelChart: React.FC<StockLevelChartProps> = ({
     return isNaN(num) ? 0 : num;
   };
 
-  // Calculate aggregated stock data
-  // Fallback to client-side reduce if server didn't provide totals (inaccurate for large datasets)
-  const totalInStock = typeof totalInStockQtyOverride === 'number' 
-    ? totalInStockQtyOverride 
-    : products.filter(p => p.quantity > p.minimumStock).reduce((sum, p) => sum + toSafeNum(p.quantity), 0);
+  // 🛡️ DATA INTEGRITY: Strictly use server-provided totals. 
+  const inStock = toSafeNum(totalInStockQtyOverride);
+  const lowStock = toSafeNum(totalLowStockQtyOverride);
+  const safetyThreshold = toSafeNum(totalMinLevelQtyOverride);
   
-  const totalLowStock = typeof totalLowStockQtyOverride === 'number'
-    ? totalLowStockQtyOverride
-    : products.filter(p => p.quantity > 0 && p.quantity <= p.minimumStock).reduce((sum, p) => sum + toSafeNum(p.quantity), 0);
-  
-  const totalMinimumLevel = typeof totalMinLevelQtyOverride === 'number'
-    ? totalMinLevelQtyOverride
-    : products.reduce((sum, p) => sum + toSafeNum(p.minimumStock), 0);
-  
-  // Create data array with each stock category as a separate object
+  // 🚀 Logic Improvement: Current Stock distribution vs Safety Level
   const chartData = [
-    { name: 'In Stock', value: totalInStock, fill: '#4ade80' },
-    { name: 'Low Stock', value: totalLowStock, fill: '#f87171' },
-    { name: 'Minimum Level', value: totalMinimumLevel, fill: '#94a3b8' }
+    { name: 'Healthy Stock', value: inStock, color: '#4ade80' },
+    { name: 'Low Stock', value: lowStock, color: '#f87171' }
   ];
+
+  const totalCurrentStock = inStock + lowStock;
 
   return (
     <div className="w-full">
@@ -61,36 +59,96 @@ const StockLevelChart: React.FC<StockLevelChartProps> = ({
             data={chartData}
             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip
-              formatter={(value, name, props) => {
-                return [value, props.payload.name];
-              }}
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#64748b', fontSize: 12 }} 
             />
-            <Bar dataKey="value" fill="#8884d8" barSize={40}>
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#64748b', fontSize: 12 }}
+            />
+            <RechartsTooltip
+              cursor={{ fill: '#f8fafc' }}
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+            />
+            
+            {/* Display Safety Threshold as a comparison line */}
+            <ReferenceLine 
+              y={safetyThreshold} 
+              label={{ 
+                position: 'right', 
+                value: 'Safety Level', 
+                fill: '#94a3b8', 
+                fontSize: 10 
+              }} 
+              stroke="#94a3b8" 
+              strokeDasharray="3 3" 
+            />
+
+            <Bar dataKey="value" barSize={50} radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (
-                <Bar key={`bar-${index}`} dataKey="value" fill={entry.fill} />
+                <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex justify-center mt-4 space-x-6">
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-[#4ade80] rounded-full mr-2"></div>
-          <span className="text-sm">In Stock</span>
+      
+      <TooltipProvider>
+        <div className="flex justify-center mt-6 space-x-8">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center cursor-help group">
+                <div className="flex items-center mb-1">
+                  <div className="w-3 h-3 bg-[#4ade80] rounded-full mr-2"></div>
+                  <span className="text-xs font-medium text-slate-600 group-hover:text-sales-primary transition-colors">Healthy</span>
+                  <Info className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-400" />
+                </div>
+                <span className="text-sm font-bold">{inStock.toLocaleString()}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[200px] text-xs">
+              Total units of products where current quantity is above the minimum stock threshold. These items do not currently need restocking.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center cursor-help group">
+                <div className="flex items-center mb-1">
+                  <div className="w-3 h-3 bg-[#f87171] rounded-full mr-2"></div>
+                  <span className="text-xs font-medium text-slate-600 group-hover:text-red-600 transition-colors">Low Stock</span>
+                  <Info className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-400" />
+                </div>
+                <span className="text-sm font-bold text-red-500">{lowStock.toLocaleString()}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[200px] text-xs">
+              Total units of products where current quantity is at or below the minimum stock level. These items should be prioritized for reorder.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center border-l pl-8 cursor-help group">
+                <div className="flex items-center mb-1">
+                  <div className="w-3 h-3 bg-[#94a3b8] rounded-full mr-2"></div>
+                  <span className="text-xs font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Safety Level</span>
+                  <Info className="h-3 w-3 ml-1 text-slate-300 group-hover:text-slate-400" />
+                </div>
+                <span className="text-sm font-bold text-slate-400">{safetyThreshold.toLocaleString()}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[200px] text-xs">
+              The combined minimum stock threshold for all products. This acts as a reference baseline; if your Healthy/Low bars stay significantly above this line, your total inventory is safe.
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-[#f87171] rounded-full mr-2"></div>
-          <span className="text-sm">Low Stock</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-3 h-3 bg-[#94a3b8] rounded-full mr-2"></div>
-          <span className="text-sm">Minimum Level</span>
-        </div>
-      </div>
+      </TooltipProvider>
     </div>
   );
 };

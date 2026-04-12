@@ -55,14 +55,14 @@ const StockSummaryOverview: React.FC<StockSummaryOverviewProps> = ({ data, summa
   };
 
   const financialTotals = React.useMemo(() => {
-    // 🚀 USE BACKEND TOTALS ONLY: Strictly use server-provided summary to ensure accuracy with full database
-    // We no longer fallback to client-side reduce which only sees paginated/filtered data
+    // 🚀 USE BACKEND TOTALS ONLY: Strictly use server-provided summary to ensure accuracy
+    const s = summary;
     return {
-      openingStock: toSafeNum(summary?.totalOpeningStock),
-      stockIn: toSafeNum(summary?.totalStockIn),
-      stockOut: toSafeNum(summary?.totalItemsSold) + toSafeNum(summary?.totalAdjustmentsOut),
-      closingStock: toSafeNum(summary?.totalClosingStock),
-      revaluation: toSafeNum(summary?.totalRevaluation)
+      openingStockValue: toSafeNum(s?.totalOpeningStockValue),
+      stockInValue: toSafeNum(s?.totalStockInValue) + toSafeNum(s?.totalReturnInValue),
+      stockOutValue: toSafeNum(s?.totalItemsSoldValue) + toSafeNum(s?.totalAdjustmentsOutValue) + toSafeNum(s?.totalTransferOutValue) + toSafeNum(s?.totalReturnOutValue),
+      closingStockValue: toSafeNum(s?.totalClosingStockValue),
+      revaluation: toSafeNum(s?.totalRevaluation)
     };
   }, [summary]);
 
@@ -80,28 +80,28 @@ const StockSummaryOverview: React.FC<StockSummaryOverviewProps> = ({ data, summa
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground font-medium uppercase">Opening Stock Value</p>
             <p className="text-xl font-bold text-blue-600">
-              {canViewCostPrice ? formatCurrencyValue(financialTotals.openingStock) : '•••'}
+              {canViewCostPrice ? formatCurrencyValue(financialTotals.openingStockValue) : '•••'}
             </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground font-medium uppercase">Total Stock In Value</p>
             <p className="text-xl font-bold text-green-600">
-              {canViewCostPrice ? formatCurrencyValue(financialTotals.stockIn) : '•••'}
+              {canViewCostPrice ? formatCurrencyValue(financialTotals.stockInValue) : '•••'}
             </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground font-medium uppercase">Total Stock Out Value</p>
             <p className="text-xl font-bold text-red-600">
-              {canViewCostPrice ? formatCurrencyValue(financialTotals.stockOut) : '•••'}
+              {canViewCostPrice ? formatCurrencyValue(financialTotals.stockOutValue) : '•••'}
             </p>
           </div>
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground font-medium uppercase">Closing Stock Value</p>
             <p className="text-xl font-bold text-purple-600">
-              {canViewCostPrice ? formatCurrencyValue(financialTotals.closingStock) : '•••'}
+              {canViewCostPrice ? formatCurrencyValue(financialTotals.closingStockValue) : '•••'}
             </p>
           </div>
         </div>
