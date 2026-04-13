@@ -31,8 +31,13 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
   recentSales,
   currency,
 }) => {
+  const [mounted, setMounted] = React.useState(false);
   const isMobile = useIsMobile();
   const router = useRouter();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   const {
     canViewCostPrice,
     canViewProfit,
@@ -199,7 +204,7 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-500">
-                        {new Date(sale.date).toLocaleDateString("en-GB")}
+                        {mounted ? new Date(sale.date).toLocaleDateString("en-US") : "---"}
                       </p>
                     </div>
                   </div>
@@ -259,11 +264,11 @@ const RecentSalesTable: React.FC<RecentSalesTableProps> = ({
                       className="border-b cursor-pointer hover:bg-gray-50"
                       onClick={() => handleSaleClick(sale)}>
                       <td className="py-3">
-                        {new Date(sale.date).toLocaleDateString("en-GB", {
+                        {mounted ? new Date(sale.date).toLocaleDateString("en-US", {
                           day: "2-digit",
                           month: "2-digit",
                           year: "numeric",
-                        })}
+                        }) : "---"}
                       </td>
                       <td className="py-3">{sale.receiptNumber}</td>
                       <td className="py-3">{sale.customerName}</td>

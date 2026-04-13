@@ -34,9 +34,14 @@ const ViewCashTransactionDialog: React.FC<ViewCashTransactionDialogProps> = ({
   open,
   onOpenChange,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const { settings } = useBusinessSettings();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!transaction) return null;
 
@@ -85,7 +90,7 @@ const ViewCashTransactionDialog: React.FC<ViewCashTransactionDialogProps> = ({
           <label className="text-sm font-medium text-muted-foreground">
             Date
           </label>
-          <p className="text-sm">{transaction.date.toLocaleDateString()}</p>
+          <p className="text-sm">{mounted ? transaction.date.toLocaleDateString("en-US") : "---"}</p>
         </div>
 
         <div className="space-y-2">

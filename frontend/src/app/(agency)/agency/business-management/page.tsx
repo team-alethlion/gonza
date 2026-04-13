@@ -48,6 +48,7 @@ import { useBusinessPassword } from "@/hooks/useBusinessPassword";
 import { useProfiles } from "@/contexts/ProfileContext";
 
 const BusinessManagement = () => {
+  const [mounted, setMounted] = useState(false);
   const {
     businessLocations,
     currentBusiness,
@@ -226,6 +227,12 @@ const BusinessManagement = () => {
     }
   };
 
+  // 🚀 HYDRATION FIX: Use useEffect to mark component as mounted.
+  // This ensures that locale-sensitive dates are only rendered on the client.
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="space-y-4 md:space-y-6 relative">
       {/* Reset Progress Overlay */}
@@ -321,9 +328,11 @@ const BusinessManagement = () => {
                   <h3 className="font-semibold text-lg md:text-xl text-blue-900">
                     {currentBusiness.name}
                   </h3>
-                  <p className="text-sm text-blue-600" suppressHydrationWarning>
+                  <p className="text-sm text-blue-600">
                     Created:{" "}
-                    {new Date(currentBusiness.created_at).toLocaleDateString()}
+                    {mounted 
+                      ? new Date(currentBusiness.created_at).toLocaleDateString("en-US") 
+                      : "---"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -427,9 +436,9 @@ const BusinessManagement = () => {
                               </div>
                               <p className="text-sm text-gray-500">
                                 Created:{" "}
-                                {new Date(
-                                  business.created_at,
-                                ).toLocaleDateString()}
+                                {mounted 
+                                  ? new Date(business.created_at).toLocaleDateString("en-US") 
+                                  : "---"}
                                 {business.switch_password_hash && (
                                   <span className="text-amber-600 ml-2">
                                     • Password Protected

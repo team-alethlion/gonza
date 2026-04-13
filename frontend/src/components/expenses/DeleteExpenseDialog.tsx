@@ -28,6 +28,12 @@ const DeleteExpenseDialog: React.FC<DeleteExpenseDialogProps> = ({
   onConfirm,
   formatCurrency
 }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!expense) return null;
 
   return (
@@ -40,7 +46,7 @@ const DeleteExpenseDialog: React.FC<DeleteExpenseDialogProps> = ({
             <div className="p-3 bg-muted rounded-md">
               <div className="font-medium">{expense.description}</div>
               <div className="text-sm text-muted-foreground">
-                {formatCurrency(expense.amount)} • {expense.date.toLocaleDateString()}
+                {formatCurrency(expense.amount)} • {mounted ? expense.date.toLocaleDateString("en-US") : "---"}
               </div>
             </div>
             <div className="text-sm text-destructive">

@@ -96,6 +96,7 @@ const MobileCard = React.memo(
     onSendPaymentReminder: (sale: Sale) => void;
     onSendThankYouNotice: (sale: Sale) => void;
     cashAccountName?: string | null;
+    mounted?: boolean;
   }) => {
     const { payments } = useInstallmentPayments(sale.id);
     const { hasPermission } = useProfiles();
@@ -185,7 +186,7 @@ const MobileCard = React.memo(
                 {sale.customerName}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {new Date(sale.date).toLocaleDateString("en-GB")}
+                {mounted ? new Date(sale.date).toLocaleDateString("en-US") : "---"}
               </p>
               {sale.paymentStatus === "Installment Sale" &&
                 actualAmountDue > 0 && (
@@ -703,6 +704,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         onSendPaymentReminder={handleSendPaymentReminder}
                         onSendThankYouNotice={handleSendThankYouNotice}
                         cashAccountName={getCashAccountName(sale)}
+                        mounted={mounted}
                       />
                     ))}
                   </div>

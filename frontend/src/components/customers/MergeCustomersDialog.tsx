@@ -24,8 +24,13 @@ const MergeCustomersDialog: React.FC<MergeCustomersDialogProps> = ({
   customers,
   onMergeComplete
 }) => {
+  const [mounted, setMounted] = React.useState(false);
   const [primaryCustomerId, setPrimaryCustomerId] = useState<string>(customers[0]?.id || '');
   const [isMerging, setIsMerging] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleMerge = async () => {
     if (!primaryCustomerId || customers.length < 2) return;
@@ -103,7 +108,7 @@ const MergeCustomersDialog: React.FC<MergeCustomersDialogProps> = ({
                                 {customer.location && (
                                   <div>Location: {customer.location}</div>
                                 )}
-                                <div>Created: {customer.createdAt.toLocaleDateString()}</div>
+                                <div>Created: {mounted ? customer.createdAt.toLocaleDateString("en-US") : "---"}</div>
                               </div>
                             </div>
                             {primaryCustomerId === customer.id && (

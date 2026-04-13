@@ -32,7 +32,12 @@ const formatDate = (dateString: string) => {
 };
 
 const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({ messages }) => {
+    const [mounted, setMounted] = useState(false);
     const [expandedMessageId, setExpandedMessageId] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
@@ -114,10 +119,11 @@ const UsageHistoryTable: React.FC<UsageHistoryTableProps> = ({ messages }) => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {messages.map((message) => {
                             const creditsUsed = message.sms_credits_used || message.smsCreditsUsed || 0;
+                            const dateStr = message.sent_at || message.sentAt || message.created_at || message.createdAt || '';
                             return (
                                 <tr key={message.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {formatDate(message.sent_at || message.sentAt || message.created_at || message.createdAt || '')}
+                                        {mounted ? formatDate(dateStr) : '---'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {message.phone_number || message.phoneNumber || '-'}

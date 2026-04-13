@@ -83,6 +83,10 @@ const CustomersClient = ({
   const router = useRouter();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Permissions
   const canView = hasPermission("customers", "view");
   const canCreate = hasPermission("customers", "create");
@@ -90,6 +94,7 @@ const CustomersClient = ({
   const canDelete = hasPermission("customers", "delete");
 
   // Duplicate detection
+  const [mounted, setMounted] = useState(false);
   const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<Customer[][]>([]);
   const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<
@@ -358,7 +363,7 @@ const CustomersClient = ({
                         <div>
                           <div>{customer.phoneNumber || "No phone"}</div>
                           <div className="text-muted-foreground text-xs">
-                            Created: {customer.createdAt.toLocaleDateString()}
+                            Created: {mounted ? customer.createdAt.toLocaleDateString("en-US") : "---"}
                           </div>
                         </div>
                         {customer.email && (

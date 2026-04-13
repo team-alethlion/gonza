@@ -11,6 +11,12 @@ const RecentExpensesCard: React.FC<RecentExpensesCardProps> = ({
   filteredExpenses,
   formatCurrency
 }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Card>
       <CardHeader className="pb-3 md:pb-6">
@@ -28,7 +34,7 @@ const RecentExpensesCard: React.FC<RecentExpensesCardProps> = ({
                 <div className="space-y-1">
                   <div className="font-medium">{expense.description}</div>
                   <div className="text-sm text-muted-foreground">
-                    {expense.date.toLocaleDateString()} • {expense.category || 'Uncategorized'}
+                    {mounted ? expense.date.toLocaleDateString("en-US") : "---"} • {expense.category || 'Uncategorized'}
                   </div>
                 </div>
                 <div className="text-right">

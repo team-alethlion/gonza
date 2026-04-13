@@ -31,8 +31,13 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
   onDeleteExpense,
   formatCurrency
 }) => {
+  const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const { accounts } = useCashAccounts();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   const { settings } = useBusinessSettings();
   const { canViewTotalExpenses } = useFinancialVisibility();
   const { hasPermission } = useProfiles();
@@ -126,7 +131,7 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
                         <div className="text-sm font-medium text-muted-foreground">
-                          {expense.date.toLocaleDateString()}
+                          {mounted ? expense.date.toLocaleDateString("en-US") : "---"}
                         </div>
                         <div className="text-base font-semibold line-clamp-2">
                           {expense.description}
@@ -292,7 +297,7 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
                       onClick={() => handleView(expense)}
                     >
                       <TableCell className="whitespace-nowrap">
-                        {expense.date.toLocaleDateString()}
+                        {mounted ? expense.date.toLocaleDateString("en-US") : "---"}
                       </TableCell>
                       <TableCell className="font-medium">
                         {expense.description}

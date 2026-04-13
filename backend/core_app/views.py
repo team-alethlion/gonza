@@ -137,6 +137,7 @@ class BranchViewSet(viewsets.ModelViewSet):
             Q(admin=user) | Q(users__id=user.id)
         ).distinct().order_by('type', 'created_at')
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         name = request.data.get('name')
         branch = Branch.objects.create(
@@ -145,6 +146,11 @@ class BranchViewSet(viewsets.ModelViewSet):
             admin=request.user,
             agency_id=request.user.agency_id
         )
+        
+        # 🚀 INITIALIZE: Setup roles, permissions and settings
+        from core_app.logic.branches import initialize_branch
+        initialize_branch(branch, request.user)
+        
         return Response(self.get_serializer(branch).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
@@ -155,10 +161,21 @@ class BranchViewSet(viewsets.ModelViewSet):
             return Response({"error": "Only the admin can reset the business"}, status=status.HTTP_403_FORBIDDEN)
             
         with transaction.atomic():
+            # Inventory
             branch.product_history.all().delete()
             branch.sales.all().delete()
             branch.products.all().delete()
             branch.customers.all().delete()
+            
+            # Requisitions & Transfers
+            from inventory.models import Requisition, StockTransfer
+            Requisition.objects.filter(branch=branch).delete()
+            StockTransfer.objects.filter(branch=branch).delete()
+            
+            # Finance
+            from finance.models import CashTransaction, Expense
+            CashTransaction.objects.filter(branch_id=branch.id).delete()
+            Expense.objects.filter(branch_id=branch.id).delete()
             
         return Response({"status": "reset"})
 
@@ -248,6 +265,10 @@ class BranchViewSet(viewsets.ModelViewSet):
                         admin=user
                     )
                     target_branch_id = branch.id
+                    
+                    # 🚀 INITIALIZE: Setup roles, permissions and settings
+                    from core_app.logic.branches import initialize_branch
+                    initialize_branch(branch, user)
             
             branch = Branch.objects.get(id=target_branch_id)
             if data.get('businessName'): branch.name = data.get('businessName')

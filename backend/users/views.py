@@ -243,18 +243,9 @@ class UserViewSet(viewsets.ModelViewSet):
                     type='MAIN'
                 )
 
-                # Create branch-specific admin role
-                role = Role.objects.create(
-                    name='admin', 
-                    description='Agency Admin',
-                    branch=branch,
-                    pin_required=True
-                )
-                
-                # 🚀 AUTO-PERMISSION: Assign all existing permissions to this first Admin
-                # This ensures the owner has full access by default.
-                all_perms = Permission.objects.all()
-                role.permissions.add(*all_perms)
+                # 🚀 INITIALIZE: Setup roles, permissions and settings
+                from core_app.logic.branches import initialize_branch
+                role = initialize_branch(branch, user)
                 
                 # Update user with branch and role
                 user.branch = branch
