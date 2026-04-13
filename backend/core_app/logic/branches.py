@@ -11,19 +11,23 @@ def initialize_branch(branch, admin_user):
     """
     with transaction.atomic():
         # 1. Create the branch-specific admin role
-        # We use get_or_create to be idempotent
         role, created = Role.objects.get_or_create(
             branch=branch,
             name='admin',
             defaults={
                 'description': 'Branch Administrator',
-                'pin_required': True
+                'pin_required': True,
+                'is_system_role': True # 🚀 PROTECTED
             }
         )
 
         # 2. Assign ALL existing permissions to this role
         all_perms = Permission.objects.all()
         role.permissions.add(*all_perms)
+
+        # 🚀 AUTO-PROVISION: Setup the manager role right away
+        from users.logic.roles import get_or_create_manager_role
+        get_or_create_manager_role(branch)
 
         # 3. Initialize default settings
         BranchSettings.objects.get_or_create(

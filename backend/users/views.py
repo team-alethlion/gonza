@@ -260,6 +260,49 @@ class UserViewSet(viewsets.ModelViewSet):
         except EmailVerification.DoesNotExist:
             return Response({"error": "No verification found for this email"}, status=400)
 
+    @action(detail=False, methods=['post'])
+    def invite_manager(self, request):
+        """
+        Admins use this to invite a new manager to a specific branch.
+        """
+        email = request.data.get('email')
+        branch_id = request.data.get('branchId')
+        
+        from core_app.models import Branch
+        try:
+            branch = Branch.objects.get(id=branch_id)
+            # Verify the requester is allowed to invite to this branch
+            if request.user.agency_id != branch.agency_id:
+                return Response({"error": "Unauthorized"}, status=403)
+                
+            from users.logic.invitations import create_manager_invitation
+            create_manager_invitation(branch, email, request.user)
+            
+            return Response({"status": "invitation_sent"})
+        except Branch.DoesNotExist:
+            return Response({"error": "Branch not found"}, status=404)
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_invitation(self, request):
+        """
+        Managers use this to complete their registration.
+        """
+        email = request.data.get('email')
+        code = request.data.get('code')
+        password = request.data.get('password')
+        name = request.data.get('name')
+        
+        from users.logic.invitations import verify_and_accept_invitation
+        user, error = verify_and_accept_invitation(email, code, password, name)
+        
+        if error:
+            return Response({"error": error}, status=400)
+            
+        return Response({
+            "status": "success",
+            "user": {"id": user.id, "email": user.email, "name": user.name, "role": "manager"}
+        })
+
     @action(detail=True, methods=['post'])
     def update_branch(self, request, pk=None):
         user = self.get_object()
@@ -278,6 +321,15 @@ class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        role = self.get_object()
+        if role.is_system_role:
+            return Response(
+                {"error": f"The '{role.name}' role is a protected system role and cannot be deleted."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         qs = super().get_queryset()

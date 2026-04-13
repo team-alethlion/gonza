@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
-from core.utils import gen_us_id, gen_ro_id, gen_pe_id, gen_pt_id, gen_dr_id, gen_ev_id
+from core.utils import gen_us_id, gen_ro_id, gen_pe_id, gen_pt_id, gen_dr_id, gen_ev_id, gen_bi_id
 
 class Role(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_ro_id)
@@ -9,6 +9,7 @@ class Role(models.Model):
     description = models.TextField(null=True, blank=True)
     branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, null=True, blank=True, related_name='roles')
     pin_required = models.BooleanField(default=True, help_text="If False, users with this role can bypass PIN verification")
+    is_system_role = models.BooleanField(default=False, help_text="If True, this role cannot be deleted via the UI")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -72,6 +73,7 @@ class User(AbstractUser):
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, related_name='users')
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='users', null=True, blank=True)
     branch = models.ForeignKey('core_app.Branch', on_delete=models.SET_NULL, null=True, related_name='users')
+    primary_branch = models.ForeignKey('core_app.Branch', on_delete=models.SET_NULL, null=True, related_name='primary_users', help_text="The main branch this user is assigned to.")
     
     credits = models.IntegerField(default=0)
     pin = models.CharField(max_length=4, null=True, blank=True)
@@ -113,3 +115,29 @@ class EmailVerification(models.Model):
     code = models.CharField(max_length=10)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+class BranchInvitation(models.Model):
+    id = models.CharField(max_length=30, primary_key=True, default=gen_bi_id)
+    email = models.EmailField()
+    branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='invitations')
+    agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='branch_invitations')
+    inviter = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_invitations')
+    
+    code = models.CharField(max_length=10)
+    status = models.CharField(max_length=20, choices=[
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('EXPIRED', 'Expired'),
+        ('REVOKED', 'Revoked')
+    ], default='PENDING')
+    
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('email', 'branch', 'status')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Invite for {self.email} to {self.branch.name}"

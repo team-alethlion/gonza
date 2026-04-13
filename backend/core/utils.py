@@ -19,6 +19,7 @@ def gen_pe_id(): return generate_id("pe")
 def gen_pt_id(): return generate_id("pt")
 def gen_dr_id(): return generate_id("dr")
 def gen_ev_id(): return generate_id("ev")
+def gen_bi_id(): return generate_id("bi")
 
 # Core App
 def gen_pa_id(): return generate_id("pa")
