@@ -10,20 +10,24 @@ def generate_invitation_code():
 
 def create_manager_invitation(branch, email, inviter):
     """
-    Creates a new invitation for a manager account.
+    Creates or refreshes an invitation for a manager account.
     """
-    from users.models import BranchInvitation # This will be created later
+    from users.models import BranchInvitation
     
     expires_at = now() + timedelta(days=2)
     code = generate_invitation_code()
     
-    invitation = BranchInvitation.objects.create(
+    # 🚀 FIX: Use update_or_create to prevent IntegrityError on re-invites
+    invitation, created = BranchInvitation.objects.update_or_create(
         email=email,
         branch=branch,
-        agency=branch.agency,
-        inviter=inviter,
-        code=code,
-        expires_at=expires_at
+        status='PENDING',
+        defaults={
+            'agency': branch.agency,
+            'inviter': inviter,
+            'code': code,
+            'expires_at': expires_at
+        }
     )
     
     # Send email

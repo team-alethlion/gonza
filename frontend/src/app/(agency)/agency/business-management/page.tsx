@@ -12,6 +12,7 @@ import {
   Upload,
   Lock,
   Shield,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,7 @@ import { BackupDialog } from "@/components/business/BackupDialog";
 import { RestoreDialog } from "@/components/business/RestoreDialog";
 import { BusinessPasswordDialog } from "@/components/business/BusinessPasswordDialog";
 import { BusinessPasswordManager } from "@/components/business/BusinessPasswordManager";
+import { InviteManagerDialog } from "@/components/business/InviteManagerDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBusinessPassword } from "@/hooks/useBusinessPassword";
 import { useProfiles } from "@/contexts/ProfileContext";
@@ -71,6 +73,8 @@ const BusinessManagement = () => {
   const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [invitingBranch, setInvitingBranch] = useState<{ id: string; name: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -161,6 +165,11 @@ const BusinessManagement = () => {
   const handlePasswordManagerOpen = (businessId: string) => {
     setManagingPasswordBusinessId(businessId);
     setShowPasswordManager(true);
+  };
+
+  const handleInviteClick = (id: string, name: string) => {
+    setInvitingBranch({ id, name });
+    setShowInviteDialog(true);
   };
 
   const handlePasswordSet = (businessId: string, hasPassword: boolean) => {
@@ -515,6 +524,19 @@ const BusinessManagement = () => {
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                onClick={() =>
+                                  handleInviteClick(business.id, business.name)
+                                }
+                                className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                title="Invite Manager"
+                                disabled={isResetting}>
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canManage && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => setResettingId(business.id)}
                                 className="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                                 disabled={isResetting}>
@@ -545,6 +567,16 @@ const BusinessManagement = () => {
 
       {/* New Business Dialog */}
       <NewBusinessDialog open={showNewDialog} onOpenChange={setShowNewDialog} />
+
+      {/* Invite Manager Dialog */}
+      {invitingBranch && (
+        <InviteManagerDialog
+          open={showInviteDialog}
+          onOpenChange={setShowInviteDialog}
+          branchId={invitingBranch.id}
+          branchName={invitingBranch.name}
+        />
+      )}
 
       {/* Backup Dialog */}
       <BackupDialog

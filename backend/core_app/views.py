@@ -9,6 +9,11 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Q, Sum, Count, F, DecimalField
 from django.db.models.functions import Cast
 from inventory.utils import get_inventory_stats
+from core_app.logic.branches import initialize_branch
+from core_app.logic.analytics import get_analytics_summary
+from inventory.logic.requisitions import calculate_requisition_total
+from inventory.models import Requisition, StockTransfer
+from finance.models import CashTransaction, Expense
 
 from .models import (
     Agency, Branch, BranchSettings, Package, SubscriptionTransaction,
@@ -42,7 +47,6 @@ class AnalyticsViewSet(viewsets.ViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
 
-        from .logic.analytics import get_analytics_summary
         data = get_analytics_summary(branch_id, start_date, end_date)
         
         return Response(data)
@@ -148,7 +152,6 @@ class BranchViewSet(viewsets.ModelViewSet):
         )
         
         # 🚀 INITIALIZE: Setup roles, permissions and settings
-        from core_app.logic.branches import initialize_branch
         initialize_branch(branch, request.user)
         
         return Response(self.get_serializer(branch).data, status=status.HTTP_201_CREATED)
@@ -168,12 +171,10 @@ class BranchViewSet(viewsets.ModelViewSet):
             branch.customers.all().delete()
             
             # Requisitions & Transfers
-            from inventory.models import Requisition, StockTransfer
             Requisition.objects.filter(branch=branch).delete()
             StockTransfer.objects.filter(branch=branch).delete()
             
             # Finance
-            from finance.models import CashTransaction, Expense
             CashTransaction.objects.filter(branch_id=branch.id).delete()
             Expense.objects.filter(branch_id=branch.id).delete()
             

@@ -19,6 +19,7 @@ import {
   updateBusinessAction,
   deleteBusinessAction,
   resetBusinessAction,
+  inviteManagerAction,
 } from "@/app/actions/business";
 import { getAccountStatusAction } from "@/app/actions/business-settings";
 import { 
@@ -66,6 +67,7 @@ interface BusinessContextType {
   updateBusiness: (id: string, name: string) => Promise<boolean>;
   deleteBusiness: (id: string) => Promise<boolean>;
   resetBusiness: (id: string) => Promise<boolean>;
+  inviteManager: (email: string, branchId: string) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
   error: string | null;
   locationLimit: number;
@@ -495,6 +497,21 @@ export const BusinessProvider: React.FC<{
     [user, loadBusinessLocations],
   );
 
+  const inviteManager = React.useCallback(
+    async (email: string, branchId: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "No authenticated user" };
+      
+      try {
+        const result = await inviteManagerAction(email, branchId);
+        return result;
+      } catch (error: any) {
+        console.error("Error in inviteManager context:", error);
+        return { success: false, error: error.message };
+      }
+    },
+    [user]
+  );
+
   const contextValue = React.useMemo(
     () => ({
       currentBusiness,
@@ -505,6 +522,7 @@ export const BusinessProvider: React.FC<{
       updateBusiness,
       deleteBusiness,
       resetBusiness,
+      inviteManager,
       isLoading,
       error,
       locationLimit,
@@ -520,6 +538,7 @@ export const BusinessProvider: React.FC<{
       updateBusiness,
       deleteBusiness,
       resetBusiness,
+      inviteManager,
       isLoading,
       error,
       locationLimit,

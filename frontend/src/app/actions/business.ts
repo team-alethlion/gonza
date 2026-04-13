@@ -168,3 +168,24 @@ export async function removeBusinessPasswordAction(businessId: string) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Invites a new manager to a specific branch.
+ * Creates a pending invitation and sends a verification email.
+ */
+export async function inviteManagerAction(email: string, branchId: string) {
+  try {
+    // 🛡️ SECURITY: verifyBranchAccess ensures the current user is authorized for this branch
+    await verifyBranchAccess(branchId);
+
+    const result = await djangoFetch('users/users/invite_manager/', {
+      method: 'POST',
+      body: JSON.stringify({ email, branchId })
+    });
+
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error("Error inviting manager:", error);
+    return { success: false, error: error.message || "Failed to send invitation" };
+  }
+}
