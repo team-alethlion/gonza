@@ -242,3 +242,13 @@ class ActivityHistory(models.Model):
 
     class Meta:
         verbose_name_plural = "Activity Histories"
+
+class AgencyRoleDirectory(Agency):
+    """
+    Proxy model to provide a folder-like navigation for roles by agency.
+    Defined in core_app to avoid circular imports with users.
+    """
+    class Meta:
+        proxy = True
+        verbose_name = "Agency Role Directory"
+        verbose_name_plural = "Roles by Agency"

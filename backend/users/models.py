@@ -7,17 +7,18 @@ class Role(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_ro_id)
     name = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
-    branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, null=True, blank=True, related_name='roles')
+    agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, null=True, blank=True, related_name='roles')
     pin_required = models.BooleanField(default=True, help_text="If False, users with this role can bypass PIN verification")
     is_system_role = models.BooleanField(default=False, help_text="If True, this role cannot be deleted via the UI")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('branch', 'name')
+        unique_together = ('agency', 'name')
         
     def __str__(self):
-        return self.name
+        agency_name = self.agency.name if self.agency else "Global"
+        return f"{self.name} ({agency_name})"
 
 class Permission(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_pe_id)
@@ -28,7 +29,8 @@ class Permission(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        agency_name = self.agency.name if self.agency else "Global"
+        return f"{self.name} ({agency_name})"
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):

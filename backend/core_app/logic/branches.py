@@ -5,29 +5,31 @@ from core_app.models import BranchSettings
 def initialize_branch(branch, admin_user):
     """
     Sets up a new branch with essential data:
-    1. Creates an 'admin' role.
-    2. Assigns ALL existing permissions to that role.
-    3. Initializes default BranchSettings.
+    1. Ensures Agency-level 'admin' and 'manager' roles exist.
+    2. Initializes default BranchSettings.
     """
     with transaction.atomic():
-        # 1. Create the branch-specific admin role
+        agency = branch.agency
+        
+        # 1. Ensure the Agency-scoped admin role exists
         role, created = Role.objects.get_or_create(
-            branch=branch,
+            agency=agency,
             name='admin',
             defaults={
-                'description': 'Branch Administrator',
-                'pin_required': True,
-                'is_system_role': True # 🚀 PROTECTED
+                'description': 'Agency Administrator with full access to all branches',
+                'pin_required': False, # Admin bypass
+                'is_system_role': True
             }
         )
 
-        # 2. Assign ALL existing permissions to this role
-        all_perms = Permission.objects.all()
-        role.permissions.add(*all_perms)
+        # 2. Assign ALL existing permissions to this role if it was just created
+        if created:
+            all_perms = Permission.objects.all()
+            role.permissions.add(*all_perms)
 
-        # 🚀 AUTO-PROVISION: Setup the manager role right away
+        # 🚀 REUSABLE MANAGER ROLE: Setup at the agency level
         from users.logic.roles import get_or_create_manager_role
-        get_or_create_manager_role(branch)
+        get_or_create_manager_role(branch) # This needs update too to use agency
 
         # 3. Initialize default settings
         BranchSettings.objects.get_or_create(

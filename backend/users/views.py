@@ -333,26 +333,27 @@ class RoleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        branch_id = self.request.query_params.get('branchId')
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id) | qs.filter(branch__isnull=True)
+        agency_id = self.request.user.agency_id
+        if agency_id:
+            qs = qs.filter(agency_id=agency_id) | qs.filter(agency__isnull=True)
         return qs
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
-        branch_id = data.get('branchId')
+        agency_id = data.get('agencyId') or request.user.agency_id
         name = data.get('name')
         description = data.get('description', '')
         pin_required = data.get('pinRequired', True)
         permissions_data = data.get('permissions', [])
-        
+
         role = Role.objects.create(
-            name=name, 
-            description=description, 
-            branch_id=branch_id,
+            agency_id=agency_id,
+            name=name,
+            description=description,
             pin_required=pin_required
         )
+
         
         for perm_name in permissions_data:
             perm, _ = Permission.objects.get_or_create(name=perm_name)

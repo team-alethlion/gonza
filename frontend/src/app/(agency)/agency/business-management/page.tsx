@@ -13,6 +13,7 @@ import {
   Lock,
   Shield,
   Mail,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +59,8 @@ const BusinessManagement = () => {
     updateBusiness,
     deleteBusiness,
     resetBusiness,
+    inviteManager,
+    removeManager,
     locationLimit,
   } = useBusiness();
   const { toast } = useToast();
@@ -80,6 +83,8 @@ const BusinessManagement = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [removingManager, setRemovingManager] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [showRemoveManagerDialog, setShowRemoveManagerDialog] = useState(false);
 
   // Password protection states
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -170,6 +175,31 @@ const BusinessManagement = () => {
   const handleInviteClick = (id: string, name: string) => {
     setInvitingBranch({ id, name });
     setShowInviteDialog(true);
+  };
+
+  const handleRemoveManager = async () => {
+    if (!removingManager) return;
+
+    try {
+      const result = await removeManager(removingManager.id);
+      if (result.success) {
+        toast({
+          title: "Manager Removed",
+          description: `Account for ${removingManager.name} has been deleted.`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove manager.",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingManager(null);
+      setShowRemoveManagerDialog(false);
+    }
   };
 
   const handlePasswordSet = (businessId: string, hasPassword: boolean) => {
@@ -343,6 +373,35 @@ const BusinessManagement = () => {
                       ? new Date(currentBusiness.created_at).toLocaleDateString("en-US") 
                       : "---"}
                   </p>
+
+                  {/* 🚀 NEW: Assigned Managers List for Current Business */}
+                  {currentBusiness.managers && currentBusiness.managers.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {currentBusiness.managers.map((manager) => (
+                        <div 
+                          key={manager.id} 
+                          className="bg-blue-200/50 border border-blue-300 rounded-lg px-2 py-1 flex items-center gap-2 group transition-colors hover:border-red-300"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-blue-900 truncate">{manager.name}</p>
+                            <p className="text-[10px] text-blue-700 truncate">{manager.email}</p>
+                          </div>
+                          {canManage && (
+                            <button
+                              onClick={() => {
+                                setRemovingManager(manager);
+                                setShowRemoveManagerDialog(true);
+                              }}
+                              className="p-1 text-blue-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                              title="Remove Manager"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {currentBusiness.is_default && (
@@ -454,6 +513,40 @@ const BusinessManagement = () => {
                                   </span>
                                 )}
                               </p>
+
+                              {/* 🚀 NEW: Assigned Managers List */}
+                              {business.managers && business.managers.length > 0 && (
+                                <div className="mt-3 space-y-2 border-t pt-2 border-gray-100">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                                    <User size={10} /> Assigned Managers
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {business.managers.map((manager) => (
+                                      <div 
+                                        key={manager.id} 
+                                        className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 flex items-center gap-2 group transition-colors hover:border-red-200"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-semibold text-gray-700 truncate">{manager.name}</p>
+                                          <p className="text-[10px] text-gray-500 truncate">{manager.email}</p>
+                                        </div>
+                                        {canManage && (
+                                          <button
+                                            onClick={() => {
+                                              setRemovingManager(manager);
+                                              setShowRemoveManagerDialog(true);
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                            title="Remove Manager"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -667,6 +760,33 @@ const BusinessManagement = () => {
               onClick={handleDelete}
               className="w-full md:w-auto bg-red-600 hover:bg-red-700">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Manager Dialog */}
+      <AlertDialog open={showRemoveManagerDialog} onOpenChange={setShowRemoveManagerDialog}>
+        <AlertDialogContent className="mx-4 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <User size={20} />
+              Remove Manager
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Are you sure you want to remove <strong>{removingManager?.name}</strong> ({removingManager?.email})? 
+              <br/><br/>
+              This will permanently delete their account and they will no longer have access to the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse md:flex-row gap-2">
+            <AlertDialogCancel className="w-full md:w-auto">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveManager}
+              className="w-full md:w-auto bg-red-600 hover:bg-red-700">
+              Remove Account
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -23,6 +23,7 @@ export async function getBusinessLocationsAction(userId: string, session?: any) 
       created_at: b.created_at,
       updated_at: b.updated_at,
       switch_password_hash: b.access_password,
+      managers: b.managers || [],
     }));
   } catch (error: any) {
     if (error.message?.includes("Session stale")) {
@@ -187,5 +188,24 @@ export async function inviteManagerAction(email: string, branchId: string) {
   } catch (error: any) {
     console.error("Error inviting manager:", error);
     return { success: false, error: error.message || "Failed to send invitation" };
+  }
+}
+
+/**
+ * Removes a manager's account.
+ */
+export async function removeManagerAction(managerId: string) {
+  try {
+    // 🛡️ SECURITY: verifyUserAccess ensures the requester is authenticated
+    await verifyUserAccess(managerId);
+
+    await djangoFetch(`users/users/${managerId}/`, {
+      method: 'DELETE'
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error removing manager:", error);
+    return { success: false, error: error.message || "Failed to remove manager" };
   }
 }

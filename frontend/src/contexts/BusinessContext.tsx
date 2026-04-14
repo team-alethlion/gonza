@@ -20,6 +20,7 @@ import {
   deleteBusinessAction,
   resetBusinessAction,
   inviteManagerAction,
+  removeManagerAction,
 } from "@/app/actions/business";
 import { getAccountStatusAction } from "@/app/actions/business-settings";
 import { 
@@ -37,6 +38,12 @@ export interface BusinessLocation {
   created_at: string;
   updated_at: string;
   switch_password_hash?: string;
+  managers?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+  }[];
 }
 
 export interface AccountStatus {
@@ -68,6 +75,7 @@ interface BusinessContextType {
   deleteBusiness: (id: string) => Promise<boolean>;
   resetBusiness: (id: string) => Promise<boolean>;
   inviteManager: (email: string, branchId: string) => Promise<{ success: boolean; error?: string }>;
+  removeManager: (managerId: string) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
   error: string | null;
   locationLimit: number;
@@ -512,6 +520,25 @@ export const BusinessProvider: React.FC<{
     [user]
   );
 
+  const removeManager = React.useCallback(
+    async (managerId: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "No authenticated user" };
+      
+      try {
+        const result = await removeManagerAction(managerId);
+        if (result.success) {
+          // Refresh list to update UI
+          await loadBusinessLocations();
+        }
+        return result;
+      } catch (error: any) {
+        console.error("Error in removeManager context:", error);
+        return { success: false, error: error.message };
+      }
+    },
+    [user, loadBusinessLocations]
+  );
+
   const contextValue = React.useMemo(
     () => ({
       currentBusiness,
@@ -523,6 +550,7 @@ export const BusinessProvider: React.FC<{
       deleteBusiness,
       resetBusiness,
       inviteManager,
+      removeManager,
       isLoading,
       error,
       locationLimit,
@@ -539,6 +567,7 @@ export const BusinessProvider: React.FC<{
       deleteBusiness,
       resetBusiness,
       inviteManager,
+      removeManager,
       isLoading,
       error,
       locationLimit,
