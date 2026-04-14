@@ -162,13 +162,22 @@ const StockTransferTab = () => {
     // Close suggestion panel when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+            const target = e.target as HTMLElement;
+            
+            // 🚀 BUG FIX: Check if click is inside the main container OR inside a Radix Portal
+            // Radix Sheets/Portals are rendered outside the React tree, so we must check for their attributes.
+            const isInsideContainer = containerRef.current && containerRef.current.contains(target);
+            const isInsidePortal = target.closest('[data-radix-portal]') || target.closest('[role="dialog"]');
+
+            if (!isInsideContainer && !isInsidePortal) {
                 setFocusedRowId(null);
                 closePanel();
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        
+        // Use 'click' instead of 'mousedown' to allow component-level events to fire first
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
     }, [closePanel]);
 
     // ── Load history ──
