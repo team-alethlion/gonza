@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { Product } from '@/types';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Package, Search, X } from 'lucide-react';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
@@ -62,117 +63,18 @@ const ProductSuggestionsPanel: React.FC<ProductSuggestionsPanelProps> = ({
     onClose();
   };
 
-  // Mobile dropdown implementation
-  if (isMobile) {
-    if (!isOpen) return null;
-    if (suggestions.length === 0 && !isLoading) return null;
-
-    return (
-      <div className="bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-y-auto">
-        <div className="p-2 border-b bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium">Suggestions</span>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6">
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            {isLoading
-              ? 'Searching for products...'
-              : suggestions.length > 0
-                ? `Found ${suggestions.length} product${suggestions.length > 1 ? 's' : ''}`
-                : 'No products found'
-            }
-          </p>
-        </div>
-
-        {isLoading && (
-          <div className="p-8 text-center bg-white">
-            <div className="h-6 w-6 border-2 border-primary border-t-transparent animate-spin rounded-full mx-auto mb-2" />
-            <span className="text-xs text-gray-500">Searching...</span>
-          </div>
-        )}
-
-        {!isLoading && suggestions.length > 0 && (
-          <div className="max-h-64 overflow-y-auto bg-primary">
-            {suggestions.map((product) => (
-              <div
-                key={product.id}
-                className="p-3 hover:bg-primary-foreground/20 cursor-pointer border-b border-primary-foreground/20 last:border-b-0 bg-white mx-1 my-1 rounded"
-                onClick={() => handleProductSelect(product)}
-              >
-                <div className="flex items-start gap-3">
-                  <ProductImage imageUrl={product.imageUrl} alt={product.name} size="sm" />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Package className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <div className="font-medium text-sm truncate">
-                        {highlightMatch(product.name, searchTerm)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-xs">
-                        {product.category}
-                      </Badge>
-                      <span className="text-xs text-gray-500">
-                        Item #: {highlightMatch(product.itemNumber, searchTerm)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Qty: {product.quantity % 1 === 0 ? product.quantity : product.quantity.toFixed(2)}</span>
-                      <span className="font-medium">
-                        {settings.currency} {product.sellingPrice.toFixed(2)}
-                      </span>
-                    </div>
-
-                    {product.description && (
-                      <div className="text-xs text-gray-500 truncate">
-                        {highlightMatch(product.description, searchTerm)}
-                      </div>
-                    )}
-
-                    {product.supplier && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Supplier: {highlightMatch(product.supplier, searchTerm)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!isLoading && suggestions.length === 0 && (
-          <div className="p-8 text-center bg-white">
-            <Search className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">No products found matching "{searchTerm}"</p>
-          </div>
-        )}
-
-        {suggestions.length >= 50 && (
-          <div className="p-3 border-t bg-primary text-center">
-            <span className="text-xs text-primary-foreground">
-              Showing top 50 results. Keep typing to refine...
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Desktop sidebar implementation
+  // 🚀 UNIFIED UI: Both Mobile and Desktop now use the Sheet component for consistency.
+  // The 'modal={false}' on Desktop allows interacting with the form while suggestions are open.
+  // On Mobile, we can keep 'modal={true}' if we want a standard drawer feel, but for now, 
+  // we'll maintain the current behavior's flexibility.
   return (
-    <Sheet open={isOpen} onOpenChange={onClose} modal={false}>
+    <Sheet open={isOpen} onOpenChange={onClose} modal={isMobile}>
       <SheetContent
-        className="w-full sm:w-[400px] sm:max-w-[400px] p-0 z-[100] pointer-events-auto flex flex-col bg-primary"
-        side="right"
+        className={cn(
+          "p-0 z-[100] flex flex-col bg-primary border-l-0 sm:border-l border-primary-foreground/20",
+          isMobile ? "w-full h-full" : "w-full sm:w-[400px] sm:max-w-[400px]"
+        )}
+        side={isMobile ? "bottom" : "right"}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -208,7 +110,11 @@ const ProductSuggestionsPanel: React.FC<ProductSuggestionsPanelProps> = ({
                 <div
                   key={product.id}
                   className="p-3 hover:bg-primary-foreground/20 cursor-pointer border-b border-primary-foreground/20 last:border-b-0 rounded-md mx-1 my-1 hover:shadow-sm transition-all bg-white"
-                  onClick={() => handleProductSelect(product)}
+                  onMouseDown={(e) => {
+                    // Prevent focus theft and trigger selection immediately
+                    e.preventDefault();
+                    handleProductSelect(product);
+                  }}
                 >
                   <div className="flex items-start gap-3">
                     <ProductImage imageUrl={product.imageUrl} alt={product.name} size="sm" />

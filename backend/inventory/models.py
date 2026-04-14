@@ -28,14 +28,13 @@ class Category(models.Model):
     description = models.TextField(null=True, blank=True)
 
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
-    branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='categories')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('branch', 'name')
+        unique_together = ('agency', 'name')
         verbose_name_plural = "Categories"
 
     def __str__(self):

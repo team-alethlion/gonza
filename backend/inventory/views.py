@@ -799,34 +799,52 @@ class StockTransferViewSet(viewsets.ModelViewSet):
             to_branch = transfer.to_branch
 
             for item in items_data:
+                src_p_id = item.get('productId')
                 sku = item.get('sku')
+                barcode = item.get('barcode')
+                name = item.get('productName')
                 qty = int(item.get('quantity', 0))
 
-                # Deduct from source
-                src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+                # 1. Deduct from source (ZERO RISK: use the exact ID provided by the UI)
+                src_product = Product.objects.select_for_update().filter(id=src_p_id).first()
+                if not src_product:
+                    # Fallback to SKU if ID is missing (legacy support)
+                    src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+
+                if not src_product:
+                    raise serializers.ValidationError({"error": f"Product '{name or sku}' not found in source branch."})
 
                 # 🛡️ DATA INTEGRITY: Strict stock check on server (with override)
                 allow_negative = data.get('allow_negative', False)
-
-                if not src_product:
-                    raise serializers.ValidationError({"error": f"Product with SKU {sku} not found in source branch."})
-
                 if src_product.stock < qty and not allow_negative:
                     raise serializers.ValidationError({
                         "error": f"Insufficient stock for {src_product.name}. Requested: {qty}, Available: {src_product.stock}. Provide 'allow_negative' to override."
                     })
-                # Add to destination
-                dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
+
+                # 2. Add to destination (WATERFALL SEARCH)
+                dest_product = None
+                
+                # Priority 1: Match by SKU
+                if sku:
+                    dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
+                
+                # Priority 2: Match by Barcode
+                if not dest_product and barcode:
+                    dest_product = Product.objects.select_for_update().filter(barcode=barcode, branch_id=to_branch_id).first()
+                
+                # Priority 3: Match by exact Name
+                if not dest_product and name:
+                    dest_product = Product.objects.select_for_update().filter(name=name, branch_id=to_branch_id).first()
+
                 # 🛡️ DATA LOSS PROTECTION: Create the product in destination branch if it doesn't exist
-                if src_product and not dest_product:
-                    # Handle category (it's branch-specific)
+                if not dest_product:
+                    # Handle category (it's AGENCY-scoped now)
                     new_category = None
                     if src_product.category:
                         new_category, _ = Category.objects.get_or_create(
                             name=src_product.category.name,
-                            branch_id=to_branch_id,
+                            agency_id=src_product.agency_id,
                             defaults={
-                                'agency_id': src_product.agency_id,
                                 'user_id': user_id
                             }
                         )

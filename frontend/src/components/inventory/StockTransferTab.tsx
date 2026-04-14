@@ -36,6 +36,7 @@ interface TransferItem {
     productId: string;
     name: string;
     sku: string;
+    barcode: string;
     availableStock: number;
     quantity: number;
     searchTerm: string;
@@ -87,7 +88,7 @@ const MobileTransferRow = ({
                     placeholder="Search product..."
                     value={item.searchTerm}
                     onChange={e => onSearch(item.id, e.target.value)}
-                    onFocus={() => onFocus(item.id)}
+                    onFocus={() => !isSelectingRef.current && onFocus(item.id)}
                     className={cn(item.productId ? "border-green-300" : "")}
                 />
                 {focusedId === item.id && (
@@ -151,6 +152,9 @@ const StockTransferTab = () => {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [activeTab, setActiveTab] = useState('new');
 
+    // 🚀 FOCUS GUARD: Prevents the drawer from re-opening during the selection process
+    const isSelectingRef = useRef(false);
+
     // ── Product suggestions ──
     const focusedRow = items.find(i => i.id === focusedRowId);
     const { suggestions, isOpen: panelOpen, closePanel } = useProductSuggestions(products, focusedRow?.searchTerm || '');
@@ -162,22 +166,28 @@ const StockTransferTab = () => {
     // Close suggestion panel when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            
-            // 🚀 BUG FIX: Check if click is inside the main container OR inside a Radix Portal
-            // Radix Sheets/Portals are rendered outside the React tree, so we must check for their attributes.
-            const isInsideContainer = containerRef.current && containerRef.current.contains(target);
-            const isInsidePortal = target.closest('[data-radix-portal]') || target.closest('[role="dialog"]');
+            // 🚀 BUG FIX: If we are in the middle of a selection, ignore outside clicks
+            if (isSelectingRef.current) return;
 
-            if (!isInsideContainer && !isInsidePortal) {
+            const target = e.target as HTMLElement;
+            if (!target) return;
+            
+            // 🚀 BUG FIX: Comprehensive check for Container, Radix Portals, and Sheets
+            const isInsideContainer = containerRef.current?.contains(target);
+            const isInsidePortal = target.closest('[data-radix-portal]');
+            const isInsideSheet = target.closest('[data-state]') || target.closest('.fixed');
+            const isDialog = target.closest('[role="dialog"]');
+
+            // If the click is NOT in any of these, then it's truly an "outside" click
+            if (!isInsideContainer && !isInsidePortal && !isInsideSheet && !isDialog) {
                 setFocusedRowId(null);
                 closePanel();
             }
         };
         
-        // Use 'click' instead of 'mousedown' to allow component-level events to fire first
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
+        // Use 'mousedown' for faster response, but ensure we don't block selection
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [closePanel]);
 
     // ── Load history ──
@@ -206,20 +216,31 @@ const StockTransferTab = () => {
         setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
 
     const handleProductSelect = useCallback((product: Product) => {
-        if (!focusedRowId) return;
+        if (!focusedRowId || isSelectingRef.current) return;
+        
+        // Block further focus events immediately
+        isSelectingRef.current = true;
+        
+        // 1. Update the row with selected product data
         updateRow(focusedRowId, {
             productId: product.id,
             name: product.name,
             sku: product.itemNumber || '',
+            barcode: product.barcode || '',
             availableStock: product.quantity,
             searchTerm: product.name,
         });
-        setFocusedRowId(null);
-        closePanel();
+
+        // 2. Clean up state after focus events settle
+        setTimeout(() => {
+            setFocusedRowId(null);
+            closePanel();
+            isSelectingRef.current = false;
+        }, 100);
     }, [focusedRowId, closePanel]); // eslint-disable-line
 
     const addRow = () => setItems(prev => [...prev, {
-        id: Date.now().toString(), productId: '', name: '', sku: '', availableStock: 0, quantity: 1, searchTerm: ''
+        id: Date.now().toString(), productId: '', name: '', sku: '', barcode: '', availableStock: 0, quantity: 1, searchTerm: ''
     }]);
 
     const removeRow = (id: string) => {
@@ -240,7 +261,13 @@ const StockTransferTab = () => {
             to_branch: destinationBranchId,
             status: 'COMPLETED',
             notes: notes || `Transfer from ${currentBusiness?.name}`,
-            items: validItems.map(i => ({ sku: i.sku, quantity: i.quantity })),
+            items: validItems.map(i => ({ 
+                productId: i.productId,
+                sku: i.sku, 
+                barcode: i.barcode,
+                productName: i.name,
+                quantity: i.quantity 
+            })),
             _validItems: validItems,
         };
     };
@@ -277,8 +304,17 @@ const StockTransferTab = () => {
             const result = await recordStockTransferAction(data);
             if (result.success) {
                 toast({ title: 'Transfer Complete', description: `Stock transferred to ${businessLocations.find(b => b.id === destinationBranchId)?.name}.` });
+                
+                // 🚀 UI FIX: Clear form and trigger a HARD reload of products
                 resetForm();
-                loadProducts();
+                
+                // We add a tiny delay to allow the backend transaction to settle 
+                // before the sync engine tries to pull new data
+                setTimeout(async () => {
+                    await loadProducts();
+                    // If your useProducts hook supports it, we could pass a 'force' flag here
+                }, 500);
+                
             } else {
                 toast({ title: 'Transfer Failed', description: result.error || 'Unknown error', variant: 'destructive' });
             }
@@ -370,7 +406,7 @@ const StockTransferTab = () => {
                                                                     placeholder="Search product..."
                                                                     value={item.searchTerm}
                                                                     onChange={e => updateRow(item.id, { searchTerm: e.target.value })}
-                                                                    onFocus={() => setFocusedRowId(item.id)}
+                                                                    onFocus={() => !isSelectingRef.current && setFocusedRowId(item.id)}
                                                                     className={cn(item.productId ? "border-green-300" : "")}
                                                                 />
                                                                 {focusedRowId === item.id && (
