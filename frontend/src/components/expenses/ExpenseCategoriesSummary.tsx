@@ -26,6 +26,7 @@ type CategorySummaryItem = {
 type ExpenseCategoriesSummaryProps = {
   expenses: Expense[];
   formatCurrency: (amount: number) => string;
+  backendStats?: any;
 };
 
 // Generate improved color palette for pie chart segments
@@ -77,6 +78,7 @@ const CustomTooltip = ({
 const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
   expenses,
   formatCurrency,
+  backendStats,
 }) => {
   const { canViewTotalExpenses } = useFinancialVisibility();
   const [viewMode, setViewMode] = useState<"category" | "person">("category");
@@ -84,9 +86,29 @@ const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
   // Process expenses data to get category or person in charge summaries
   const summarizedData = useMemo(() => {
     const totalExpenseAmount = expenses.reduce(
-      (sum, expense) => sum + expense.amount,
+      (sum, expense) => sum + (expense.amount || 0),
       0,
     );
+
+    if (viewMode === "category" && backendStats?.category_distribution) {
+      const totalFromBackend = backendStats.total_expenses || totalExpenseAmount;
+      return backendStats.category_distribution.map((item: any) => ({
+        name: item.name,
+        value: item.value,
+        percentage: totalFromBackend > 0 ? (item.value / totalFromBackend) * 100 : 0,
+        count: item.count
+      }));
+    }
+
+    if (viewMode === "person" && backendStats?.person_distribution) {
+      const totalFromBackend = backendStats.total_expenses || totalExpenseAmount;
+      return backendStats.person_distribution.map((item: any) => ({
+        name: item.name,
+        value: item.value,
+        percentage: totalFromBackend > 0 ? (item.value / totalFromBackend) * 100 : 0,
+        count: item.count
+      }));
+    }
 
     if (viewMode === "category") {
       // Group by category (case insensitive)
@@ -100,10 +122,10 @@ const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
 
         const existingCategory = categoryMap.get(categoryName);
         if (existingCategory) {
-          existingCategory.total += expense.amount;
+          existingCategory.total += (expense.amount || 0);
           existingCategory.count += 1;
         } else {
-          categoryMap.set(categoryName, { total: expense.amount, count: 1 });
+          categoryMap.set(categoryName, { total: (expense.amount || 0), count: 1 });
         }
       });
 
@@ -128,10 +150,10 @@ const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
 
         const existingPerson = personMap.get(personName);
         if (existingPerson) {
-          existingPerson.total += expense.amount;
+          existingPerson.total += (expense.amount || 0);
           existingPerson.count += 1;
         } else {
-          personMap.set(personName, { total: expense.amount, count: 1 });
+          personMap.set(personName, { total: (expense.amount || 0), count: 1 });
         }
       });
 

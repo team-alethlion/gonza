@@ -22,14 +22,7 @@ from django.db.models import Count, F, DecimalField
 import io
 
 from decimal import Decimal, InvalidOperation
-
-def to_decimal(val):
-    try:
-        if val is None or str(val).lower() == 'none' or str(val).strip() == '':
-            return Decimal('0.0')
-        return Decimal(str(val))
-    except (TypeError, ValueError, InvalidOperation):
-        return Decimal('0.0')
+from core.utils import to_decimal
 
 class SalesGoalViewSet(viewsets.ModelViewSet):
     queryset = SalesGoal.objects.all()

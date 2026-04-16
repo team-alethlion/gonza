@@ -8,10 +8,26 @@ import { isToday, isPast, isTomorrow } from 'date-fns';
 
 interface TaskStatsProps {
   tasks: Task[];
+  stats?: any;
+  isLoading?: boolean;
 }
 
-const TaskStats: React.FC<TaskStatsProps> = ({ tasks }) => {
+const TaskStats: React.FC<TaskStatsProps> = ({ tasks, stats: backendStats, isLoading }) => {
   const stats = useMemo(() => {
+    if (backendStats) {
+      return {
+        totalTasks: backendStats.total_tasks,
+        completedTasks: backendStats.completed_tasks,
+        pendingTasks: backendStats.pending_tasks,
+        todayTasks: backendStats.today_tasks,
+        todayCompleted: backendStats.today_completed,
+        overdueTasks: backendStats.overdue_tasks,
+        highPriorityPending: backendStats.high_priority_pending,
+        completionRate: backendStats.completion_rate,
+        todayCompletionRate: backendStats.today_completion_rate,
+      };
+    }
+
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.completed).length;
     const pendingTasks = totalTasks - completedTasks;
@@ -75,6 +91,30 @@ const TaskStats: React.FC<TaskStatsProps> = ({ tasks }) => {
       bgColor: 'bg-orange-50',
     },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4">
+                <div className="h-12 bg-gray-200 rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="animate-pulse">
+            <CardContent className="p-6 h-32 bg-gray-100 rounded"></CardContent>
+          </Card>
+          <Card className="animate-pulse">
+            <CardContent className="p-6 h-32 bg-gray-100 rounded"></CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (stats.totalTasks === 0) {
     return (

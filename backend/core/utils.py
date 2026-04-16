@@ -1,7 +1,26 @@
 from cuid2 import cuid_wrapper
+from decimal import Decimal, InvalidOperation
 
 # Create a CUID generator
 cuid_gen = cuid_wrapper()
+
+def to_decimal(val, default='0.00'):
+    """
+    Safely converts any value to a Decimal.
+    Handles None, empty strings, and invalid numeric strings (like 'None' or 'abc').
+    Ensures the application never crashes during financial calculations.
+    """
+    if val is None:
+        return Decimal(str(default))
+    
+    clean_val = str(val).strip().lower()
+    if clean_val in ['none', '', 'nan', 'undefined']:
+        return Decimal(str(default))
+        
+    try:
+        return Decimal(str(val))
+    except (TypeError, ValueError, InvalidOperation):
+        return Decimal(str(default))
 
 def generate_id(prefix=""):
     """

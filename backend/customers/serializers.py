@@ -7,9 +7,17 @@ class CustomerCategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CustomerSerializer(serializers.ModelSerializer):
+    lifetime_value = serializers.DecimalField(source='total_spent', max_digits=20, decimal_places=2, read_only=True)
+    
     class Meta:
         model = Customer
-        fields = '__all__'
+        fields = [
+            'id', 'name', 'phone', 'email', 'address', 'city', 'notes',
+            'agency', 'branch', 'admin', 'birthday', 'gender', 'category',
+            'tags', 'social_media', 'avatar', 'source', 'timezone',
+            'language', 'assignee', 'credit_limit', 'total_spent', 'lifetime_value', 'order_count',
+            'created_at', 'updated_at'
+        ]
 
 class FavoriteCustomerSerializer(serializers.ModelSerializer):
     class Meta:

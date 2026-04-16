@@ -1,6 +1,19 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { format } from "date-fns"
+
+/**
+ * Utility to format dates consistently between server and client.
+ */
+export function formatDate(date: Date | string | number): string {
+  try {
+    const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    return format(d, "MMM d, yyyy");
+  } catch (error) {
+    return "---";
+  }
+}
 
 /**
  * Utility to get the base URL of the application.
@@ -32,22 +45,24 @@ export function formatNumber(value: number | undefined | null): string {
   });
 }
 
-export function formatCashCurrency(amount: number, currency: string = 'USD'): string {
+export function formatCashCurrency(amount: number | null | undefined, currency: string = 'USD'): string {
+  const value = (amount === null || amount === undefined || isNaN(amount as number)) ? 0 : amount;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(value as number);
 }
 
-export function formatCashAmount(amount: number, currency: string = 'USD'): string {
+export function formatCashAmount(amount: number | null | undefined, currency: string = 'USD'): string {
+  const value = (amount === null || amount === undefined || isNaN(amount as number)) ? 0 : amount;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(value as number);
 }
 
 // Add function to format large numbers with appropriate units

@@ -33,6 +33,7 @@ export interface Customer {
   } | null;
   lifetimeValue?: number;
   orderCount?: number;
+  totalSpent?: number;
   creditLimit?: number;
   createdAt: Date;
   updatedAt: Date;

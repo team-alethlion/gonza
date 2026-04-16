@@ -23,6 +23,7 @@ import { Expense } from "@/hooks/useExpenses";
 import { CashAccount } from "@/types/cash";
 import ImageViewer from "@/components/ui/ImageViewer";
 import Image from "next/image";
+import { formatDate } from "@/lib/utils";
 
 interface ViewExpenseDialogProps {
   expense: Expense | null;
@@ -39,13 +40,8 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
   formatCurrency,
   accounts,
 }) => {
-  const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!expense) return null;
 
@@ -62,7 +58,7 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
           <label className="text-sm font-medium text-muted-foreground">
             Date
           </label>
-          <p className="text-sm">{mounted ? expense.date.toLocaleDateString("en-US") : "---"}</p>
+          <p className="text-sm">{formatDate(expense.date)}</p>
         </div>
 
         <div className="space-y-2">

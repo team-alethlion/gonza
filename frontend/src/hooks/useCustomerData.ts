@@ -7,8 +7,7 @@ export const useCustomerData = (
   searchTerm: string,
   selectedCategory: string,
   totalCount?: number,
-  customersWithBirthdaysOverride?: number,
-  customersThisMonthOverride?: number
+  globalStats?: any
 ) => {
   // Filter out any categories with empty IDs to prevent Select errors
   const validCategories = useMemo(() => {
@@ -28,33 +27,25 @@ export const useCustomerData = (
     });
   }, [customers, searchTerm, selectedCategory]);
 
-  // Enhanced customer stats calculations with category breakdown
+  // 🚀 PERFORMANCE: Use pre-calculated stats from backend instead of looping in browser
   const customerStats = useMemo(() => {
-    const totalCustomers = typeof totalCount === 'number' ? totalCount : customers.length;
-    const customersWithBirthdays = typeof customersWithBirthdaysOverride === 'number' 
-      ? customersWithBirthdaysOverride 
-      : customers.filter(c => c.birthday).length;
-    const customersThisMonth = typeof customersThisMonthOverride === 'number'
-      ? customersThisMonthOverride
-      : customers.filter(c => {
-          const thisMonth = new Date();
-          const customerDate = new Date(c.createdAt);
-          return customerDate.getMonth() === thisMonth.getMonth() && 
-                 customerDate.getFullYear() === thisMonth.getFullYear();
-        }).length;
+    if (globalStats) {
+      return {
+        totalCustomers: globalStats.totalCustomers || totalCount || 0,
+        customersWithBirthdays: globalStats.customersWithBirthdays || 0,
+        customersThisMonth: globalStats.customersThisMonth || 0,
+        categoryBreakdown: globalStats.categoryBreakdown || {}
+      };
+    }
 
-    const categoryBreakdown = categories.reduce((acc, category) => {
-      acc[category.id] = customers.filter(c => c.categoryId === category.id).length;
-      return acc;
-    }, {} as Record<string, number>);
-
+    // Fallback if stats aren't loaded (basic totals)
     return {
-      totalCustomers,
-      customersWithBirthdays,
-      customersThisMonth,
-      categoryBreakdown
+      totalCustomers: totalCount || customers.length,
+      customersWithBirthdays: 0,
+      customersThisMonth: 0,
+      categoryBreakdown: {}
     };
-  }, [customers, categories, totalCount, customersWithBirthdaysOverride, customersThisMonthOverride]);
+  }, [customers.length, globalStats, totalCount]);
 
   // Get category name helper
   const getCategoryName = (categoryId: string | null) => {

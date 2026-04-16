@@ -278,9 +278,12 @@ export async function getInactiveCustomersAction(branchId: string, filters: { da
         let url = `customers/customers/inactive/?branchId=${branchId}&days=${filters.days}`;
         if (filters.categoryId && filters.categoryId !== 'all') url += `&categoryId=${filters.categoryId}`;
 
-        const data = await djangoFetch<any[]>(url);
+        const data = await djangoFetch<any>(url);
         
-        const mapped = (data || []).map((c: any) => ({
+        // 🚀 FIX: Handle both paginated (object with results) and simple (array) responses
+        const rawItems = Array.isArray(data) ? data : (data?.results || []);
+        
+        const mapped = rawItems.map((c: any) => ({
             id: c.id,
             fullName: c.name,
             phoneNumber: c.phone,
@@ -291,7 +294,11 @@ export async function getInactiveCustomersAction(branchId: string, filters: { da
             lastPurchaseDate: c.lastPurchaseDate
         }));
 
-        return { success: true, data: mapped };
+        return { 
+            success: true, 
+            data: mapped,
+            count: Array.isArray(data) ? mapped.length : (data?.count || mapped.length)
+        };
     } catch (error: any) {
         console.error('Error fetching inactive customers:', error);
         return { success: false, error: error.message };
@@ -358,6 +365,38 @@ export async function getDuplicateCustomersAction(branchId: string) {
         return { success: true, data: mappedGroups };
     } catch (error: any) {
         console.error('Error fetching duplicate customers:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * 🚀 PERFORMANCE: Fetches stats, categories, and a snapshot of recent customers in ONE request.
+ */
+export async function getCustomerSummaryAction(branchId: string) {
+    try {
+        await verifyBranchAccess(branchId);
+        const data = await djangoFetch<any>(`customers/customers/summary/?branchId=${branchId}`);
+        
+        // Formatted categories
+        const categories = (data.categories || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            isDefault: c.is_default
+        }));
+
+        // Mapped recent customers
+        const recentCustomers = (data.recentCustomers || []).map((c: any) => mapDbCustomerToCustomer(c));
+
+        return { 
+            success: true, 
+            data: {
+                stats: data.stats || {},
+                categories,
+                recentCustomers
+            } 
+        };
+    } catch (error: any) {
+        console.error('Error fetching customer summary:', error);
         return { success: false, error: error.message };
     }
 }

@@ -37,9 +37,11 @@ import { AlertCircle, ArrowLeft } from "lucide-react";
 const CustomersClient = ({
   initialCustomers,
   initialCount,
+  initialSummary,
 }: {
   initialCustomers?: Customer[];
   initialCount?: number;
+  initialSummary?: any;
 }) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
@@ -58,11 +60,11 @@ const CustomersClient = ({
     customers: initialCustomers || [],
     count: initialCount || 0,
   });
-  const { categories } = useCustomerCategories();
+  const { categories } = useCustomerCategories(initialSummary?.categories);
   const { settings } = useBusinessSettings();
 
   // New React Query based stats hook
-  const { data: globalStats } = useCustomerStats(user?.id, currentBusiness?.id);
+  const { data: globalStats } = useCustomerStats(user?.id, currentBusiness?.id, initialSummary?.stats);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -110,8 +112,7 @@ const CustomersClient = ({
       searchTerm,
       selectedCategory,
       totalCount,
-      globalStats?.withBirthdays,
-      globalStats?.thisMonth,
+      globalStats
     );
 
   useEffect(() => {
@@ -193,8 +194,8 @@ const CustomersClient = ({
   };
 
   const handleMergeComplete = () => {
-    // Reload customers after merge
-    window.location.reload();
+    // 🚀 UI FIX: Background refresh is now handled via React Query in the dialog.
+    // No more full-page reload.
   };
 
   if (businessLoading || !currentBusiness || isLoading || profilesLoading) {

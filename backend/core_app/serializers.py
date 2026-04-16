@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Agency, Branch, BranchSettings, Package, Task, TaskCategory, ActivityHistory
+    Agency, Branch, BranchSettings, Package
 )
 
 class PackageSerializer(serializers.ModelSerializer):
@@ -40,24 +40,3 @@ class BranchSerializer(serializers.ModelSerializer):
             "status": m.status
         } for m in managers]
 
-class TaskSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Task
-        fields = '__all__'
-
-class TaskCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TaskCategory
-        fields = '__all__'
-
-class ActivityHistorySerializer(serializers.ModelSerializer):
-    profile_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ActivityHistory
-        fields = '__all__'
-
-    def get_profile_name(self, obj):
-        if obj.user:
-            return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
-        return "Unknown"

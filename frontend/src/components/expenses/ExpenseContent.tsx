@@ -8,8 +8,8 @@ import { Expense } from '@/hooks/useExpenses';
 interface ExpenseContentProps {
   filteredExpenses: Expense[];
   expenseStats: {
-    totalExpenses: number;
-    thisMonthExpenses: number;
+    totalExpenses: number | null;
+    thisMonthExpenses: number | null;
     transactionCount: number;
   };
   formatCurrency: (amount: number) => string;
@@ -18,6 +18,9 @@ interface ExpenseContentProps {
   onDeleteExpense: (id: string) => Promise<boolean>;
   showOnlyOverview?: boolean;
   showOnlyList?: boolean;
+  backendStats?: any;
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 const ExpenseContent: React.FC<ExpenseContentProps> = ({
@@ -28,7 +31,10 @@ const ExpenseContent: React.FC<ExpenseContentProps> = ({
   onUpdateExpense,
   onDeleteExpense,
   showOnlyOverview = false,
-  showOnlyList = false
+  showOnlyList = false,
+  backendStats,
+  searchTerm,
+  onSearchChange
 }) => {
   if (showOnlyOverview) {
     return (
@@ -43,7 +49,11 @@ const ExpenseContent: React.FC<ExpenseContentProps> = ({
         />
 
         {/* Categories Summary */}
-        <ExpenseCategoriesSummary expenses={filteredExpenses} formatCurrency={formatCurrency} />
+        <ExpenseCategoriesSummary 
+          expenses={filteredExpenses} 
+          formatCurrency={formatCurrency} 
+          backendStats={backendStats}
+        />
 
         {/* Recent Expenses */}
         <RecentExpensesCard
@@ -62,6 +72,8 @@ const ExpenseContent: React.FC<ExpenseContentProps> = ({
           onUpdateExpense={onUpdateExpense}
           onDeleteExpense={onDeleteExpense}
           formatCurrency={formatCurrency}
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
         />
       </div>
     );
@@ -82,6 +94,8 @@ const ExpenseContent: React.FC<ExpenseContentProps> = ({
         onUpdateExpense={onUpdateExpense}
         onDeleteExpense={onDeleteExpense}
         formatCurrency={formatCurrency}
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
       />
     </div>
   );

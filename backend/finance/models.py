@@ -23,8 +23,34 @@ class CashAccount(models.Model):
     def __str__(self):
         return self.name
 
+class CashTransactionManager(models.Manager):
+    def create_transfer(self, from_account_id, to_account_id, amount, **kwargs):
+        """
+        Creates a mirrored pair of transactions for a transfer between accounts.
+        Ensures both records are created atomically.
+        """
+        from django.db import transaction
+        with transaction.atomic():
+            # 1. Create the 'Out' transaction
+            tx_out = self.create(
+                account_id=from_account_id,
+                amount=amount,
+                transaction_type='transfer_out',
+                **kwargs
+            )
+            # 2. Create the 'In' transaction
+            tx_in = self.create(
+                account_id=to_account_id,
+                amount=amount,
+                transaction_type='transfer_in',
+                **kwargs
+            )
+            return tx_out, tx_in
+
 class CashTransaction(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_ct_id)
+    # ... previous fields ...
+    objects = CashTransactionManager()
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     transaction_type = models.CharField(max_length=50) # "cash_in", "cash_out", "transfer_in", "transfer_out"
     category = models.CharField(max_length=100, null=True, blank=True)
@@ -76,9 +102,10 @@ class Expense(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_ex_id)
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     description = models.TextField()
-    category = models.CharField(max_length=200)
+    category = models.CharField(max_length=200, db_index=True)
     date = models.DateTimeField(auto_now_add=True)
     payment_method = models.CharField(max_length=100, null=True, blank=True)
+    person_in_charge = models.CharField(max_length=200, null=True, blank=True, db_index=True)
     reference = models.CharField(max_length=200, null=True, blank=True)
 
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='expenses', null=True, blank=True)

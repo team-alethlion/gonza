@@ -517,7 +517,6 @@ export const mapSaleToDbSale = (
     customer_id: saleData.customerId || null, // Include customer_id
     items: (mappedItems as unknown) as Json,
     payment_status: status_val,
-    profit: profit,
     date: selectedDate.toISOString().split('T')[0],
     tax_rate: saleData.taxRate || 0,
     cash_transaction_id: cashTransactionId || null,
@@ -770,3 +769,42 @@ export const mapExpenseToDbExpense = (expense: Partial<Expense>, userId: string)
 
   return result;
 };
+
+export interface ActivityHistoryItem {
+  id: string;
+  user_id: string;
+  location_id: string;
+  activity_type: "CREATE" | "UPDATE" | "DELETE";
+  module:
+    | "SALES"
+    | "INVENTORY"
+    | "EXPENSES"
+    | "FINANCE"
+    | "CUSTOMERS"
+    | "TASKS";
+  entity_type: string;
+  entity_id: string | null;
+  entity_name: string;
+  description: string;
+  metadata: any;
+  created_at: string;
+  profile_id: string | null;
+  profile_name: string | null;
+}
+
+export interface ActivityFilters {
+  activityType: "ALL" | "CREATE" | "UPDATE" | "DELETE";
+  module:
+    | "ALL"
+    | "SALES"
+    | "INVENTORY"
+    | "EXPENSES"
+    | "FINANCE"
+    | "CUSTOMERS"
+    | "TASKS";
+  search: string;
+  dateRange: {
+    from: Date | undefined;
+    to: Date | undefined;
+  };
+}

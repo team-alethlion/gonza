@@ -115,7 +115,7 @@ const CashAccountCard: React.FC<CashAccountCardProps> = ({ account, onAccountDel
   }, [deleteAccountWithTransactions, account.id, onAccountDeleted]);
 
   const handleCardClick = useCallback(() => {
-    router.push(`/cash/${account.id}`);
+    router.push(`/agency/cash/${account.id}`);
   }, [router, account.id]);
 
   return (

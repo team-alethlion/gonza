@@ -7,7 +7,8 @@ import { getDateRangeFromFilter, isDateInRange } from '@/utils/dateFilters';
 export const useExpenseData = (
   expenses: Expense[],
   dateFilter: string,
-  customDateRange: { from: Date | undefined; to: Date | undefined }
+  customDateRange: { from: Date | undefined; to: Date | undefined },
+  backendStats?: any
 ) => {
   const { settings } = useBusinessSettings();
 
@@ -15,6 +16,7 @@ export const useExpenseData = (
   const formatCurrency = useMemo(() => {
     const currency = settings.currency || 'USD';
     return (amount: number) => {
+      if (amount === null) return '•••';
       return formatCashCurrency(amount, currency);
     };
   }, [settings.currency]);
@@ -42,8 +44,16 @@ export const useExpenseData = (
 
   // Memoize calculated values
   const expenseStats = useMemo(() => {
-    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    
+    if (backendStats) {
+      return {
+        totalExpenses: backendStats.total_expenses,
+        thisMonthExpenses: backendStats.this_month_expenses,
+        transactionCount: backendStats.transaction_count
+      };
+    }
+
+    const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+
     const thisMonthExpenses = filteredExpenses
       .filter(expense => {
         const expenseMonth = expense.date.getMonth();
@@ -52,14 +62,14 @@ export const useExpenseData = (
         const currentYear = new Date().getFullYear();
         return expenseMonth === currentMonth && expenseYear === currentYear;
       })
-      .reduce((sum, expense) => sum + expense.amount, 0);
+      .reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
     return {
       totalExpenses,
       thisMonthExpenses,
       transactionCount: filteredExpenses.length
     };
-  }, [filteredExpenses]);
+  }, [filteredExpenses, backendStats]);
 
   return {
     filteredExpenses,

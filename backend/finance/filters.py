@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from .models import Expense, CashTransaction
 
@@ -13,7 +14,10 @@ class ExpenseFilter(filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
-            description__icontains=value
+            Q(description__icontains=value) |
+            Q(category__icontains=value) |
+            Q(payment_method__icontains=value) |
+            Q(person_in_charge__icontains=value)
         )
 
 class CashTransactionFilter(filters.FilterSet):
@@ -21,10 +25,14 @@ class CashTransactionFilter(filters.FilterSet):
     date_to = filters.DateTimeFilter(field_name='date', lookup_expr='lte')
     transaction_type = filters.CharFilter(field_name='transaction_type')
     search = filters.CharFilter(method='filter_search')
+    
+    # 🚀 FIX: Support both naming conventions
+    branchId = filters.CharFilter(field_name='branch_id')
+    branch_id = filters.CharFilter(field_name='branch_id')
 
     class Meta:
         model = CashTransaction
-        fields = ['branch_id', 'account', 'transaction_type', 'category']
+        fields = ['branch_id', 'branchId', 'account', 'transaction_type', 'category']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(

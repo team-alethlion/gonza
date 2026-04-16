@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 from unfold.admin import ModelAdmin, StackedInline
-from .models import Agency, Branch, Package, SubscriptionTransaction, BranchSettings, Task, ActivityHistory, AgencyRoleDirectory
+from .models import Agency, Branch, Package, SubscriptionTransaction, BranchSettings, AgencyRoleDirectory
 from users.models import Role
 
 @admin.register(AgencyRoleDirectory)
@@ -31,7 +31,8 @@ class AgencyRoleDirectoryAdmin(ModelAdmin):
 class RoleStackedInline(StackedInline):
     model = Role
     extra = 0
-    fields = ('name', 'description', 'pin_required', 'is_system_role')
+    fields = ('id', 'name', 'description', 'pin_required', 'is_system_role')
+    readonly_fields = ('id',)
     show_change_link = True
 
 @admin.register(Agency)
@@ -69,13 +70,3 @@ class SubscriptionTransactionAdmin(ModelAdmin):
 class BranchSettingsAdmin(ModelAdmin):
     list_display = ('branch', 'business_name', 'currency')
 
-@admin.register(Task)
-class TaskAdmin(ModelAdmin):
-    list_display = ('title', 'branch', 'priority', 'due_date', 'completed')
-    list_filter = ('priority', 'completed', 'branch')
-
-@admin.register(ActivityHistory)
-class ActivityHistoryAdmin(ModelAdmin):
-    list_display = ('activity_type', 'module', 'user', 'entity_name', 'created_at')
-    list_filter = ('module', 'activity_type')
-    readonly_fields = ('created_at',)

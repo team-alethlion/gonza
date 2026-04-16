@@ -22,7 +22,12 @@ import {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCashTransactions = (accountId?: string, initialPageSize: number = 50, initialData?: CashTransaction[]) => {
+export const useCashTransactions = (
+  accountId?: string, 
+  initialPageSize: number = 50, 
+  initialData?: CashTransaction[],
+  dateRange?: { startDate: Date; endDate: Date }
+) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
   const { toast } = useToast();
@@ -59,7 +64,13 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
         return [];
       }
 
-      const result = await getCashTransactionsAction(currentBusiness.id, accountId, page, pageSize);
+      const filters: any = {};
+      if (dateRange) {
+        filters.dateFrom = dateRange.startDate.toISOString();
+        filters.dateTo = dateRange.endDate.toISOString();
+      }
+
+      const result = await getCashTransactionsAction(currentBusiness.id, accountId, page, pageSize, filters);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch transactions');
@@ -72,12 +83,12 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
       // Sanitize: getCashTransactionsAction returns { data: { transactions: [] } }
       const rawTransactions = Array.isArray(result.data?.transactions) ? result.data.transactions : [];
 
-      // Format all transactions
+      // Format all transactions from RAW database objects
       const formattedTransactions = rawTransactions.map((item: any) => {
         const dbTransaction: DbCashTransaction = {
           id: item.id,
-          user_id: item.user_id,
-          account_id: item.account_id,
+          user_id: item.user,
+          account_id: item.account,
           amount: Number(item.amount),
           transaction_type: item.transaction_type,
           category: item.category,
@@ -114,9 +125,9 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
       return [];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, currentBusiness?.id, accountId, page, pageSize, toast]);
+  }, [user, currentBusiness?.id, accountId, page, pageSize, dateRange, toast]);
 
-  const queryKey = useMemo(() => ['cash_transactions', currentBusiness?.id, user?.id, accountId, page, pageSize], [currentBusiness?.id, user?.id, accountId, page, pageSize]);
+  const queryKey = useMemo(() => ['cash_transactions', currentBusiness?.id, user?.id, accountId, page, pageSize, dateRange], [currentBusiness?.id, user?.id, accountId, page, pageSize, dateRange]);
 
   const { data: transactions = internalTransactions, isLoading: isQueryLoading } = useQuery({
     queryKey,

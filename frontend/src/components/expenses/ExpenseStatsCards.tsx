@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 
 interface ExpenseStatsCardsProps {
-  totalExpenses: number;
-  thisMonthExpenses: number;
+  totalExpenses: number | null;
+  thisMonthExpenses: number | null;
   transactionCount: number;
-  formatCurrency: (amount: number) => string;
+  formatCurrency: (amount: number | null) => string;
   dateFilter: string;
 }
 

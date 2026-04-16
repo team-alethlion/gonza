@@ -4,7 +4,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Load .env from backend dir and then from project root
 load_dotenv(BASE_DIR / '.env', override=True)
+load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-gonza-default-key-for-dev-only')
 DEBUG = True
@@ -29,6 +31,8 @@ INSTALLED_APPS = [
     'finance',
     'customers',
     'messaging',
+    'tasks',
+    'activities',
     'django_filters',
 ]
 

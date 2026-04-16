@@ -43,39 +43,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return qs.order_by('name')
 
     def list(self, request, *args, **kwargs):
-        from django.db.models import Sum, Count, Q, OuterRef, Subquery, FloatField
-        from django.db.models.functions import Coalesce
-        from sales.models import Sale
-
-        # Create a subquery for total sales amount
-        sales_subquery = Sale.objects.filter(
-            Q(customer_id=OuterRef('pk')) | Q(customer_name__iexact=OuterRef('name')),
-            branch_id=OuterRef('branch_id')
-        ).exclude(status='QUOTE')
-
-        total_spent_subquery = sales_subquery.values('branch_id').annotate(
-            total=Sum('total_amount')
-        ).values('total')
-
-        order_count_subquery = sales_subquery.values('branch_id').annotate(
-            count=Count('id')
-        ).values('count')
-
-        queryset = self.filter_queryset(self.get_queryset()).annotate(
-            total_spent=Coalesce(Subquery(total_spent_subquery), 0.0, output_field=FloatField()),
-            orders_count=Coalesce(Subquery(order_count_subquery), 0, output_field=FloatField())
-        )
+        # 🚀 PERFORMANCE: Removed heavy subqueries for total spent/orders count.
+        # These are now provided on-demand in the retrieve (detail) action.
+        queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
         customers = page if page is not None else queryset
         
-        response_data = []
-        for customer in customers:
-             serializer = self.get_serializer(customer)
-             data = serializer.data
-             data['lifetimeValue'] = float(customer.total_spent)
-             data['orderCount'] = int(customer.orders_count)
-             response_data.append(data)
+        serializer = self.get_serializer(customers, many=True)
+        response_data = serializer.data
              
         if page is not None:
             return self.get_paginated_response(response_data)
@@ -83,26 +59,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Response(response_data)
 
     def retrieve(self, request, *args, **kwargs):
-        from django.db.models import Sum, Count, Q, FloatField
-        from django.db.models.functions import Coalesce
-        from sales.models import Sale
-
+        # 🚀 PERFORMANCE: Use stored totals instead of calculating on the fly
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         data = serializer.data
         
-        sales = Sale.objects.filter(
-            Q(customer_id=instance.id) | Q(customer_name__iexact=instance.name),
-            branch_id=instance.branch_id
-        ).exclude(status='QUOTE')
+        # We use the denormalized fields we just created
+        data['lifetimeValue'] = float(instance.total_spent)
+        data['orderCount'] = int(instance.order_count)
         
-        agg = sales.aggregate(
-            total_spent=Coalesce(Sum('total_amount'), 0.0, output_field=FloatField()),
-            order_count=Count('id')
-        )
-        
-        data['lifetimeValue'] = float(agg['total_spent'])
-        data['orderCount'] = int(agg['order_count'])
         return Response(data)
 
     @action(detail=False, methods=['get'])
@@ -154,8 +119,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def inactive(self, request):
         from sales.models import Sale
-        from django.db.models import Max, Q
         from datetime import timedelta
+        from django.db.models import Max, Q
         
         branch_id = request.query_params.get('branchId')
         days = int(request.query_params.get('days', 30))
@@ -165,59 +130,61 @@ class CustomerViewSet(viewsets.ModelViewSet):
             return Response({"error": "branchId required"}, status=400)
             
         cutoff_date = now() - timedelta(days=days)
+        cutoff_date_only = cutoff_date.date()
         
-        # We only track inactivity for REGISTERED customers
-        customers_qs = Customer.objects.filter(branch_id=branch_id)
-        
-        if category_id and category_id != 'all':
-            customers_qs = customers_qs.filter(category_id=category_id)
-            
-        # Get the last sale date for each customer
-        last_sales = Sale.objects.filter(
-            branch_id=branch_id
-        ).exclude(status='QUOTE').values('customer_id').annotate(
-            last_purchase=Max('date')
+        # 🚀 FIX: Identify active customers first (Date >= cutoff AND Status != QUOTE)
+        active_customer_ids = Sale.objects.filter(
+            branch_id=branch_id,
+            date__gte=cutoff_date_only
+        ).exclude(status='QUOTE').values_list('customer_id', flat=True).distinct()
+
+        # Filter the main queryset to exclude these active IDs
+        queryset = Customer.objects.filter(branch_id=branch_id).exclude(
+            id__in=active_customer_ids
+        ).annotate(
+            last_purchase_date=Max('sales__date', filter=~Q(sales__status='QUOTE'))
         )
         
-        # Map customer_id -> last_purchase_date
-        last_sale_map = {item['customer_id']: item['last_purchase'] for item in last_sales if item['customer_id']}
+        if category_id and category_id != 'all':
+            queryset = queryset.filter(category_id=category_id)
+            
+        # Serialize the results
+        page = self.paginate_queryset(queryset)
+        customers = page if page is not None else queryset
         
-        inactive_customers = []
-        for customer in customers_qs:
-            last_date = last_sale_map.get(customer.id)
-            
-            # Inactive if: Never purchased OR last purchase was before cutoff
-            is_inactive = False
-            if not last_date:
-                is_inactive = True
-            else:
-                # Sale.date is usually a DateField, compare with cutoff_date.date()
-                if last_date < cutoff_date.date():
-                    is_inactive = True
-            
-            if is_inactive:
-                serializer = self.get_serializer(customer)
-                data = serializer.data
-                data['lastPurchaseDate'] = last_date.isoformat() if last_date else None
-                inactive_customers.append(data)
+        response_data = []
+        for customer in customers:
+            data = self.get_serializer(customer).data
+            # Use the annotated value directly
+            data['lastPurchaseDate'] = customer.last_purchase_date.isoformat() if customer.last_purchase_date else None
+            response_data.append(data)
                 
-        return Response(inactive_customers)
+        if page is not None:
+            return self.get_paginated_response(response_data)
+            
+        return Response(response_data)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from .logic.summary import get_customer_module_summary
+        data = get_customer_module_summary(branch_id)
+        
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
         branch_id = request.query_params.get('branchId')
-        qs = self.get_queryset()
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from .logic.stats import get_customer_summary_stats
+        data = get_customer_summary_stats(branch_id)
         
-        today = now()
-        start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        this_month_count = qs.filter(created_at__gte=start_of_month).count()
-        with_birthdays = qs.exclude(birthday__isnull=True).count()
-        
-        return Response({
-            "thisMonth": this_month_count,
-            "withBirthdays": with_birthdays
-        })
+        return Response(data)
 
     @action(detail=False, methods=['post'])
     def merge(self, request):

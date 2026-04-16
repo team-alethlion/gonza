@@ -16,13 +16,11 @@ from inventory.models import Requisition, StockTransfer
 from finance.models import CashTransaction, Expense
 
 from .models import (
-    Agency, Branch, BranchSettings, Package, SubscriptionTransaction,
-    Task, TaskCategory, ActivityHistory
+    Agency, Branch, BranchSettings, Package, SubscriptionTransaction
 )
 from .serializers import (
     AgencySerializer, BranchSerializer,
-    BranchSettingsSerializer, PackageSerializer,
-    TaskSerializer, TaskCategorySerializer, ActivityHistorySerializer
+    BranchSettingsSerializer, PackageSerializer
 )
 from rest_framework import serializers
 
@@ -331,132 +329,6 @@ class BranchSettingsViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs
 
-class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        from dateutil.relativedelta import relativedelta
-        task = serializer.save()
-        
-        if task.is_recurring and task.recurrence_type and task.recurrence_end_date:
-            current_date = task.due_date
-            end_date = task.recurrence_end_date
-            count = 1
-            
-            delta = None
-            if task.recurrence_type == 'daily':
-                delta = relativedelta(days=1)
-            elif task.recurrence_type == 'weekly':
-                delta = relativedelta(weeks=1)
-            elif task.recurrence_type == 'monthly':
-                delta = relativedelta(months=1)
-                
-            if delta:
-                while count < 1000: # 🛠️ Increased cap to ~3 years to prevent silent stops
-                    current_date += delta
-                    if current_date > end_date:
-                        break
-                        
-                    Task.objects.create(
-                        id=f"ts_{uuid.uuid4().hex[:12]}",
-                        created_by=task.created_by,
-                        branch=task.branch,
-                        title=task.title,
-                        description=task.description,
-                        priority=task.priority,
-                        due_date=current_date,
-                        category=task.category,
-                        reminder_enabled=task.reminder_enabled,
-                        reminder_time=task.reminder_time,
-                        is_recurring=False,
-                        parent_task_id=task.id,
-                        recurrence_count=count
-                    )
-                    count += 1
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user_id = self.request.query_params.get('userId')
-        branch_id = self.request.query_params.get('locationId')
-        if user_id:
-            qs = qs.filter(created_by_id=user_id)
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-        return qs.order_by('due_date')
-
-class TaskCategoryViewSet(viewsets.ModelViewSet):
-    queryset = TaskCategory.objects.all()
-    serializer_class = TaskCategorySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user_id = self.request.query_params.get('userId')
-        branch_id = self.request.query_params.get('locationId')
-        if user_id and user_id != 'ALL':
-            qs = qs.filter(user_id=user_id)
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-        return qs.order_by('name')
-
-    def perform_create(self, serializer):
-        # Allow manual passing of user and branch from frontend
-        user_id = self.request.data.get('user')
-        branch_id = self.request.data.get('branch')
-        
-        serializer.save(
-            user_id=user_id or self.request.user.id,
-            branch_id=branch_id
-        )
-
-class ActivityHistoryViewSet(viewsets.ModelViewSet):
-    queryset = ActivityHistory.objects.all()
-    serializer_class = ActivityHistorySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        branch_id = self.request.query_params.get('locationId')
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-            
-        user_id = self.request.query_params.get('userId')
-        if user_id and user_id != 'ALL':
-            qs = qs.filter(user_id=user_id)
-            
-        activity_type = self.request.query_params.get('activityType')
-        if activity_type and activity_type != 'ALL':
-            qs = qs.filter(activity_type=activity_type)
-            
-        module = self.request.query_params.get('module')
-        if module and module != 'ALL':
-            qs = qs.filter(module=module)
-            
-        search = self.request.query_params.get('search')
-        if search:
-            qs = qs.filter(
-                Q(description__icontains=search) | 
-                Q(entity_name__icontains=search) |
-                Q(profile_name__icontains=search)
-            )
-            
-        entity_ids = self.request.query_params.get('entityIds')
-        if entity_ids:
-            id_list = entity_ids.split(',')
-            qs = qs.filter(entity_id__in=id_list)
-            
-        start_date = self.request.query_params.get('startDate') or self.request.query_params.get('dateFrom')
-        if start_date:
-            qs = qs.filter(created_at__gte=start_date)
-            
-        end_date = self.request.query_params.get('endDate') or self.request.query_params.get('dateTo')
-        if end_date:
-            qs = qs.filter(created_at__lte=end_date)
-            
-        return qs.order_by('-created_at')
-
 class CronJobViewSet(viewsets.ViewSet):
     permission_classes = [AllowAny]
     
@@ -490,18 +362,6 @@ class CronJobViewSet(viewsets.ViewSet):
             "success": True, 
             "message": f"Updated {expired_count} subs and {expired_trials} trials."
         })
-
-    @action(detail=False, methods=['post'])
-    def activity_cleanup(self, request):
-        if not self.verify_cron(request):
-            return Response({"error": "Unauthorized"}, status=401)
-            
-        from django.utils.timezone import now
-        from dateutil.relativedelta import relativedelta
-        cutoff_date = now() - relativedelta(days=90)
-        
-        deleted, _ = ActivityHistory.objects.filter(created_at__lt=cutoff_date).delete()
-        return Response({"success": True, "message": f"Deleted {deleted} old activities."})
 
     @action(detail=False, methods=['post'])
     def orphaned_account_cleanup(self, request):

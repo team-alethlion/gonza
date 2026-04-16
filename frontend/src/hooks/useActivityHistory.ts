@@ -1,45 +1,57 @@
-import { useState, useEffect, useCallback } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useCallback, useEffect } from "react";
 import { useCurrentUser } from "./useCurrentUser";
-import { ActivityFilters as FilterTypes } from "@/app/(agency)/agency/history/page";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getActivityHistoryAction,
-  ActivityFilters,
+  getActivityStatsAction,
+  ActivityFilters as ActionFilters,
 } from "@/app/actions/activity";
-
-export interface ActivityHistoryItem {
-  id: string;
-  user_id: string;
-  location_id: string;
-  activity_type: "CREATE" | "UPDATE" | "DELETE";
-  module:
-    | "SALES"
-    | "INVENTORY"
-    | "EXPENSES"
-    | "FINANCE"
-    | "CUSTOMERS"
-    | "TASKS";
-  entity_type: string;
-  entity_id: string | null;
-  entity_name: string;
-  description: string;
-  metadata: any;
-  created_at: string;
-  profile_id: string | null;
-  profile_name: string | null;
-}
+import { ActivityHistoryItem, ActivityFilters } from "@/types";
 
 const ITEMS_PER_PAGE = 20;
 
+/**
+ * Hook for Activity Summary & Aggregates
+ */
+export const useActivitySummary = (locationId?: string, initialStats?: any) => {
+  const { userId } = useCurrentUser();
+  const [filters, setFilters] = useState<ActionFilters>({});
+
+  const fetchStats = useCallback(async () => {
+    if (!userId || !locationId) return null;
+    const result = await getActivityStatsAction(locationId, filters);
+    if (!result.success) return null;
+    return result.data;
+  }, [userId, locationId, filters]);
+
+  const { data: stats, isLoading, isError } = useQuery({
+    queryKey: ["activity_stats", userId, locationId, JSON.stringify(filters)],
+    queryFn: fetchStats,
+    enabled: !!userId && !!locationId,
+    staleTime: 5 * 60_000,
+    initialData: (initialStats && Object.keys(filters).length === 0) ? initialStats : undefined
+  });
+
+  return {
+    stats,
+    isLoading,
+    isError,
+    filters,
+    setFilters
+  };
+};
+
+/**
+ * Hook for Paginated Activity List
+ */
 export const useActivityHistory = (
   locationId?: string,
-  filters?: FilterTypes,
+  filters?: ActivityFilters,
+  initialData?: any
 ) => {
   const { userId } = useCurrentUser();
-  const [activities, setActivities] = useState<ActivityHistoryItem[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const queryClient = useQueryClient();
 
   const fetchActivities = useCallback(async (): Promise<{
@@ -51,7 +63,7 @@ export const useActivityHistory = (
     }
 
     try {
-      const actionFilters: ActivityFilters = filters
+      const actionFilters: ActionFilters = filters
         ? {
             activityType: filters.activityType,
             module: filters.module,
@@ -89,52 +101,33 @@ export const useActivityHistory = (
     userId,
     locationId,
     currentPage,
-    filters,
+    JSON.stringify(filters),
   ];
+  
   const { data: queriedData, isLoading: isQueryLoading } = useQuery({
     queryKey,
     queryFn: fetchActivities,
     enabled: !!userId && !!locationId,
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    staleTime: 60_000,
+    initialData: (initialData && currentPage === 1 && !filters?.search) ? initialData : undefined
   });
 
-  useEffect(() => {
-    if (queriedData) {
-      setActivities(queriedData.activities);
-      setTotalCount(queriedData.count);
-      setTotalPages(Math.ceil(queriedData.count / ITEMS_PER_PAGE));
-    }
-  }, [queriedData]);
-
-  // Derived loading state - only true when no cached page data
-  const isLoading = isQueryLoading && !queriedData;
-
+  const filterKey = JSON.stringify(filters);
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filters change
-  }, [filters]);
+  }, [filterKey]);
 
   const refetchActivities = () => {
-    queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: ["activity_history"] });
+    queryClient.invalidateQueries({ queryKey: ["activity_stats"] });
   };
 
-  // Realtime: In the Next.js/Prisma model, we typically rely on manual invalidation
-  // or polling. Supabase realtime is removed here to align with the Prisma migration.
-  useEffect(() => {
-    if (!userId || !locationId) return;
-
-    // Realtime invalidation would now happen via Server Actions or a dedicated WS server.
-    // For now, we rely on manual refresh or cache invalidation from mutations.
-  }, [userId, locationId, currentPage, filters]);
-
   return {
-    activities,
-    isLoading,
-    totalCount,
+    activities: queriedData?.activities || [],
+    isLoading: isQueryLoading && !queriedData,
+    totalCount: queriedData?.count || 0,
     currentPage,
-    totalPages,
+    totalPages: Math.ceil((queriedData?.count || 0) / ITEMS_PER_PAGE),
     setCurrentPage,
     refetch: refetchActivities,
   };

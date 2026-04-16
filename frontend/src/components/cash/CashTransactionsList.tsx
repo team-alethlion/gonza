@@ -36,7 +36,6 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
   onViewTransaction,
   onTransactionDeleted
 }) => {
-  const { deleteTransaction, transactions: allTransactions } = useCashTransactions(accountId || undefined);
   const { accounts } = useCashAccounts();
   const { settings } = useBusinessSettings();
   const { hasPermission } = useProfiles();
@@ -222,11 +221,16 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
     }
   };
 
+  const { currentBusiness } = useBusinessSettings();
+
   const handleDelete = async (id: string) => {
+    if (!currentBusiness?.id) return;
+    
     setDeletingId(id);
     try {
-      const success = await deleteTransaction(id);
-      if (success && onTransactionDeleted) {
+      const { deleteCashTransactionAction } = await import('@/app/actions/finance');
+      const result = await deleteCashTransactionAction(id, currentBusiness.id);
+      if (result.success && onTransactionDeleted) {
         onTransactionDeleted();
       }
     } catch (error) {

@@ -45,6 +45,11 @@ class Customer(models.Model):
     timezone = models.CharField(max_length=100, default="UTC")
     language = models.CharField(max_length=100, default="English")
     assignee = models.CharField(max_length=200, null=True, blank=True)
+    
+    # 🚀 DENORMALIZED FIELDS: For high-performance list views
+    total_spent = models.DecimalField(max_digits=20, decimal_places=2, default=0.00, db_index=True)
+    order_count = models.IntegerField(default=0, db_index=True)
+    
     credit_limit = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)

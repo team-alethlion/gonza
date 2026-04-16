@@ -94,6 +94,24 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
+    def has_permission(self, perm_name: str) -> bool:
+        """
+        Check if user has a specific permission.
+        Always returns True for superusers and power roles (admin, manager, superadmin, owner).
+        """
+        if self.is_superuser:
+            return True
+            
+        if self.role:
+            role_name = self.role.name.lower()
+            if role_name in ['admin', 'manager', 'superadmin', 'owner']:
+                return True
+            
+            # Check for explicit permission link
+            return self.role.permissions.filter(name=perm_name).exists()
+            
+        return False
+
 class PasswordResetToken(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_pt_id)
     email = models.EmailField()

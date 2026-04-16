@@ -13,7 +13,7 @@ import { Expense } from '@/hooks/useExpenses';
 import ViewExpenseDialog from './ViewExpenseDialog';
 import EditExpenseDialog from './EditExpenseDialog';
 import DeleteExpenseDialog from './DeleteExpenseDialog';
-import { formatCashCurrency } from '@/lib/utils';
+import { formatCashCurrency, formatDate } from '@/lib/utils';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 import { useProfiles } from '@/contexts/ProfileContext';
@@ -23,37 +23,29 @@ interface ExpensesListProps {
   onUpdateExpense: (id: string, updates: any) => Promise<any>;
   onDeleteExpense: (id: string) => Promise<boolean>;
   formatCurrency: (amount: number) => string;
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 const ExpensesList: React.FC<ExpensesListProps> = ({
   expenses,
   onUpdateExpense,
   onDeleteExpense,
-  formatCurrency
+  formatCurrency,
+  searchTerm = '',
+  onSearchChange
 }) => {
-  const [mounted, setMounted] = useState(false);
   const isMobile = useIsMobile();
   const { accounts } = useCashAccounts();
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
   const { settings } = useBusinessSettings();
   const { canViewTotalExpenses } = useFinancialVisibility();
   const { hasPermission } = useProfiles();
   const currency = settings.currency || 'USD';
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const filteredExpenses = expenses.filter(expense =>
-    expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (expense.category && expense.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (expense.paymentMethod && expense.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (expense.personInCharge && expense.personInCharge.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const getCashAccountName = (accountId: string | null) => {
     if (!accountId) return null;
@@ -107,14 +99,14 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
                 <Input
                   placeholder="Search expenses..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
           </CardHeader>
           <CardContent className="px-3">
-            {filteredExpenses.length === 0 ? (
+            {expenses.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   {searchTerm ? 'No expenses found matching your search.' : 'No expenses found.'}
@@ -122,7 +114,7 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredExpenses.map((expense) => (
+                {expenses.map((expense) => (
                   <Card
                     key={expense.id}
                     className="p-4 space-y-3 cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-red-500"
@@ -131,7 +123,7 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
                         <div className="text-sm font-medium text-muted-foreground">
-                          {mounted ? expense.date.toLocaleDateString("en-US") : "---"}
+                          {formatDate(expense.date)}
                         </div>
                         <div className="text-base font-semibold line-clamp-2">
                           {expense.description}
@@ -260,14 +252,14 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
               <Input
                 placeholder="Search expenses by description, category, payment method..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => onSearchChange?.(e.target.value)}
                 className="pl-10"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {filteredExpenses.length === 0 ? (
+          {expenses.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 {searchTerm ? 'No expenses found matching your search.' : 'No expenses found.'}
@@ -290,14 +282,14 @@ const ExpensesList: React.FC<ExpensesListProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.map((expense) => (
+                  {expenses.map((expense) => (
                     <TableRow
                       key={expense.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleView(expense)}
                     >
                       <TableCell className="whitespace-nowrap">
-                        {mounted ? expense.date.toLocaleDateString("en-US") : "---"}
+                        {formatDate(expense.date)}
                       </TableCell>
                       <TableCell className="font-medium">
                         {expense.description}

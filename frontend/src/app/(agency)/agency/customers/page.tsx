@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { getCustomersAction } from "@/app/actions/customers";
+import { getCustomersAction, getCustomerSummaryAction } from "@/app/actions/customers";
 import CustomersClient from "./CustomersClient";
 import { Customer } from "@/hooks/useCustomers";
 import { mapDbCustomerToCustomer } from "@/utils/customerMapping";
@@ -11,16 +11,25 @@ export default async function CustomersPage() {
 
   let initialCustomers: Customer[] = [];
   let initialCount = 0;
+  let initialSummary = null;
 
   if (branchId) {
     try {
-      const result: any = await getCustomersAction(branchId, 1, 50);
+      // 🚀 PERFORMANCE: Fetch list and summary in parallel
+      const [listResult, summaryResult] = await Promise.all([
+        getCustomersAction(branchId, 1, 50),
+        getCustomerSummaryAction(branchId)
+      ]);
 
-      if (result && result.success && result.data) {
-        initialCustomers = (result.data.customers || []).map(
+      if (listResult && listResult.success && listResult.data) {
+        initialCustomers = (listResult.data.customers || []).map(
           (customer: any) => mapDbCustomerToCustomer(customer)
         );
-        initialCount = result.data.count || 0;
+        initialCount = listResult.data.count || 0;
+      }
+
+      if (summaryResult && summaryResult.success) {
+        initialSummary = summaryResult.data;
       }
     } catch (error) {
       console.error("Failed to prefetch customers data SSR:", error);
@@ -31,6 +40,7 @@ export default async function CustomersPage() {
     <CustomersClient
       initialCustomers={initialCustomers}
       initialCount={initialCount}
+      initialSummary={initialSummary}
     />
   );
 }

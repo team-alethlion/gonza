@@ -1,36 +1,74 @@
-import { useState, useEffect, useCallback } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useCallback } from 'react';
 import { Task, CreateTaskData, UpdateTaskData } from '@/types/task';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 import {
   getTasksAction,
   createTaskAction,
   updateTaskAction,
   deleteTaskAction,
   bulkUpdateTasksAction,
+  bulkDeleteTasksAction,
+  getTaskStatsAction,
   CreateTaskInput
 } from '@/app/actions/tasks';
 
-export const useTasks = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+/**
+ * Hook for Task Summary & Aggregates (Overview Tab)
+ */
+export const useTaskSummary = (initialStats?: any) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
-  const queryClient = useQueryClient();
+  const [filters, setFilters] = useState<any>({});
 
-  const loadTasks = useCallback(async (): Promise<Task[]> => {
-    if (!user?.id || !currentBusiness?.id) {
-      return [];
-    }
+  const loadStats = useCallback(async (currentFilters?: any) => {
+    if (!user?.id || !currentBusiness?.id) return null;
+    const result = await getTaskStatsAction(user.id, currentBusiness.id, currentFilters);
+    if (!result.success) return null;
+    return result.data;
+  }, [user?.id, currentBusiness?.id]);
+
+  const { data: stats, isLoading, isError } = useQuery({
+    queryKey: ['tasks-summary', user?.id, currentBusiness?.id, JSON.stringify(filters)],
+    queryFn: () => loadStats(filters),
+    enabled: !!user?.id && !!currentBusiness?.id,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    initialData: (initialStats && Object.keys(filters).length === 0) ? initialStats : undefined
+  });
+
+  return {
+    stats,
+    isLoading,
+    isError,
+    filters,
+    setFilters
+  };
+};
+
+/**
+ * Hook for Task List & CRUD (List Tab)
+ */
+export const useTasks = (initialData?: Task[]) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<any>({});
+  const { user } = useAuth();
+  const { currentBusiness } = useBusiness();
+  const { logActivity } = useActivityLogger();
+  const queryClient = useQueryClient();
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const loadTasks = useCallback(async (currentFilters?: any): Promise<Task[]> => {
+    if (!user?.id || !currentBusiness?.id) return [];
 
     try {
-      const result = await getTasksAction(user.id, currentBusiness.id);
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to fetch tasks');
-      }
-
+      const result = await getTasksAction(user.id, currentBusiness.id, currentFilters);
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed to fetch tasks');
       return result.data as Task[];
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -40,25 +78,19 @@ export const useTasks = () => {
   }, [user?.id, currentBusiness?.id]);
 
   // React Query caching
-  const queryKey = ['tasks', user?.id, currentBusiness?.id];
-  const { data: queriedTasks, isLoading: isQueryLoading, isFetching } = useQuery({
+  const queryKey = ['tasks-list', user?.id, currentBusiness?.id, debouncedSearch, JSON.stringify(filters)];
+  const { data: queriedTasks, isLoading: isQueryLoading } = useQuery({
     queryKey,
-    queryFn: loadTasks,
+    queryFn: () => loadTasks({ search: debouncedSearch, ...filters }),
     enabled: !!user?.id && !!currentBusiness?.id,
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    staleTime: 60_000,
+    initialData: (initialData?.length && !debouncedSearch && Object.keys(filters).length === 0) ? initialData : undefined
   });
 
-  useEffect(() => {
-    if (queriedTasks) {
-      setTasks(queriedTasks);
-    }
-  }, [queriedTasks]);
-
-  // Derived loading state to prevent flash when background fetching
-  const isLoading = isQueryLoading && !queriedTasks;
+  const refreshTasks = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['tasks-list'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks-summary'] });
+  }, [queryClient]);
 
   const createTask = async (taskData: CreateTaskData): Promise<Task | null> => {
     if (!user?.id || !currentBusiness?.id) return null;
@@ -80,41 +112,45 @@ export const useTasks = () => {
       };
 
       const result = await createTaskAction(input);
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error);
-      }
+      if (!result.success || !result.data) throw new Error(result.error);
 
       const data = result.data as any;
       const newTask: Task = {
         ...data,
         user_id: data.userId,
         location_id: data.locationId,
-        due_date: data.dueDate.toISOString().split('T')[0],
-        completed_at: data.completedAt?.toISOString() || null,
-        created_at: data.createdAt.toISOString(),
-        updated_at: data.updatedAt.toISOString(),
+        due_date: data.dueDate,
+        completed_at: data.completedAt || null,
+        created_at: data.createdAt,
+        updated_at: data.updatedAt,
         reminder_enabled: data.reminderEnabled,
         reminder_time: data.reminderTime,
         is_recurring: data.isRecurring,
         recurrence_type: data.recurrenceType,
-        recurrence_end_date: data.recurrenceEndDate?.toISOString().split('T')[0] || null,
+        recurrence_end_date: data.recurrenceEndDate || null,
         parent_task_id: data.parentTaskId,
         recurrence_count: data.recurrenceCount
       };
 
-      // Update local state and cache
-      setTasks(prev => [newTask, ...prev]);
-      queryClient.setQueryData(queryKey, (oldData: Task[] | undefined) => {
-        return oldData ? [newTask, ...oldData] : [newTask];
+      // Optimistic update
+      queryClient.setQueryData(queryKey, (old: Task[] | undefined) => old ? [newTask, ...old] : [newTask]);
+      
+      refreshTasks();
+
+      logActivity({
+        activityType: 'CREATE',
+        module: 'TASKS',
+        entityType: 'task',
+        entityId: newTask.id,
+        entityName: newTask.title,
+        description: `Created task "${newTask.title}"`,
+        metadata: newTask
       });
 
-      queryClient.invalidateQueries({ queryKey });
       toast.success('Task created successfully');
       return newTask;
-    } catch (error) {
-      console.error('Error creating task:', error);
-      toast.error('Failed to create task');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create task');
       return null;
     }
   };
@@ -122,113 +158,152 @@ export const useTasks = () => {
   const updateTask = async (id: string, updates: UpdateTaskData): Promise<boolean> => {
     if (!user?.id) return false;
 
-    try {
-      // Prepare updates for server action
-      const serverUpdates: any = {
-        ...updates,
-      };
+    // Optimistic Update
+    const previousTasks = queryClient.getQueryData<Task[]>(queryKey);
+    if (previousTasks) {
+      const updatedTasks = previousTasks.map(t => 
+        t.id === id ? { ...t, ...updates } : t
+      );
+      queryClient.setQueryData(queryKey, updatedTasks);
+    }
 
+    try {
+      const serverUpdates: any = { ...updates };
       if (updates.due_date) serverUpdates.dueDate = new Date(updates.due_date);
       if (updates.completed_at) serverUpdates.completedAt = new Date(updates.completed_at);
       if (updates.recurrence_end_date) serverUpdates.recurrenceEndDate = new Date(updates.recurrence_end_date);
-      if (updates.is_recurring !== undefined) serverUpdates.isRecurring = updates.is_recurring;
-      if (updates.recurrence_type) serverUpdates.recurrenceType = updates.recurrence_type;
-
-      // Clean reminder_time
-      if (updates.reminder_time !== undefined) {
-        serverUpdates.reminderTime = (updates.reminder_time && updates.reminder_time.trim() !== '' ? updates.reminder_time : null);
-      }
 
       const result = await updateTaskAction(id, user.id, serverUpdates);
+      if (!result.success) throw new Error(result.error);
 
-      if (!result.success || !result.data) {
-        throw new Error(result.error);
-      }
+      refreshTasks();
 
-      queryClient.invalidateQueries({ queryKey });
+      logActivity({
+        activityType: 'UPDATE',
+        module: 'TASKS',
+        entityType: 'task',
+        entityId: id,
+        entityName: updates.title || 'Task',
+        description: `Updated task "${updates.title || 'Task'}"`,
+        metadata: updates
+      });
+
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      // Rollback on error
+      if (previousTasks) {
+        queryClient.setQueryData(queryKey, previousTasks);
+      }
       console.error('Error updating task:', error);
-      toast.error('Failed to update task');
+      toast.error(error.message || 'Failed to update task');
       return false;
     }
   };
 
   const toggleTaskCompletion = async (id: string): Promise<boolean> => {
-    const task = tasks.find(t => t.id === id);
+    const task = (queriedTasks || []).find(t => t.id === id);
     if (!task) return false;
 
-    const updates: UpdateTaskData = {
+    return await updateTask(id, {
       completed: !task.completed,
       completed_at: !task.completed ? new Date().toISOString() : null,
-    };
-
-    const success = await updateTask(id, updates);
-
-    if (success) {
-      if (!task.completed) {
-        toast.success('Well done! 🎉 Task completed');
-      } else {
-        toast.success('Task marked as pending');
-      }
-    }
-
-    return success;
+    });
   };
 
   const deleteTask = async (id: string): Promise<boolean> => {
     if (!user?.id) return false;
-
     try {
       const result = await deleteTaskAction(id, user.id);
-
       if (!result.success) throw new Error(result.error);
 
-      queryClient.invalidateQueries({ queryKey });
+      // Optimistic delete
+      queryClient.setQueryData(queryKey, (old: Task[] | undefined) => old ? old.filter(t => t.id !== id) : []);
+      
+      refreshTasks();
+
+      logActivity({
+        activityType: 'DELETE',
+        module: 'TASKS',
+        entityType: 'task',
+        entityId: id,
+        entityName: 'Task',
+        description: `Deleted task #${id}`
+      });
+
       toast.success('Task deleted successfully');
       return true;
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      toast.error('Failed to delete task');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete task');
       return false;
     }
   };
+const bulkUpdateTasks = async (taskIds: string[], updates: UpdateTaskData): Promise<boolean> => {
+  if (!user?.id || taskIds.length === 0) return false;
 
-  const bulkUpdateTasks = async (taskIds: string[], updates: UpdateTaskData): Promise<boolean> => {
-    if (!user?.id || taskIds.length === 0) return false;
+  // Optimistic Update
+  const previousTasks = queryClient.getQueryData<Task[]>(queryKey);
+  if (previousTasks) {
+    const updatedTasks = previousTasks.map(t => 
+      taskIds.includes(t.id) ? { ...t, ...updates } : t
+    );
+    queryClient.setQueryData(queryKey, updatedTasks);
+  }
 
-    try {
-      // Map keys as in updateTask
-      const serverUpdates: any = { ...updates };
-      if (updates.completed !== undefined) serverUpdates.completed = updates.completed;
-      if (updates.completed_at !== undefined) serverUpdates.completedAt = updates.completed_at ? new Date(updates.completed_at) : null;
-
-      const result = await bulkUpdateTasksAction(taskIds, user.id, serverUpdates);
-
-      if (!result.success) throw new Error(result.error);
-
-      queryClient.invalidateQueries({ queryKey });
-      toast.success(`Updated ${taskIds.length} tasks`);
-      return true;
-    } catch (error) {
-      console.error('Error bulk updating tasks:', error);
-      toast.error('Failed to update tasks');
-      return false;
+  try {
+    const result = await bulkUpdateTasksAction(taskIds, user.id, updates);
+    if (!result.success) throw new Error(result.error);
+    refreshTasks();
+    toast.success(`Updated ${taskIds.length} tasks`);
+    return true;
+  } catch (error: any) {
+    if (previousTasks) {
+      queryClient.setQueryData(queryKey, previousTasks);
     }
-  };
+    console.error('Error bulk updating tasks:', error);
+    toast.error(error.message || 'Failed to update tasks');
+    return false;
+  }
+};
 
-  const refreshTasks = () => {
-    queryClient.invalidateQueries({ queryKey });
-  };
+const bulkDeleteTasks = async (taskIds: string[]): Promise<boolean> => {
+  if (!user?.id || taskIds.length === 0) return false;
+
+  // Optimistic Delete
+  const previousTasks = queryClient.getQueryData<Task[]>(queryKey);
+  if (previousTasks) {
+    const remainingTasks = previousTasks.filter(t => !taskIds.includes(t.id));
+    queryClient.setQueryData(queryKey, remainingTasks);
+  }
+
+  try {
+    const result = await bulkDeleteTasksAction(taskIds, user.id);
+    if (!result.success) throw new Error(result.error);
+    refreshTasks();
+    toast.success(`Deleted ${taskIds.length} tasks`);
+    return true;
+  } catch (error: any) {
+    if (previousTasks) {
+      queryClient.setQueryData(queryKey, previousTasks);
+    }
+    console.error('Error bulk deleting tasks:', error);
+    toast.error(error.message || 'Failed to delete tasks');
+    return false;
+  }
+};
 
   return {
-    tasks,
-    isLoading,
+    tasks: queriedTasks || [],
+    isLoading: isQueryLoading && !queriedTasks,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilters,
     createTask,
     updateTask,
     deleteTask,
     toggleTaskCompletion,
     bulkUpdateTasks,
+    bulkDeleteTasks,
     refreshTasks,
   };
 };

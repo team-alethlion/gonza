@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
+import { auth } from '@/auth';
 import { addDays, addWeeks, addMonths } from 'date-fns';
 
 export interface CreateTaskInput {
@@ -20,11 +21,22 @@ export interface CreateTaskInput {
     recurrenceEndDate?: Date | null;
 }
 
-export async function getTasksAction(userId: string, locationId: string) {
+export async function getTasksAction(userId: string, locationId: string, filters?: any) {
     await verifyBranchAccess(locationId);
     await verifyUserAccess(userId);
     try {
-        const tasks = await djangoFetch(`core/tasks/?userId=${userId}&locationId=${locationId}`);
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        let url = `tasks/tasks/?userId=${userId}&locationId=${locationId}`;
+        if (filters) {
+            if (filters.status) url += `&status=${filters.status}`;
+            if (filters.priority) url += `&priority=${filters.priority}`;
+            if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`;
+            if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+        }
+
+        const tasks = await djangoFetch(url, { accessToken: token });
         const list = Array.isArray(tasks) ? tasks : (tasks.results || []);
 
         return {
@@ -33,7 +45,7 @@ export async function getTasksAction(userId: string, locationId: string) {
                 ...t,
                 user_id: t.created_by,
                 location_id: t.branch,
-                due_date: t.due_date ? t.due_date.split('T')[0] : null,
+                due_date: t.due_date,
                 completed_at: t.completed_at,
                 created_at: t.created_at,
                 updated_at: t.updated_at,
@@ -41,7 +53,7 @@ export async function getTasksAction(userId: string, locationId: string) {
                 reminder_time: t.reminder_time,
                 is_recurring: t.is_recurring,
                 recurrence_type: t.recurrence_type,
-                recurrence_end_date: t.recurrence_end_date ? t.recurrence_end_date.split('T')[0] : null,
+                recurrence_end_date: t.recurrence_end_date,
                 parent_task_id: t.parent_task_id,
                 recurrence_count: t.recurrence_count
             }))
@@ -52,15 +64,32 @@ export async function getTasksAction(userId: string, locationId: string) {
     }
 }
 
+export async function getTaskStatsAction(userId: string, locationId: string, filters?: any) {
+    await verifyBranchAccess(locationId);
+    await verifyUserAccess(userId);
+    try {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        let url = `tasks/tasks/stats/?userId=${userId}&locationId=${locationId}`;
+        if (filters) {
+            if (filters.category) url += `&category=${encodeURIComponent(filters.category)}`;
+        }
+        const stats = await djangoFetch(url, { accessToken: token });
+        return { success: true, data: stats };
+    } catch (error: any) {
+        console.error('Error fetching task stats:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 export async function createTaskAction(data: CreateTaskInput) {
     await verifyBranchAccess(data.locationId);
     await verifyUserAccess(data.userId);
     try {
-        // Generating recurring instances client-side or server-side mapping?
-        // To be 100% exact to previous logic without writing a complex Django endpoint, 
-        // we can create the main task, and then create instances here by calling the generic endpoint multiple times.
-        // Or better yet, we can do it via a Django custom endpoint. For simplicity, we create the main, and map Next.js logic
-        
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
         const payload = {
             created_by: data.userId,
             branch: data.locationId,
@@ -76,9 +105,10 @@ export async function createTaskAction(data: CreateTaskInput) {
             recurrence_end_date: data.recurrenceEndDate ? data.recurrenceEndDate.toISOString() : null
         };
 
-        const task = await djangoFetch('core/tasks/', {
+        const task = await djangoFetch('tasks/tasks/', {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            accessToken: token
         });
 
         if (task && task.error) throw new Error(task.error);
@@ -110,9 +140,13 @@ export async function updateTaskAction(id: string, userId: string, updates: any)
         if (updates.recurrenceType !== undefined) payload.recurrence_type = updates.recurrenceType;
         if (updates.recurrenceEndDate !== undefined) payload.recurrence_end_date = updates.recurrenceEndDate;
 
-        const task = await djangoFetch(`core/tasks/${id}/`, {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const task = await djangoFetch(`tasks/tasks/${id}/`, {
             method: 'PATCH',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            accessToken: token
         });
 
         if (task && task.error) throw new Error(task.error);
@@ -128,7 +162,13 @@ export async function updateTaskAction(id: string, userId: string, updates: any)
 export async function deleteTaskAction(id: string, userId: string) {
     await verifyUserAccess(userId);
     try {
-        await djangoFetch(`core/tasks/${id}/`, { method: 'DELETE' });
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        await djangoFetch(`tasks/tasks/${id}/`, { 
+            method: 'DELETE',
+            accessToken: token
+        });
         revalidatePath('/tasks');
         return { success: true };
     } catch (error: any) {
@@ -140,14 +180,37 @@ export async function deleteTaskAction(id: string, userId: string) {
 export async function bulkUpdateTasksAction(ids: string[], userId: string, updates: any) {
     await verifyUserAccess(userId);
     try {
-        // DRF doesn't support bulk PATCH out of the box unless specified. Iterate safely:
-        for (const id of ids) {
-            await updateTaskAction(id, userId, updates);
-        }
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const result = await djangoFetch('tasks/tasks/bulk_update/', {
+            method: 'PATCH',
+            body: JSON.stringify({ ids, updates }),
+            accessToken: token
+        });
         revalidatePath('/tasks');
-        return { success: true };
+        return { success: true, data: result };
     } catch (error: any) {
         console.error('Error bulk updating tasks:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function bulkDeleteTasksAction(ids: string[], userId: string) {
+    await verifyUserAccess(userId);
+    try {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const result = await djangoFetch('tasks/tasks/bulk_delete/', {
+            method: 'DELETE',
+            body: JSON.stringify({ ids }),
+            accessToken: token
+        });
+        revalidatePath('/tasks');
+        return { success: true, data: result };
+    } catch (error: any) {
+        console.error('Error bulk deleting tasks:', error);
         return { success: false, error: error.message };
     }
 }
@@ -156,7 +219,10 @@ export async function getTaskCategoriesAction(userId: string, locationId: string
     await verifyBranchAccess(locationId);
     await verifyUserAccess(userId);
     try {
-        const categories = await djangoFetch(`core/task-categories/?locationId=${locationId}`);
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const categories = await djangoFetch(`tasks/task-categories/?locationId=${locationId}`, { accessToken: token });
         const list = Array.isArray(categories) ? categories : (categories.results || []);
 
         return {
@@ -179,9 +245,13 @@ export async function createTaskCategoryAction(userId: string, locationId: strin
     await verifyBranchAccess(locationId);
     await verifyUserAccess(userId);
     try {
-        const category = await djangoFetch('core/task-categories/', {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const category = await djangoFetch('tasks/task-categories/', {
             method: 'POST',
-            body: JSON.stringify({ user: userId, branch: locationId, name })
+            body: JSON.stringify({ user: userId, branch: locationId, name }),
+            accessToken: token
         });
         
         // Handle DRF unique constraint error specifically
@@ -205,9 +275,13 @@ export async function createTaskCategoryAction(userId: string, locationId: strin
 export async function updateTaskCategoryAction(id: string, userId: string, name: string) {
     await verifyUserAccess(userId);
     try {
-        const category = await djangoFetch(`core/task-categories/${id}/`, {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        const category = await djangoFetch(`tasks/task-categories/${id}/`, {
             method: 'PATCH',
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name }),
+            accessToken: token
         });
         if (category && category.error) throw new Error(category.error);
 
@@ -221,7 +295,13 @@ export async function updateTaskCategoryAction(id: string, userId: string, name:
 export async function deleteTaskCategoryAction(id: string, userId: string) {
     await verifyUserAccess(userId);
     try {
-        await djangoFetch(`core/task-categories/${id}/`, { method: 'DELETE' });
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        await djangoFetch(`tasks/task-categories/${id}/`, { 
+            method: 'DELETE',
+            accessToken: token
+        });
         return { success: true };
     } catch (error: any) {
         console.error('Error deleting category:', error);
@@ -233,13 +313,22 @@ export async function createDefaultTaskCategoriesAction(userId: string, location
     await verifyBranchAccess(locationId);
     await verifyUserAccess(userId);
     try {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
         const defaultNames = ['General', 'Marketing', 'Operations', 'Finance', 'Follow-up'];
         
-        for (const name of defaultNames) {
-            await createTaskCategoryAction(userId, locationId, name);
-        }
+        const result = await djangoFetch('tasks/task-categories/bulk_create/', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                branch: locationId, 
+                user: userId, 
+                names: defaultNames 
+            }),
+            accessToken: token
+        });
 
-        return { success: true };
+        return { success: true, data: result };
     } catch (error: any) {
         console.error('Error creating default categories:', error);
         return { success: false, error: error.message };

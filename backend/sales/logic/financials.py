@@ -1,13 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
-
-def to_decimal(val):
-    try:
-        if val is None or str(val).lower() == 'none' or str(val).strip() == '':
-            return Decimal('0.0')
-        return Decimal(str(val))
-    except (TypeError, ValueError, InvalidOperation):
-        return Decimal('0.0')
+from core.utils import to_decimal
 
 def calculate_sale_financials(items, tax_rate, shipping_cost=0):
     """

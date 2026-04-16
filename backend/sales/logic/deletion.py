@@ -2,7 +2,7 @@ from django.db import transaction
 from django.utils.timezone import now
 from sales.models import Sale
 from inventory.models import Product, ProductHistory
-from core_app.models import ActivityHistory
+from activities.models import ActivityHistory
 
 def process_sale_deletion(sale_id, user_id, deleted_reason=None):
     """

@@ -13,7 +13,11 @@ interface TaskFiltersProps {
   taskCategories: string[];
   selectedTasks: string[];
   onBulkComplete: () => void;
+  onBulkDelete?: () => void;
   canEdit?: boolean;
+  canDelete?: boolean;
+  searchTerm?: string;
+  onSearchChange?: (val: string) => void;
 }
 
 const TaskFilters: React.FC<TaskFiltersProps> = ({
@@ -22,7 +26,11 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
   taskCategories,
   selectedTasks,
   onBulkComplete,
+  onBulkDelete,
   canEdit = true,
+  canDelete = true,
+  searchTerm = '',
+  onSearchChange
 }) => {
   return (
     <div className="bg-white p-4 rounded-lg border space-y-4">
@@ -30,8 +38,8 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
         <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Search tasks..."
-          value={filters.search}
-          onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+          value={searchTerm}
+          onChange={(e) => onSearchChange?.(e.target.value)}
           className="pl-10"
         />
       </div>
@@ -90,11 +98,18 @@ const TaskFilters: React.FC<TaskFiltersProps> = ({
           <span className="text-sm text-blue-700">
             {selectedTasks.length} task{selectedTasks.length === 1 ? '' : 's'} selected
           </span>
-          {canEdit && (
-            <Button onClick={onBulkComplete} size="sm">
-              Mark as Complete
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {canEdit && (
+              <Button onClick={onBulkComplete} size="sm">
+                Mark as Complete
+              </Button>
+            )}
+            {canDelete && onBulkDelete && (
+              <Button onClick={onBulkDelete} size="sm" variant="destructive">
+                Delete Selected
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -11,6 +11,7 @@ import csv
 import io
 from decimal import Decimal
 import uuid
+from core.utils import to_decimal
 from core_app.models import Agency
 from core_app.pdf_utils import StockSummaryGenerator, generate_pdf_response
 import io
@@ -282,20 +283,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                         # Update fields from CSV
                         if 'Description' in row: product.description = row['Description']
                         
-                        # Handle potential empty strings for numeric fields
-                        def to_decimal(val, default=0):
-                            if not val or val.strip() == '': return Decimal(str(default))
-                            try: return Decimal(val.replace(',', ''))
-                            except: return Decimal(str(default))
-
-                        def to_int(val, default=0):
-                            if not val or val.strip() == '': return default
-                            try: return int(float(val.replace(',', '')))
-                            except: return default
-
+                        # Use global hardened utilities
                         if 'Cost Price' in row: product.cost_price = to_decimal(row['Cost Price'])
                         if 'Selling Price' in row: product.selling_price = to_decimal(row['Selling Price'])
-                        if 'Minimum Stock Level' in row: product.min_stock = to_int(row['Minimum Stock Level'])
+                        
+                        if 'Minimum Stock Level' in row:
+                            try:
+                                product.min_stock = int(float(str(row['Minimum Stock Level']).replace(',', '') or 0))
+                            except (ValueError, TypeError):
+                                product.min_stock = 0
+                                
                         if 'Manufacturer Barcode' in row: product.manufacturer_barcode = row['Manufacturer Barcode']
                         if 'Barcode' in row: product.barcode = row['Barcode']
                         
@@ -554,13 +551,13 @@ class ProductViewSet(viewsets.ModelViewSet):
                     final_created_at = timezone.now()
 
                 if new_price is not None:
-                    product.cost_price = Decimal(str(new_price))
+                    product.cost_price = to_decimal(new_price)
 
                 old_stock = product.stock
 
                 # 🛡️ DATA INTEGRITY: Calculate delta on server if absolute quantity is requested
                 if absolute_qty is not None:
-                    absolute_qty_dec = Decimal(str(absolute_qty))
+                    absolute_qty_dec = to_decimal(absolute_qty)
                     delta = absolute_qty_dec - old_stock
                     new_stock = absolute_qty_dec
                 else:
