@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import ActivityHistory
 from .serializers import ActivityHistorySerializer
 from .logic.stats import get_activity_stats
+from .logic.merger import get_unified_history_stream
+from .logic.aggregator import get_unified_stats
 
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ActivityHistoryFilter
@@ -32,11 +34,45 @@ class ActivityHistoryViewSet(viewsets.ModelViewSet):
         # Base isolation
         return super().get_queryset().order_by('-created_at')
 
+    def list(self, request, *args, **kwargs):
+        """
+        🚀 REFACTORED: Dynamic stream merge instead of single table fetch.
+        """
+        branch_id = self.request.query_params.get('locationId') or self.request.user.branch_id
+        if not branch_id:
+            return Response({"error": "locationId is required"}, status=400)
+            
+        last_timestamp = self.request.query_params.get('last_timestamp')
+        limit = int(self.request.query_params.get('limit', 50))
+        
+        unified_list = get_unified_history_stream(
+            branch_id=branch_id,
+            last_timestamp=last_timestamp,
+            limit=limit
+        )
+        
+        return Response({
+            "results": unified_list,
+            "count": len(unified_list)
+        })
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        # Apply filters to stats too
-        queryset = self.filter_queryset(self.get_queryset())
-        data = get_activity_stats(queryset, request.user)
+        """
+        🚀 REFACTORED: Aggregates across all source modules.
+        """
+        branch_id = self.request.query_params.get('locationId') or self.request.user.branch_id
+        if not branch_id:
+            return Response({"error": "locationId is required"}, status=400)
+            
+        date_from = self.request.query_params.get('dateFrom')
+        date_to = self.request.query_params.get('dateTo')
+
+        data = get_unified_stats(
+            branch_id=branch_id,
+            date_from=date_from,
+            date_to=date_to
+        )
         return Response(data)
 
     @action(detail=False, methods=['post'])

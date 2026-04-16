@@ -63,6 +63,9 @@ export const useActivityHistory = (
     }
 
     try {
+      const lastActivity = queriedData?.activities[queriedData.activities.length - 1];
+      const lastTimestamp = currentPage > 1 ? lastActivity?.created_at : undefined;
+
       const actionFilters: ActionFilters = filters
         ? {
             activityType: filters.activityType,
@@ -78,7 +81,7 @@ export const useActivityHistory = (
         userId,
         currentPage,
         ITEMS_PER_PAGE,
-        actionFilters,
+        { ...actionFilters, last_timestamp: lastTimestamp } as any
       );
 
       if (!result.success || !result.data) {
