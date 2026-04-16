@@ -15,7 +15,7 @@ class BaseHistorySource(ABC):
         pass
 
     @abstractmethod
-    def get_events(self, branch_id: str, last_timestamp: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_events(self, branch_id: str, last_timestamp: Optional[str] = None, limit: int = 50, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Fetches activities from the primary table.
         Must return a list of dictionaries matching the Unified History Schema.
@@ -23,7 +23,7 @@ class BaseHistorySource(ABC):
         pass
 
     @abstractmethod
-    def get_stats(self, branch_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict[str, Any]:
+    def get_stats(self, branch_id: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Returns counts for the statistical aggregator.
         """

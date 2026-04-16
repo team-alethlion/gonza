@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import ActivityHistory
 from .serializers import ActivityHistorySerializer
-from .logic.stats import get_activity_stats
 from .logic.merger import get_unified_history_stream
 from .logic.aggregator import get_unified_stats
 
@@ -45,10 +44,21 @@ class ActivityHistoryViewSet(viewsets.ModelViewSet):
         last_timestamp = self.request.query_params.get('last_timestamp')
         limit = int(self.request.query_params.get('limit', 50))
         
+        # Extract filters
+        filters = {
+            'activityType': self.request.query_params.get('activityType'),
+            'module': self.request.query_params.get('module'),
+            'search': self.request.query_params.get('search'),
+            'dateFrom': self.request.query_params.get('dateFrom'),
+            'dateTo': self.request.query_params.get('dateTo'),
+            'userId': self.request.query_params.get('userId')
+        }
+        
         unified_list = get_unified_history_stream(
             branch_id=branch_id,
             last_timestamp=last_timestamp,
-            limit=limit
+            limit=limit,
+            filters=filters
         )
         
         return Response({
@@ -65,13 +75,18 @@ class ActivityHistoryViewSet(viewsets.ModelViewSet):
         if not branch_id:
             return Response({"error": "locationId is required"}, status=400)
             
-        date_from = self.request.query_params.get('dateFrom')
-        date_to = self.request.query_params.get('dateTo')
+        # Extract filters
+        filters = {
+            'activityType': self.request.query_params.get('activityType'),
+            'module': self.request.query_params.get('module'),
+            'dateFrom': self.request.query_params.get('dateFrom'),
+            'dateTo': self.request.query_params.get('dateTo'),
+            'userId': self.request.query_params.get('userId')
+        }
 
         data = get_unified_stats(
             branch_id=branch_id,
-            date_from=date_from,
-            date_to=date_to
+            filters=filters
         )
         return Response(data)
 

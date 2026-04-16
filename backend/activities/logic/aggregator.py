@@ -3,7 +3,7 @@ from .sources.registry import registry
 from django.utils.timezone import now
 from datetime import timedelta
 
-def get_unified_stats(branch_id: str, date_from: Optional[str] = None, date_to: Optional[str] = None) -> Dict[str, Any]:
+def get_unified_stats(branch_id: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Combines counts from all sources for the summary cards.
     """
@@ -15,7 +15,7 @@ def get_unified_stats(branch_id: str, date_from: Optional[str] = None, date_to: 
     # Simple parallelism could be added here, but for now we iterate
     for source in sources:
         try:
-            res = source.get_stats(branch_id, date_from, date_to)
+            res = source.get_stats(branch_id, filters)
             count = res.get('count', 0)
             total_activities += count
             if count > 0:
@@ -26,12 +26,22 @@ def get_unified_stats(branch_id: str, date_from: Optional[str] = None, date_to: 
         except Exception as e:
             print(f"[Aggregator] Source {source.module_name} stats failed: {e}")
 
-    # Calculate recent trend (hardcoded for 7 days in stats.py normally)
-    # For now, we reuse the total or add a custom 7-day fetch if needed.
+    # 🚀 RECENT TREND pass: Calculate last 7 days
+    recent_activities = 0
+    seven_days_ago = (now() - timedelta(days=7)).isoformat()
+    recent_filters = (filters.copy() if filters else {})
+    recent_filters['dateFrom'] = seven_days_ago
     
+    for source in sources:
+        try:
+            res = source.get_stats(branch_id, recent_filters)
+            recent_activities += res.get('count', 0)
+        except Exception:
+            pass
+
     return {
         "total_activities": total_activities,
-        "recent_activities": total_activities, # Fallback or implementation specific
+        "recent_activities": recent_activities,
         "module_distribution": sorted(module_distribution, key=lambda x: x['value'], reverse=True),
         "top_module": module_distribution[0]['name'] if module_distribution else "N/A"
     }

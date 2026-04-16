@@ -112,7 +112,15 @@ export const useActivityHistory = (
     queryFn: fetchActivities,
     enabled: !!userId && !!locationId,
     staleTime: 60_000,
-    initialData: (initialData && currentPage === 1 && !filters?.search) ? initialData : undefined
+    // 🛡️ DATA INTEGRITY: Only use initialData if we are on the first page AND no filters/search are applied
+    initialData: (
+      initialData && 
+      currentPage === 1 && 
+      !filters?.search && 
+      (!filters?.activityType || filters?.activityType === 'ALL') &&
+      (!filters?.module || filters?.module === 'ALL') &&
+      !filters?.dateRange?.from
+    ) ? initialData : undefined
   });
 
   const filterKey = JSON.stringify(filters);
