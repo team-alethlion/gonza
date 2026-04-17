@@ -83,7 +83,7 @@ class SalesSource(BaseHistorySource):
         date_to = filters.get('dateTo') if filters else None
         user_id = filters.get('userId') if filters else None
         
-        # 1. Count Sales
+        # 1. Count Sales (Strictly non-deleted for consistency)
         sales_qs = Sale.objects.filter(branch_id=branch_id, is_deleted=False)
         if user_id and user_id != 'ALL':
             sales_qs = sales_qs.filter(user_id=user_id)

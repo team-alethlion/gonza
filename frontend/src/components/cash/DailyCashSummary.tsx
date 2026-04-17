@@ -362,7 +362,6 @@ const DailyCashSummary: React.FC<DailyCashSummaryProps> = ({ accountId }) => {
               ({transactions.length} transaction
               {transactions.length !== 1 ? "s" : ""})
             </span>
-            <div>{JSON.stringify(transactions)}</div>
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 md:px-6">

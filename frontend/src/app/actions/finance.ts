@@ -483,7 +483,7 @@ export async function getCashTransactionsAction(locationId: string, accountId?: 
     try {
         await verifyBranchAccess(locationId);
         const offset = (page - 1) * pageSize;
-        let url = `finance/transactions/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`;
+        let url = `finance/cash-transactions/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`;
         
         if (accountId) url += `&account=${accountId}`;
         if (filters) {
@@ -514,7 +514,7 @@ export async function createCashTransactionAction(data: any) {
             ...data,
             amount: toSafeNumber(data.amount)
         };
-        const result = await djangoFetch('finance/transactions/', {
+        const result = await djangoFetch('finance/cash-transactions/', {
             method: 'POST',
             body: JSON.stringify(payload)
         });
@@ -530,7 +530,7 @@ export async function updateCashTransactionAction(id: string, branchId: string, 
             ...updates,
             amount: updates.amount !== undefined ? toSafeNumber(updates.amount) : undefined
         };
-        const result = await djangoFetch(`finance/transactions/${id}/`, {
+        const result = await djangoFetch(`finance/cash-transactions/${id}/`, {
             method: 'PATCH',
             body: JSON.stringify(payload)
         });
@@ -542,7 +542,7 @@ export async function updateCashTransactionAction(id: string, branchId: string, 
 export async function findCashTransactionAction(id: string, branchId: string) {
     try {
         await verifyBranchAccess(branchId);
-        const data = await djangoFetch(`finance/transactions/${id}/?branchId=${branchId}`);
+        const data = await djangoFetch(`finance/cash-transactions/${id}/?branchId=${branchId}`);
         return { success: true, data: { accountId: data.account } };
     } catch (error: any) { return { success: false, error: error.message }; }
 }
@@ -550,7 +550,7 @@ export async function findCashTransactionAction(id: string, branchId: string) {
 export async function deleteCashTransactionAction(id: string, locationId: string) {
     try {
         await verifyBranchAccess(locationId);
-        await djangoFetch(`finance/transactions/${id}/`, { method: 'DELETE' });
+        await djangoFetch(`finance/cash-transactions/${id}/`, { method: 'DELETE' });
         revalidatePath('/finance');
         return { success: true };
     } catch (error: any) { return { success: false, error: error.message }; }
@@ -619,7 +619,7 @@ export async function createBulkCashTransactionsAction(transactions: any[]) {
         const branchId = transactions[0].locationId;
         await verifyBranchAccess(branchId);
 
-        const result = await djangoFetch('finance/transactions/', {
+        const result = await djangoFetch('finance/cash-transactions/', {
             method: 'POST',
             body: JSON.stringify(transactions)
         });

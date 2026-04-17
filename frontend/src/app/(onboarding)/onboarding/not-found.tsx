@@ -1,32 +1,26 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Compass, ArrowLeft } from "lucide-react";
+import Link from 'next/link';
+import { signOut } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
 
-export default function OnboardingNotFound() {
+export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-6 text-center">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100">
-        <div className="flex justify-center">
-          <div className="bg-slate-50 p-5 rounded-3xl text-primary">
-            <Compass className="w-12 h-12 animate-pulse" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter">404</h1>
-          <h2 className="text-xl font-bold text-slate-700">Lost in Configuration?</h2>
-          <p className="text-slate-500 font-medium text-sm leading-relaxed">
-            The onboarding step you are looking for doesn&apos;t exist or is no longer accessible.
-          </p>
-        </div>
-
-        <Button asChild className="h-14 w-full bg-primary hover:bg-primary/95 rounded-2xl font-bold shadow-lg shadow-primary/20">
-          <Link href="/onboarding">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Onboarding
+    <div className="flex min-h-[400px] flex-col items-center justify-center space-y-4 px-4 text-center">
+      <h2 className="text-2xl font-bold">Page Not Found</h2>
+      <p className="text-muted-foreground">Could not find requested resource</p>
+      <div className="flex flex-col items-center gap-4">
+        <Button asChild>
+          <Link href="/">
+            Go Home
           </Link>
         </Button>
+        <button
+          onClick={() => signOut({ callbackUrl: '/public/login' })}
+          className="text-sm text-primary hover:underline"
+        >
+          Click here to logout
+        </button>
       </div>
     </div>
   );
