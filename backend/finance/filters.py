@@ -26,13 +26,14 @@ class CashTransactionFilter(filters.FilterSet):
     transaction_type = filters.CharFilter(field_name='transaction_type')
     search = filters.CharFilter(method='filter_search')
     
-    # 🚀 FIX: Support both naming conventions
+    # 🚀 FIX: Support multiple naming conventions from different frontend parts
     branchId = filters.CharFilter(field_name='branch_id')
     branch_id = filters.CharFilter(field_name='branch_id')
+    locationId = filters.CharFilter(field_name='branch_id')
 
     class Meta:
         model = CashTransaction
-        fields = ['branch_id', 'branchId', 'account', 'transaction_type', 'category']
+        fields = ['branch_id', 'branchId', 'locationId', 'account', 'transaction_type', 'category']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(

@@ -58,6 +58,7 @@ class Agency(models.Model):
     subscription_expiry = models.DateTimeField(null=True, blank=True)
     is_unlimited_usage = models.BooleanField(default=False)
     is_onboarded = models.BooleanField(default=False)
+    is_frozen = models.BooleanField(default=False, help_text="If true, all users in this agency are blocked from system access.")
 
     package = models.ForeignKey(Package, on_delete=models.SET_NULL, null=True, blank=True, related_name='agencies')
 
@@ -108,6 +109,7 @@ class BranchCounter(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='counters')
     type = models.CharField(max_length=50) # e.g. 'product', 'sale', 'expense'
     count = models.IntegerField(default=0)
+    last_reset_month = models.IntegerField(default=0)
     
     class Meta:
         unique_together = ('branch', 'type')

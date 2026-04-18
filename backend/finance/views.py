@@ -26,7 +26,7 @@ import uuid
 from .pesapal_utils import submit_pesapal_order, get_pesapal_transaction_status
 from django.conf import settings
 from django.http import HttpResponse
-from .logic.reports import get_profit_loss_data, get_account_summary, get_live_balance, to_decimal
+from .logic.reports import get_account_summary, get_live_balance, to_decimal
 from .logic.expenses import get_expense_stats
 from .logic.import_export import generate_expense_template, process_expense_import
 from core.utils import gen_tx_id
@@ -37,9 +37,25 @@ class CashAccountViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # 🛡️ SECURITY: Strict branch isolation
-        branch_id = self.request.query_params.get('branchId') or self.request.user.branch_id
-        return super().get_queryset().filter(branch_id=branch_id).order_by('-is_default', 'name')
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs.order_by('-is_default', 'name')
 
     @action(detail=True, methods=['delete'])
     def delete_with_transactions(self, request, pk=None):
@@ -112,6 +128,7 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         start_date_str = request.query_params.get('startDate')
         end_date_str = request.query_params.get('endDate')
         tax_perc = to_decimal(request.query_params.get('taxPercentage', 0))
+        basis = request.query_params.get('basis', 'accrual')
 
         if not all([branch_id, start_date_str, end_date_str]):
             return Response({"error": "Missing parameters"}, status=400)
@@ -122,8 +139,11 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response({"error": "Invalid dates"}, status=400)
 
-        # 🚀 REFACTORED: High-precision P&L from reports.py
-        data = get_profit_loss_data(branch_id, start_date, end_date, tax_perc)
+        # 🚀 REFACTORED: Use definitive high-precision ProfitLossEngine
+        from .logic.profit_loss_engine import ProfitLossEngine
+        engine = ProfitLossEngine(branch_id, start_date, end_date)
+        data = engine.get_full_report(tax_perc, basis=basis)
+        
         return Response(data)
 
 
@@ -138,13 +158,25 @@ class CashTransactionViewSet(viewsets.ModelViewSet):
     search_fields = ['description', 'person_in_charge']
 
     def get_queryset(self):
-        # 🛡️ SECURITY: Strict branch isolation (Supports both camelCase and snake_case)
-        branch_id = (
-            self.request.query_params.get('branchId') or 
-            self.request.query_params.get('branch_id') or 
-            self.request.user.branch_id
-        )
-        return super().get_queryset().filter(branch_id=branch_id)
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId') or self.request.query_params.get('branch_id')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -208,10 +240,24 @@ class ExpenseCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
         branch_id = self.request.query_params.get('branchId')
-        if branch_id:
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('-is_default', 'name')
 
     @action(detail=False, methods=['post'])
@@ -239,9 +285,25 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     search_fields = ['description']
 
     def get_queryset(self):
-        # 🛡️ SECURITY: Strict branch isolation
-        branch_id = self.request.query_params.get('branchId') or self.request.user.branch_id
-        return super().get_queryset().filter(branch_id=branch_id).order_by('-date', '-created_at')
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs.order_by('-date', '-created_at')
 
     @action(detail=False, methods=['get'])
     def download_template(self, request):
@@ -646,6 +708,22 @@ class CarriageInwardViewSet(viewsets.ModelViewSet):
             instance.save(update_fields=['cash_transaction'])
 
     def get_queryset(self):
-        # 🛡️ SECURITY: Strict branch isolation
-        branch_id = self.request.query_params.get('branchId') or self.request.user.branch_id
-        return super().get_queryset().filter(branch_id=branch_id).order_by('-date', '-created_at')
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs.order_by('-date', '-created_at')

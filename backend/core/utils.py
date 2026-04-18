@@ -85,6 +85,8 @@ def gen_slc_id(): return generate_id("slc")
 def gen_sa_id(): return generate_id("sa")
 def gen_si_id(): return generate_id("si")
 def gen_ip_id(): return generate_id("ip")
+def gen_sr_id(): return generate_id("sr")
+def gen_sri_id(): return generate_id("sri")
 
 # Messaging
 def gen_cp_id(): return generate_id("cp")

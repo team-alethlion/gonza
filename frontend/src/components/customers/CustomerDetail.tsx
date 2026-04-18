@@ -134,6 +134,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
 
     // 1. Calculate opening balance (all history before selected range)
     let opBal = 0;
+    const safeLedgerEntries = Array.isArray(ledgerEntries) ? ledgerEntries : [];
+
     if (startV) {
       allCustomerSales.forEach(sale => {
         if (sale.receiptNumber.startsWith('ADJ-') || sale.receiptNumber.startsWith('PAY-')) return;
@@ -144,7 +146,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
         }
       });
 
-      ledgerEntries.forEach(entry => {
+      safeLedgerEntries.forEach(entry => {
         const entryDate = new Date(entry.date);
         if (entryDate < startV) {
           const amt = Number(entry.amount);
@@ -162,7 +164,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
       return (!startV || saleDate >= startV) && (!endV || saleDate <= endV);
     });
 
-    const ledgerEntriesInView = ledgerEntries.filter(entry => {
+    const ledgerEntriesInView = safeLedgerEntries.filter(entry => {
       const entryDate = new Date(entry.date);
       return (!startV || entryDate >= startV) && (!endV || entryDate <= endV);
     });

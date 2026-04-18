@@ -108,17 +108,30 @@ from .utils import generate_receipt_number, get_next_receipt_number
 from .logic.financials import calculate_sale_financials, resolve_payment_logic, to_decimal
 
 class SaleViewSet(viewsets.ModelViewSet):
-    queryset = Sale.objects.all().prefetch_related('items', 'installments')
+    queryset = Sale.objects.all().select_related(
+        'customer', 
+        'user', 
+        'branch',
+        'cash_transaction',
+        'cash_transaction__account'
+    ).prefetch_related('items', 'installments')
     serializer_class = SaleSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = SaleFilter
     search_fields = ['receipt_number', 'customer_name', 'notes']
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(is_deleted=False)
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        # 1. Filter by current user's Agency
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        qs = super().get_queryset().filter(is_deleted=False, agency_id=agency_id)
+        
+        # 2. Filter by specific branch if provided
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('-created_at')
 
     @action(detail=False, methods=['post'])
@@ -409,7 +422,7 @@ class SaleViewSet(viewsets.ModelViewSet):
                             
                             # 🛡️ SIGNAL CONTEXT
                             prod._history_user_id = user_id
-                            prod._history_type = 'RETURN_IN'
+                            prod._history_type = 'STOCK_REVERSAL'
                             prod._history_reason = f"Stock restored due to Sale Update #{sale.receipt_number}"
                             prod._history_reference_id = sale.receipt_number
                             prod._history_reference_type = 'SALE_UPDATE'
@@ -559,35 +572,29 @@ class SaleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def profit_loss_pdf(self, request):
         branch_id = request.query_params.get('branchId')
-        start_date = request.query_params.get('startDate')
-        end_date = request.query_params.get('endDate')
+        start_date_str = request.query_params.get('startDate')
+        end_date_str = request.query_params.get('endDate')
         
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
-            
-        sales = self.get_queryset().filter(branch_id=branch_id)
-        expenses = Expense.objects.filter(branch_id=branch_id)
-        
-        if start_date:
-            sales = sales.filter(date__date__gte=start_date)
-            expenses = expenses.filter(date__date__gte=start_date)
-        if end_date:
-            sales = sales.filter(date__date__lte=end_date)
-            expenses = expenses.filter(date__date__lte=end_date)
-            
-        total_sales = sales.aggregate(total=Sum('total_amount'))['total'] or Decimal('0')
-        total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0')
-        
+
+        try:
+            start_date = parse_datetime(start_date_str) or datetime.combine(parse_date(start_date_str), datetime.min.time())
+            end_date = parse_datetime(end_date_str) or datetime.combine(parse_date(end_date_str), datetime.max.time())
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid dates"}, status=400)
+
+        # 🚀 REFACTORED: Use definitive high-precision ProfitLossEngine
+        from finance.logic.profit_loss_engine import ProfitLossEngine
+        basis = request.query_params.get('basis', 'accrual')
+        engine = ProfitLossEngine(branch_id, start_date, end_date)
+        data = engine.get_full_report(basis=basis)
+
         from core_app.models import Agency
         agency = Agency.objects.filter(branches__id=branch_id).first()
+        data['agency'] = agency
         
-        data = {
-            'agency': agency,
-            'total_sales': total_sales,
-            'total_expenses': total_expenses
-        }
-        
-        period_label = f"{start_date or 'All'} to {end_date or 'Now'}"
+        period_label = f"{start_date.date()} to {end_date.date()}"
         buffer = io.BytesIO()
         report = ProfitLossGenerator(buffer, title="Profit & Loss Report")
         elements = report.generate(data, period_label)

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { notFound, redirect } from "next/navigation";
 import { djangoFetch } from "./django-client";
+import { cookies } from "next/headers";
 
 /**
  * Strict server-side guard to prevent any code execution if user is not fully active.
@@ -10,7 +11,7 @@ export async function enforceStrictAccess(session?: any) {
   const activeSession = session || (await auth());
   
   if (!activeSession || !activeSession.user) {
-    return null; // Let the layout handles login redirect
+    return { user: null, syncNeeded: false };
   }
 
   const user = activeSession.user as any;
@@ -18,13 +19,14 @@ export async function enforceStrictAccess(session?: any) {
   
   // Superadmins bypass everything
   if (role === 'superadmin') {
-    return user;
+    return { user, syncNeeded: false };
   }
 
   let subStatus = user.subscriptionStatus;
   let subExpiry = user.subscriptionExpiry;
   let trialEnd = user.trialEndDate;
   let isOnboarded = user.isOnboarded;
+  let syncNeeded = false;
 
   const now = new Date();
   let isTrialActive = subStatus === 'trial' && trialEnd && new Date(trialEnd) > now;
@@ -33,11 +35,9 @@ export async function enforceStrictAccess(session?: any) {
   const isTokenDead = (activeSession as any).authError === "RefreshAccessTokenError";
 
   // IF SESSION SEEMS EXPIRED, DO A REAL-TIME BACKEND CHECK AS A FALLBACK
-  // 🛡️ BUT ONLY IF the token is actually still healthy!
   if (!isTrialActive && !isSubActive && !isTokenDead) {
     console.log(`[StrictGuard] Session stale (expired). Re-verifying via djangoFetch for user ${user.id}...`);
     try {
-      // Using djangoFetch is safer as it handles tokens and base URL correctly
       const freshUser = await djangoFetch('users/users/me/', { 
         cache: 'no-store',
         accessToken: (activeSession as any).accessToken 
@@ -55,6 +55,12 @@ export async function enforceStrictAccess(session?: any) {
         isSubActive = subStatus === 'active' && subExpiry && new Date(subExpiry) > now;
         
         console.log(`[StrictGuard] API Re-verification: Status=${subStatus}, Valid=${isTrialActive || isSubActive}`);
+        
+        // 🚀 SIGNAL CLIENT SYNC via Flag
+        if (isTrialActive || isSubActive) {
+           syncNeeded = true;
+           console.log(`[StrictGuard] Sync required: NextAuth session is stale.`);
+        }
       }
     } catch (e) {
       console.error("[StrictGuard] API Fallback check failed:", e);
@@ -78,5 +84,5 @@ export async function enforceStrictAccess(session?: any) {
     redirect('/onboarding');
   }
 
-  return user;
+  return { user, syncNeeded };
 }

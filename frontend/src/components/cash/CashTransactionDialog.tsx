@@ -35,6 +35,9 @@ interface CashTransactionDialogProps {
   accounts: CashAccount[];
   defaultAccountId?: string;
   presetTransactionType?: "cash_in" | "cash_out" | "transfer";
+  onSuccess?: () => void;
+  accountId?: string;
+  presetType?: "cash_in" | "cash_out" | "transfer";
 }
 
 const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
@@ -44,6 +47,9 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
   accounts,
   defaultAccountId,
   presetTransactionType,
+  onSuccess,
+  accountId,
+  presetType,
 }) => {
   const {
     register,
@@ -54,8 +60,8 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
     setValue,
   } = useForm<CashTransactionFormData>({
     defaultValues: {
-      accountId: defaultAccountId || "",
-      transactionType: presetTransactionType || "cash_in",
+      accountId: accountId || defaultAccountId || "",
+      transactionType: presetType || presetTransactionType || "cash_in",
       category: "",
       description: "",
       personInCharge: "",
@@ -164,6 +170,7 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
 
       console.log("Processed form data being submitted:", formData);
       await onSubmit(formData);
+      if (onSuccess) onSuccess();
     } finally {
       setIsSubmitting(false);
     }
@@ -215,7 +222,7 @@ const CashTransactionDialog: React.FC<CashTransactionDialogProps> = ({
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((account) => (
+                    {(accounts || []).map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name}
                       </SelectItem>

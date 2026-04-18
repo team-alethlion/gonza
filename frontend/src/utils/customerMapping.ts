@@ -23,6 +23,7 @@ export const mapDbCustomerToCustomer = (c: any): Customer => {
     updatedAt: new Date(c.updatedAt || c.updated_at),
     lifetimeValue: Number(c.lifetimeValue || c.lifetime_value || 0),
     orderCount: Number(c.orderCount || c.order_count || 0),
+    totalSpent: Number(c.totalSpent || c.total_spent || 0),
     creditLimit: Number(c.creditLimit || c.credit_limit || 0),
   };
 };

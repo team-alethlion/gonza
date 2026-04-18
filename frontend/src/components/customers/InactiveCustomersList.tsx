@@ -263,7 +263,7 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {customer.tags.slice(0, 2).map((tag: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                          <Badge key={`${tag}-${i}`} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
                             {tag}
                           </Badge>
                         ))}

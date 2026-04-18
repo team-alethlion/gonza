@@ -29,7 +29,18 @@
 - **The Protocol**: Provide a detailed report of the findings and wait for an explicit directive to implement the fix.
 - **The Rationale**: Ensures the user understands the root cause before any changes are made, preventing unintended side-effects.
 
-## 7. Global Impact Awareness
+## 7. Empirical Verification Mandate (Test-First)
+
+- **The Rule**: NEVER assume a problem's cause based on code inspection alone.
+- **The Protocol**: Before making ANY update, you MUST create a diagnostic script (Python for backend, Node.js/Fetch for frontend) to verify the current state of the data.
+- **The Objective**: Proven facts are required. Use scripts to confirm:
+    - **Exact Keys**: What dictionary keys are actually coming from the API?
+    - **Exact Types**: Are values Strings, Numbers, or Objects?
+    - **Links**: Are foreign keys (like `agency_id`) actually populated in the database?
+- **The Mandate**: If an update is made without a preceding empirical test run that proves the fix is necessary and accurate, it is considered a violation of safety protocols.
+- **The Rationale**: Prevents "useless" or "blind" updates that might address the wrong problem or fail to account for the real data structure.
+
+## 8. Global Impact Awareness
 
 - **The Rule**: ALWAYS check for downstream dependencies before modifying shared files (e.g., `backend/core_app/views.py`, common hooks, or global contexts).
 - **The Protocol**: Use `grep_search` or `codebase_investigator` to find all usages of the symbol or file being modified.

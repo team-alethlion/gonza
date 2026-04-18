@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProfitLossData } from '@/hooks/useProfitLossData';
 import TaxCalculator from './TaxCalculator';
 import PLExportButton from './PLExportButton';
+import { cn } from '@/lib/utils';
 
 interface ProfitLossTableProps {
   data: ProfitLossData;
@@ -48,54 +49,56 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
   }
 
   const tableRows = [
-    // Sales Section
-    { detail: 'SALES/REVENUE', amount: data.sales, isBold: true },
-    { detail: 'SALES RETURNS', amount: data.salesReturns, isSubtraction: true },
-    { detail: 'NET SALES', amount: data.netSales, isBold: true, isTotal: true },
+    // --- TRADING ACCOUNT SECTION ---
+    { detail: 'TRADING ACCOUNT', amount: null, isHeader: true },
+    { detail: 'SALES / TURNOVER', amount: data.sales, isBold: true },
+    { detail: 'LESS: SALES RETURNS', amount: data.salesReturns, isSubtraction: true },
+    { detail: 'NET REVENUE', amount: data.netSales, isBold: true, isTotal: true },
     
-    // Spacer
     { detail: '', amount: null, isSpacer: true },
     
-    // COGS Section - Updated structure with new formula
-    { detail: 'COST OF GOODS SOLD (COGS)', amount: null, isHeader: true },
-    { detail: 'TOTAL COST SALES', amount: data.totalCostSales },
-    { detail: 'CARRIAGE INWARDS', amount: data.carriageInwards },
-    { detail: 'TOTAL COST OF GOODS SOLD (COGS)', amount: data.totalCOGS, isBold: true, isTotal: true },
+    { detail: 'LESS: COST OF GOODS SOLD (COGS)', amount: null, isBold: true },
+    { detail: 'GROSS COST OF SALES', amount: data.totalCostSales },
+    { detail: 'LESS: COST OF RETURNS', amount: data.costOfReturns, isSubtraction: true },
+    { detail: 'ADD: CARRIAGE INWARDS', amount: data.carriageInwards },
+    { detail: 'TOTAL COGS', amount: data.totalCOGS, isBold: true, isTotal: true },
     
-    // Spacer
+    { detail: 'GROSS PROFIT', amount: data.grossProfit, isBold: true, isTotal: true, isResult: true },
+    
     { detail: '', amount: null, isSpacer: true },
     
-    // Gross Profit
-    { detail: 'GROSS PROFIT', amount: data.grossProfit, isBold: true, isTotal: true },
-    
-    // Spacer
-    { detail: '', amount: null, isSpacer: true },
-    
-    // Expenses Section
-    { detail: 'EXPENSES', amount: null, isHeader: true },
+    // --- PROFIT & LOSS ACCOUNT SECTION ---
+    { detail: 'PROFIT & LOSS ACCOUNT', amount: null, isHeader: true },
+    { detail: 'OPERATING EXPENSES', amount: null, isBold: true },
   ];
 
   // Add expense categories
-  Object.entries(data.expensesByCategory).forEach(([category, amount]) => {
-    tableRows.push({
-      detail: category.toUpperCase(),
-      amount: amount
-    });
-  });
+  const categories = Object.entries(data.expensesByCategory);
+  if (categories.length > 0) {
+    categories.forEach(([category, amount]) => {
+        tableRows.push({
+          detail: category.toUpperCase(),
+          amount: amount
+        });
+      });
+  } else {
+    tableRows.push({ detail: 'NO EXPENSES RECORDED', amount: 0, isItalic: true });
+  }
 
   // Continue with totals
   tableRows.push(
-    { detail: 'TOTAL EXPENSES', amount: data.totalExpenses, isBold: true, isTotal: true },
+    { detail: 'TOTAL OPERATING EXPENSES', amount: data.totalExpenses, isBold: true, isTotal: true },
     { detail: '', amount: null, isSpacer: true },
-    { detail: 'NET PROFIT / LOSS', amount: data.netProfitLoss, isBold: true, isTotal: true },
-    { detail: 'TAX', amount: data.taxAmount },
-    { detail: 'FINAL PROFIT AFTER TAX', amount: data.finalProfitAfterTax, isBold: true, isTotal: true }
+    { detail: 'NET PROFIT / LOSS (EBT)', amount: data.netProfitLoss, isBold: true, isTotal: true, isResult: true },
+    { detail: 'TAXATION', amount: data.taxAmount, isSubtraction: true },
+    { detail: 'FINAL PROFIT AFTER TAX', amount: data.finalProfitAfterTax, isBold: true, isTotal: true, isResult: true }
   );
 
   const getRowColor = (row: any) => {
+    if (row.isResult && row.amount < 0) return 'text-red-600 bg-red-50';
+    if (row.isResult && row.amount >= 0) return 'text-green-600 bg-green-50';
     if (row.amount < 0) return 'text-red-600';
-    if (row.detail?.includes('PROFIT') && row.amount > 0) return 'text-green-600';
-    if (row.detail?.includes('EXPENSE') || row.detail?.includes('TAX')) return 'text-red-600';
+    if (row.detail?.includes('EXPENSES') || row.detail?.includes('TAX')) return 'text-red-600';
     return 'text-gray-900';
   };
 
@@ -103,7 +106,12 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Profit & Loss Account</CardTitle>
+          <div>
+            <CardTitle>Profit & Loss Account</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1 uppercase">
+                Reporting Basis: <span className="font-bold text-primary">{data.basis}</span>
+            </p>
+          </div>
               <PLExportButton
                 data={data}
                 dateRange={dateRange}
@@ -122,19 +130,19 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
           formatCurrency={formatCurrency}
         />
         
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border rounded-lg">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-100">
               <TableRow>
-                <TableHead className="font-bold text-left">DETAILS</TableHead>
-                <TableHead className="font-bold text-right">AMOUNT</TableHead>
+                <TableHead className="font-bold text-left text-gray-900">FINANCIAL DETAILS</TableHead>
+                <TableHead className="font-bold text-right text-gray-900">AMOUNT ({currency})</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tableRows.map((row, index) => {
                 if (row.isSpacer) {
                   return (
-                    <TableRow key={index}>
+                    <TableRow key={index} className="hover:bg-transparent border-none">
                       <TableCell colSpan={2} className="h-4 border-0"></TableCell>
                     </TableRow>
                   );
@@ -142,8 +150,8 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
 
                 if (row.isHeader) {
                   return (
-                    <TableRow key={index}>
-                      <TableCell colSpan={2} className="font-bold text-gray-800 bg-gray-50 border-0">
+                    <TableRow key={index} className="hover:bg-transparent">
+                      <TableCell colSpan={2} className="font-black text-blue-900 bg-blue-50/50 border-y py-3 tracking-wider">
                         {row.detail}
                       </TableCell>
                     </TableRow>
@@ -151,11 +159,24 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
                 }
 
                 return (
-                  <TableRow key={index} className={row.isTotal ? 'border-t-2 border-gray-300' : ''}>
-                    <TableCell className={`${row.isBold ? 'font-bold' : ''} ${getRowColor(row)}`}>
+                  <TableRow key={index} className={cn(
+                    "hover:bg-gray-50/50",
+                    row.isTotal && 'border-t-2 border-gray-300',
+                    row.isResult && 'border-b-2 border-gray-300'
+                  )}>
+                    <TableCell className={cn(
+                        "py-3",
+                        row.isBold && 'font-bold',
+                        row.isItalic && 'italic text-muted-foreground text-xs px-8',
+                        getRowColor(row)
+                    )}>
                       {row.detail}
                     </TableCell>
-                    <TableCell className={`text-right ${row.isBold ? 'font-bold' : ''} ${getRowColor(row)}`}>
+                    <TableCell className={cn(
+                        "text-right py-3",
+                        row.isBold && 'font-bold',
+                        getRowColor(row)
+                    )}>
                       {row.amount !== null ? (
                         <span>
                           {row.isSubtraction && '('}
@@ -180,23 +201,41 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
             </CardContent>
           </Card>
           
-          <Card className={`border-${data.netProfitLoss >= 0 ? 'green' : 'red'}-200 bg-${data.netProfitLoss >= 0 ? 'green' : 'red'}-50`}>
+          <Card className={cn(
+              "border-2",
+              data.netProfitLoss >= 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+          )}>
             <CardContent className="p-4 text-center">
-              <p className={`text-sm text-${data.netProfitLoss >= 0 ? 'green' : 'red'}-600 font-medium`}>
-                Net {data.netProfitLoss >= 0 ? 'Profit' : 'Loss'}
+              <p className={cn(
+                  "text-sm font-medium",
+                  data.netProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'
+              )}>
+                Net {data.netProfitLoss >= 0 ? 'Profit' : 'Loss'} (EBT)
               </p>
-              <p className={`text-lg font-bold text-${data.netProfitLoss >= 0 ? 'green' : 'red'}-800`}>
+              <p className={cn(
+                  "text-lg font-bold",
+                  data.netProfitLoss >= 0 ? 'text-green-800' : 'text-red-800'
+              )}>
                 {formatCurrency(Math.abs(data.netProfitLoss))}
               </p>
             </CardContent>
           </Card>
           
-          <Card className={`border-${data.finalProfitAfterTax >= 0 ? 'green' : 'red'}-200 bg-${data.finalProfitAfterTax >= 0 ? 'green' : 'red'}-50`}>
+          <Card className={cn(
+              "border-2 shadow-sm",
+              data.finalProfitAfterTax >= 0 ? 'border-green-500 bg-green-100/50' : 'border-red-500 bg-red-100/50'
+          )}>
             <CardContent className="p-4 text-center">
-              <p className={`text-sm text-${data.finalProfitAfterTax >= 0 ? 'green' : 'red'}-600 font-medium`}>
-                Final {data.finalProfitAfterTax >= 0 ? 'Profit' : 'Loss'} After Tax
+              <p className={cn(
+                  "text-sm font-bold uppercase",
+                  data.finalProfitAfterTax >= 0 ? 'text-green-700' : 'text-red-700'
+              )}>
+                Retained Earnings
               </p>
-              <p className={`text-lg font-bold text-${data.finalProfitAfterTax >= 0 ? 'green' : 'red'}-800`}>
+              <p className={cn(
+                  "text-2xl font-black",
+                  data.finalProfitAfterTax >= 0 ? 'text-green-900' : 'text-red-900'
+              )}>
                 {formatCurrency(Math.abs(data.finalProfitAfterTax))}
               </p>
             </CardContent>

@@ -35,10 +35,28 @@ class SupplierViewSet(viewsets.ModelViewSet):
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
+
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -46,13 +64,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_class = ProductFilter
     search_fields = ['name', 'sku', 'barcode', 'description']
-    
-    def get_queryset(self):
-        # We don't always need to filter by branch here if the filterset handles it,
-        # but for security/correctness we still baseline it.
-        # However, the filterset 'branch_id' field will handle the query_param.
-        return super().get_queryset()
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('category', 'supplier', 'branch').filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         branch_id = data.get('branch_id') or data.get('branch')
@@ -698,7 +718,10 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('product', 'user', 'branch').filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('locationId')
         product_id = self.request.query_params.get('productId')
         if branch_id:

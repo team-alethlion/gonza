@@ -9,6 +9,8 @@ import { SyncManager } from "@/components/SyncManager";
 import { BusinessProvider } from "@/contexts/BusinessContext";
 import { getInitialAppDataAction } from "@/app/actions/app-init";
 import ReauthenticateNotice from "@/components/auth/ReauthenticateNotice";
+import { SessionSyncTrigger } from "@/components/auth/SessionSyncTrigger";
+import { NavigationTracker } from "@/components/navigation/NavigationTracker";
 
 export default async function AgencyLayoutWrapper({
   children,
@@ -36,7 +38,7 @@ export default async function AgencyLayoutWrapper({
 
     // 1. SUPER STRICT GUARD: Validates subscription and onboarding
     // This is now the source of truth for access.
-    await enforceStrictAccess(session);
+    const { syncNeeded } = await enforceStrictAccess(session);
 
     // 2. DATA HYDRATION: Fetch shell data now that we know the user is valid
     const result = await getInitialAppDataAction();
@@ -68,6 +70,8 @@ export default async function AgencyLayoutWrapper({
         initialBusinessSettings={initialData?.businessSettings || null}
         initialAnalyticsSummary={initialData?.analyticsSummary || null}>
         <ProfileProvider initialProfiles={initialProfiles}>
+          <SessionSyncTrigger initialSyncNeeded={syncNeeded} />
+          <NavigationTracker />
           <SyncManager />
           <AgencyLayout>{children}</AgencyLayout>
         </ProfileProvider>

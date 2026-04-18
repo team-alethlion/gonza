@@ -59,6 +59,7 @@ import {
 import { formatCashAmount, cn } from "@/lib/utils";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useProfiles } from "@/contexts/ProfileContext";
+import { useNavigationStore } from "@/store/useNavigationStore";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle as AlertCircleIcon } from "lucide-react";
 import { useFinancialVisibility } from "@/hooks/useFinancialVisibility";
@@ -70,18 +71,21 @@ const CashAccount = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
+  const goBack = useNavigationStore((state) => state.goBack);
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { accounts, isLoading, updateAccount, refreshAccounts } =
     useCashAccounts();
-  
-  // 🚀 REFACTORED: Removed redundant useCashTransactions here.
-  // The DailyCashSummary component below now handles the primary data fetching
-  // to ensure dates and transactions are perfectly synced.
+  const { createTransaction } = useCashTransactions(accountId);
+
+  // 🚀 REFACTORED: DailyCashSummary component below handles primary list fetching.
+  // We use createTransaction here only for the quick-action header buttons.
 
   const { settings } = useBusinessSettings();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
   const { canManageFinanceAccounts } = useFinancialVisibility();
   const [isEditAccountDialogOpen, setIsEditAccountDialogOpen] = useState(false);
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [presetTransactionType, setPresetTransactionType] = useState<"cash_in" | "cash_out" | "transfer">("cash_in");
   const [todaysClosingBalance, setTodaysClosingBalance] = useState(0);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -96,9 +100,14 @@ const CashAccount = () => {
       const fetchBalance = async () => {
         setIsLoadingBalance(true);
         try {
-          const { getCashAccountBalanceAction } = await import("@/app/actions/finance");
-          const result = await getCashAccountBalanceAction(accountId, currentBusiness.id);
-          if (result.success) {
+          const { getCashAccountBalanceAction } = await import(
+            "@/app/actions/finance"
+          );
+          const result = await getCashAccountBalanceAction(
+            accountId,
+            currentBusiness.id,
+          );
+          if (result.success && typeof result.data === 'number') {
             setTodaysClosingBalance(result.data);
           }
         } finally {
@@ -123,11 +132,8 @@ const CashAccount = () => {
       if (accountId) {
         await updateAccount(accountId, data);
         setIsEditAccountDialogOpen(false);
-        // Refresh balance in case opening balance was changed
-        setIsLoadingBalance(true);
-        const summary = await getDailySummary(new Date(), accountId);
-        setTodaysClosingBalance(summary.closingBalance);
-        setIsLoadingBalance(false);
+        // 🚀 REFRESH: Incrementing refreshKey will trigger balance re-fetch and summary reload
+        setRefreshKey(prev => prev + 1);
       }
     } catch (error) {
       console.error("Error updating account:", error);
@@ -141,6 +147,15 @@ const CashAccount = () => {
   ) => {
     setPresetTransactionType(type);
     setIsTransactionDialogOpen(true);
+  };
+
+  const handleTransactionSuccess = () => {
+    setRefreshKey((prev) => prev + 1);
+    setIsTransactionDialogOpen(false);
+  };
+
+  const handleCreateTransaction = async (data: CashTransactionFormData) => {
+    await createTransaction(data);
   };
 
   if (businessLoading || !currentBusiness || isLoading || profilesLoading) {
@@ -179,7 +194,7 @@ const CashAccount = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Account not found</h2>
-          <Button onClick={() => router.push("/cash")}>
+          <Button onClick={() => router.push("/agency/cash")}>
             Back to Cash Accounts
           </Button>
         </div>
@@ -214,7 +229,7 @@ const CashAccount = () => {
               // Clear the stored account when explicitly navigating back
               localStorage.removeItem("lastVisitedCashAccount");
               localStorage.removeItem("lastVisitedCashAccountUrl");
-              router.push("/cash");
+              goBack(router);
             }}
             className="gap-2 px-2 md:px-3">
             <ArrowLeft className="h-4 w-4" />
@@ -254,6 +269,32 @@ const CashAccount = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 sm:gap-3">
+          {canCreate && (
+            <>
+              <Button
+                onClick={() => handleQuickTransaction("cash_in")}
+                className="gap-2 bg-green-600 hover:bg-green-700 text-sm"
+                size={isMobile ? "sm" : "default"}>
+                <Plus className="h-4 w-4" />
+                Cash In
+              </Button>
+              <Button
+                onClick={() => handleQuickTransaction("cash_out")}
+                className="gap-2 bg-red-600 hover:bg-red-700 text-sm"
+                size={isMobile ? "sm" : "default"}>
+                <Plus className="h-4 w-4" />
+                Cash Out
+              </Button>
+              <Button
+                onClick={() => handleQuickTransaction("transfer")}
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-sm"
+                size={isMobile ? "sm" : "default"}>
+                <ArrowRightLeft className="h-4 w-4" />
+                Transfer
+              </Button>
+            </>
+          )}
+
           {canEdit && (
             <Button
               type="button"
@@ -267,6 +308,16 @@ const CashAccount = () => {
           )}
         </div>
       </div>
+
+      <CashTransactionDialog
+        open={isTransactionDialogOpen}
+        onOpenChange={setIsTransactionDialogOpen}
+        onSuccess={handleTransactionSuccess}
+        onSubmit={handleCreateTransaction}
+        accountId={accountId}
+        presetType={presetTransactionType}
+        accounts={accounts}
+      />
 
       {/* Daily Summary (The New Unified Engine) */}
       <DailyCashSummary key={refreshKey} accountId={accountId} />

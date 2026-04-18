@@ -69,6 +69,7 @@ class User(AbstractUser):
         ('EXPIRED', 'Expired'),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
+    is_frozen = models.BooleanField(default=False, help_text="If true, the user is blocked from all system access regardless of subscription.")
     image = models.URLField(max_length=500, null=True, blank=True)
     
     # These are required links set on creation

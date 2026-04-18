@@ -19,8 +19,12 @@ def get_customer_summary_stats(branch_id):
     
     # 1. High Level Totals
     total_customers = qs.count()
+    
+    # New This Month (Created >= first day of current month)
     this_month_new = qs.filter(created_at__gte=start_of_month).count()
-    with_birthdays = qs.exclude(birthday__isnull=True).count()
+    
+    # Birthdays THIS MONTH (Filter by month only, ignore year)
+    with_birthdays = qs.filter(birthday__month=today.month).count()
     
     # 2. Category Breakdown (DATABASE AGGREGATION)
     # This replaces the heavy loop in frontend/src/hooks/useCustomerData.ts

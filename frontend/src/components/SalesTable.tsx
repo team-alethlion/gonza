@@ -23,8 +23,6 @@ import { useSalesFilters } from "@/hooks/useSalesFilters";
 import { usePagination } from "@/hooks/usePagination";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProfiles } from "@/contexts/ProfileContext";
-import { useCashAccounts } from "@/hooks/useCashAccounts";
-import { useCashTransactions } from "@/hooks/useCashTransactions";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useToast } from "@/hooks/use-toast";
 import { useInstallmentPayments } from "@/hooks/useInstallmentPayments";
@@ -87,6 +85,13 @@ const MobileCard = React.memo(
     onSendPaymentReminder,
     onSendThankYouNotice,
     cashAccountName,
+    mounted,
+    canViewCostPrice,
+    canViewProfit,
+    canViewSellingPrice,
+    canViewTotalAmount,
+    canEditSale,
+    canDeleteSale
   }: {
     sale: Sale;
     settings: BusinessSettings;
@@ -97,15 +102,14 @@ const MobileCard = React.memo(
     onSendThankYouNotice: (sale: Sale) => void;
     cashAccountName?: string | null;
     mounted?: boolean;
+    canViewCostPrice: boolean;
+    canViewProfit: boolean;
+    canViewSellingPrice: boolean;
+    canViewTotalAmount: boolean;
+    canEditSale: boolean;
+    canDeleteSale: boolean;
   }) => {
     const { payments } = useInstallmentPayments(sale.id);
-    const { hasPermission } = useProfiles();
-    const {
-      canViewCostPrice,
-      canViewProfit,
-      canViewSellingPrice,
-      canViewTotalAmount,
-    } = useFinancialVisibility();
 
     const totalWithTax = sale.total;
     const totalCost = sale.totalCost;
@@ -328,7 +332,7 @@ const MobileCard = React.memo(
             </div>
 
             <div className="flex justify-center gap-2">
-              {hasPermission("sales", "edit") && (
+              {canEditSale && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -338,7 +342,7 @@ const MobileCard = React.memo(
                   <span className="text-xs">Edit</span>
                 </Button>
               )}
-              {hasPermission("sales", "delete") && (
+              {canDeleteSale && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -389,11 +393,15 @@ const SalesTable: React.FC<SalesTableProps> = ({
     null,
   );
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
-  const { accounts } = useCashAccounts();
-  const { transactions } = useCashTransactions();
   const { settings: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
   const isMobileDevice = useIsMobile();
+  const { hasPermission } = useProfiles();
+  const financialVisibility = useFinancialVisibility();
+  
+  // Hoisted permission flags
+  const canEditSale = hasPermission('sales', 'edit');
+  const canDeleteSale = hasPermission('sales', 'delete');
   
   // 🛡️ Ensure isMobile respects the mobileOptimized prop
   const isMobile = mobileOptimized || isMobileDevice;
@@ -455,33 +463,6 @@ const SalesTable: React.FC<SalesTableProps> = ({
       setSettings({ ...parsed, currency: currency || parsed.currency });
     }
   }, [currency]);
-
-  // Create memoized lookup maps for O(1) access
-  const transactionMap = useMemo(() => {
-    const map = new Map<string, any>();
-    transactions.forEach((t) => map.set(t.id, t));
-    return map;
-  }, [transactions]);
-
-  const accountMap = useMemo(() => {
-    const map = new Map<string, any>();
-    accounts.forEach((a) => map.set(a.id, a));
-    return map;
-  }, [accounts]);
-
-  // Memoize cash account lookup using pre-built maps
-  const getCashAccountName = useCallback(
-    (sale: Sale) => {
-      if (!sale.cashTransactionId) return null;
-
-      const linkedTransaction = transactionMap.get(sale.cashTransactionId);
-      if (!linkedTransaction || !linkedTransaction.accountId) return null;
-
-      const linkedAccount = accountMap.get(linkedTransaction.accountId);
-      return linkedAccount ? linkedAccount.name : null;
-    },
-    [transactionMap, accountMap],
-  );
 
   const getReceiptButtonLabel = useCallback((paymentStatus: string) => {
     switch (paymentStatus) {
@@ -703,8 +684,14 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         onDeleteSale={handleDeleteSale}
                         onSendPaymentReminder={handleSendPaymentReminder}
                         onSendThankYouNotice={handleSendThankYouNotice}
-                        cashAccountName={getCashAccountName(sale)}
+                        cashAccountName={sale.cashAccountName}
                         mounted={mounted}
+                        canViewCostPrice={financialVisibility.canViewCostPrice}
+                        canViewProfit={financialVisibility.canViewProfit}
+                        canViewSellingPrice={financialVisibility.canViewSellingPrice}
+                        canViewTotalAmount={financialVisibility.canViewTotalAmount}
+                        canEditSale={canEditSale}
+                        canDeleteSale={canDeleteSale}
                       />
                     ))}
                   </div>
@@ -744,6 +731,12 @@ const SalesTable: React.FC<SalesTableProps> = ({
                             onDeleteSale={handleDeleteSale}
                             onSendPaymentReminder={handleSendPaymentReminder}
                             onSendThankYouNotice={handleSendThankYouNotice}
+                            isMobile={isMobile}
+                            canViewCostPrice={financialVisibility.canViewCostPrice}
+                            canViewProfit={financialVisibility.canViewProfit}
+                            canEditSale={canEditSale}
+                            canDeleteSale={canDeleteSale}
+                            formatFinancial={financialVisibility.formatFinancial}
                           />
                         ))}
                       </TableBody>

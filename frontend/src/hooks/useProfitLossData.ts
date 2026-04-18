@@ -3,32 +3,15 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { getProfitLossAction } from '@/app/actions/finance';
 import { getDateRangeFromFilter } from '@/utils/dateFilters';
+import { ProfitLossData } from '@/types/cash';
 import { useQuery } from '@tanstack/react-query';
-
-export interface ProfitLossData {
-  sales: number;
-  salesReturns: number;
-  netSales: number;
-  openingStock: number;
-  purchases: number;
-  carriageInwards: number;
-  closingStock: number;
-  totalCostSales: number; // Added for new COGS calculation
-  totalCOGS: number;
-  grossProfit: number;
-  expensesByCategory: { [key: string]: number };
-  totalExpenses: number;
-  netProfitLoss: number;
-  taxPercentage: number;
-  taxAmount: number;
-  finalProfitAfterTax: number;
-}
 
 export const useProfitLossData = (
   dateFilter: string,
   dateRange: { from: Date | undefined; to: Date | undefined },
   specificDate: Date | undefined,
-  taxPercentage: number = 0
+  taxPercentage: number = 0,
+  basis: 'accrual' | 'cash' = 'accrual'
 ) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
@@ -55,15 +38,15 @@ export const useProfitLossData = (
   const fetchProfitLoss = useCallback(async () => {
     if (!currentBusiness?.id) return null;
     const { from, to } = getDateRange();
-    const result = await getProfitLossAction(currentBusiness.id, from, to, taxPercentage);
+    const result = await getProfitLossAction(currentBusiness.id, from, to, taxPercentage, basis);
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch profit and loss data');
     }
-    return result.data as ProfitLossData;
-  }, [currentBusiness, getDateRange, taxPercentage]);
+    return { ...result.data, basis } as ProfitLossData;
+  }, [currentBusiness, getDateRange, taxPercentage, basis]);
 
   const { data: profitLossData, isLoading } = useQuery({
-    queryKey: ['profit_loss', currentBusiness?.id, dateFilter, dateRange, specificDate, taxPercentage],
+    queryKey: ['profit_loss', currentBusiness?.id, dateFilter, dateRange, specificDate, taxPercentage, basis],
     queryFn: fetchProfitLoss,
     enabled: !!currentBusiness?.id && !!user,
     staleTime: 60 * 1000, // 1 minute
@@ -86,6 +69,7 @@ export const useProfitLossData = (
     taxPercentage,
     taxAmount: 0,
     finalProfitAfterTax: 0,
+    basis
   };
 
   return {

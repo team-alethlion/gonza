@@ -72,9 +72,7 @@ export const useCustomers = (
         throw new Error(result.error);
       }
 
-      const formattedCustomers: Customer[] = (result.data?.customers || []).map(
-        (customer: any) => mapDbCustomerToCustomer(customer)
-      );
+      const formattedCustomers: Customer[] = result.data?.customers || [];
 
       // Background Dexie sync for first page
       if (formattedCustomers.length > 0 && page === 1) {
@@ -107,7 +105,6 @@ export const useCustomers = (
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
-    initialData: (page === 1 && initialData?.customers.length) ? initialData : undefined
   });
 
   const customers = queriedData?.customers || [];

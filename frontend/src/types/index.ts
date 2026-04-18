@@ -41,6 +41,7 @@ export interface Sale {
   date: Date;
   taxRate?: number;
   cashTransactionId?: string;
+  cashAccountName?: string | null;
   amountPaid?: number;
   amountDue?: number;
   notes?: string;
@@ -101,6 +102,7 @@ export interface DbSale {
   created_at: string;
   updated_at: string;
   cash_transaction_id?: string | null;
+  cash_account_name?: string | null;
   amount_paid?: number | null;
   amount_due?: number | null;
   balance_due?: number | null;
@@ -470,6 +472,7 @@ export const mapDbSaleToSale = (dbSale: any): Sale => {
     date: dbSale.date ? new Date(dbSale.date) : new Date(),
     taxRate: Number(dbSale.tax_rate || dbSale.taxRate || 0),
     cashTransactionId: dbSale.cash_transaction || dbSale.cash_transaction_id || dbSale.cashTransactionId,
+    cashAccountName: dbSale.cash_account_name || dbSale.cashAccountName,
     amountPaid: Number(dbSale.amount_paid || dbSale.amountPaid || 0),
     amountDue: Number(dbSale.balance_due || dbSale.amount_due || dbSale.amountDue || 0),
     notes: dbSale.notes || '',

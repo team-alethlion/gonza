@@ -153,7 +153,8 @@ class ProductHistory(models.Model):
         ('ADJUSTMENT', 'Adjustment'), ('PRICE_CHANGE', 'Price Change'), 
         ('COST_CHANGE', 'Cost Change'), ('CREATED', 'Created'), 
         ('STOCK_TAKE', 'Stock Take'), ('TRANSFER_IN', 'Transfer In'),
-        ('TRANSFER_OUT', 'Transfer Out'), ('RETURN_OUT', 'Return Out')
+        ('TRANSFER_OUT', 'Transfer Out'), ('RETURN_OUT', 'Return Out'),
+        ('STOCK_REVERSAL', 'Stock Reversal')
     )
 
     id = models.CharField(max_length=30, primary_key=True, default=gen_ph_id)

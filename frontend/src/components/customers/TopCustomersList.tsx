@@ -157,7 +157,7 @@ const TopCustomersList: React.FC<TopCustomersListProps> = ({
                 const index = (page - 1) * pageSize + idx;
                 return (
                 <div 
-                  key={customer.id || customer.name} 
+                  key={`${customer.id || 'guest'}-${index}`} 
                   className="group relative bg-white border border-gray-200 rounded-xl p-3 sm:p-4 hover:shadow-md transition-all duration-200 hover:border-gray-300 cursor-pointer"
                   onClick={() => handleCustomerClick(customer.name, customer.id)}
                 >

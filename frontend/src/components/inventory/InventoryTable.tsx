@@ -6,6 +6,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileProductCard from "./MobileProductCard";
 import DesktopProductTable from "./DesktopProductTable";
 import EmptyProductState from "./EmptyProductState";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { useFinancialVisibility } from "@/hooks/useFinancialVisibility";
 
 interface InventoryTableProps {
   products: Product[];
@@ -47,6 +49,8 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
 }) => {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const { settings } = useBusinessSettings();
+  const financialVisibility = useFinancialVisibility();
 
   // Internal sorting state (fallback if no external sorting is provided)
   const [internalSortField, setInternalSortField] =
@@ -166,6 +170,11 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
               enableBulkActions={enableBulkActions}
               isSelected={selectedProductIds.has(product.id)}
               onToggleSelection={onToggleProductSelection}
+              currency={settings.currency}
+              canViewCostPrice={financialVisibility.canViewCostPrice}
+              canViewSellingPrice={financialVisibility.canViewSellingPrice}
+              canViewProfit={financialVisibility.canViewProfit}
+              formatFinancial={financialVisibility.formatFinancial}
             />
           ))}
         </div>

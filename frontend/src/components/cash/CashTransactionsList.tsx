@@ -138,7 +138,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
     const dayBeforeEarliestStr = dayBeforeEarliest.toISOString().split('T')[0];
 
     // Get all transactions up to the day before the earliest transaction
-    let transactionsBeforeRange = allTransactions.filter(t =>
+    let transactionsBeforeRange = transactions.filter(t =>
       t.date.toISOString().split('T')[0] <= dayBeforeEarliestStr
     );
 
@@ -426,7 +426,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
                     {transaction.tags && transaction.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {transaction.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                          <Badge key={`${tag}-${index}`} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
@@ -487,7 +487,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
                         {transaction.tags && transaction.tags.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {transaction.tags.map((tag, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
+                              <Badge key={`${tag}-${index}`} variant="secondary" className="text-xs">
                                 {tag}
                               </Badge>
                             ))}

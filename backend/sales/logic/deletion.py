@@ -26,7 +26,7 @@ def process_sale_deletion(sale_id, user_id, deleted_reason=None):
                 
                 # 🛡️ SIGNAL CONTEXT
                 product._history_user_id = user_id
-                product._history_type = 'RETURN_IN'
+                product._history_type = 'STOCK_REVERSAL'
                 product._history_reason = f"Deleted Sale #{sale.receipt_number}. Reason: {deleted_reason or 'No reason provided'}"
                 product._history_reference_id = sale.receipt_number
                 product._history_reference_type = 'SALE_CANCEL'

@@ -268,24 +268,74 @@ class ProfitLossGenerator(BaseReport):
         )
         
         elements.append(Paragraph(f"<b>Profit & Loss Report:</b> {period_label}", self.styles['Normal']))
-        elements.append(Spacer(1, 10))
+        elements.append(Paragraph(f"<b>Basis:</b> {data.get('basis', 'accrual').upper()}", self.styles['Normal']))
+        elements.append(Spacer(1, 5*mm))
         
-        total_sales = data.get('total_sales', Decimal('0'))
-        total_expenses = data.get('total_expenses', Decimal('0'))
-        net_profit = total_sales - total_expenses
+        rev = data.get('revenue', {})
+        cogs = data.get('cogs', {})
+        prof = data.get('profitability', {})
+        exp = data.get('expenses', {})
         
-        table_data = [
-            ['Description', 'Income', 'Expense', 'Balance'],
-            ['Total Sales', f"{total_sales:,.2f}", '-', f"{total_sales:,.2f}"],
-            ['Total Expenses', '-', f"{total_expenses:,.2f}", f"-{total_expenses:,.2f}"],
-            ['NET PROFIT/LOSS', '', '', f"<b>{net_profit:,.2f}</b>"]
-        ]
+        table_data = []
         
-        elements.append(self.draw_table(table_data, col_widths=[70*mm, 40*mm, 40*mm, 40*mm]))
+        # 1. TRADING ACCOUNT
+        table_data.append([Paragraph("<b>1. TRADING ACCOUNT</b>", self.styles['Normal']), "", ""])
+        table_data.append(["Sales / Turnover", "", f"{rev.get('turnover', 0):,.2f}"])
+        table_data.append(["Less: Sales Returns", f"({rev.get('salesReturns', 0):,.2f})", ""])
+        table_data.append([Paragraph("<b>NET REVENUE</b>", self.styles['Normal']), "", Paragraph(f"<b>{rev.get('netSales', 0):,.2f}</b>", self.styles['Normal'])])
         
-        if net_profit > 0:
-            elements.append(Paragraph("<br/><b>Status: profitable</b>", self.styles['Normal']))
+        table_data.append(["", "", ""])
+        
+        table_data.append([Paragraph("<b>Cost of Goods Sold (COGS)</b>", self.styles['Normal']), "", ""])
+        table_data.append(["Gross Cost of Sales", "", f"{cogs.get('grossCostSales', 0):,.2f}"])
+        table_data.append(["Less: Cost of Returns", f"({cogs.get('costOfReturns', 0):,.2f})", ""])
+        table_data.append(["Add: Carriage Inwards", "", f"{cogs.get('carriageInwards', 0):,.2f}"])
+        table_data.append([Paragraph("<b>TOTAL COGS</b>", self.styles['Normal']), "", Paragraph(f"({cogs.get('totalCOGS', 0):,.2f})", self.styles['Normal'])])
+        
+        table_data.append(["", "", ""])
+        table_data.append([Paragraph("<b>GROSS PROFIT</b>", self.styles['Normal']), "", Paragraph(f"<b>{prof.get('grossProfit', 0):,.2f}</b>", self.styles['Normal'])])
+        table_data.append(["", "", ""])
+
+        # 2. PROFIT & LOSS ACCOUNT
+        table_data.append([Paragraph("<b>2. PROFIT & LOSS ACCOUNT</b>", self.styles['Normal']), "", ""])
+        table_data.append(["Operating Expenses:", "", ""])
+        
+        breakdown = exp.get('breakdown', {})
+        if breakdown:
+            for cat, amt in breakdown.items():
+                table_data.append([f"   {cat.upper()}", "", f"{amt:,.2f}"])
         else:
-            elements.append(Paragraph("<br/><b>Status: loss/break-even</b>", self.styles['Normal']))
+            table_data.append(["   No expenses recorded", "", "0.00"])
+            
+        table_data.append([Paragraph("<b>TOTAL OPERATING EXPENSES</b>", self.styles['Normal']), "", Paragraph(f"({exp.get('total', 0):,.2f})", self.styles['Normal'])])
+        
+        table_data.append(["", "", ""])
+        table_data.append([Paragraph("<b>NET PROFIT / LOSS (EBT)</b>", self.styles['Normal']), "", Paragraph(f"<b>{prof.get('netProfitLoss', 0):,.2f}</b>", self.styles['Normal'])])
+        table_data.append(["Taxation", "", f"({prof.get('taxAmount', 0):,.2f})"])
+        table_data.append([Paragraph("<b>FINAL PROFIT AFTER TAX</b>", self.styles['Normal']), "", Paragraph(f"<b>{prof.get('finalProfitAfterTax', 0):,.2f}</b>", self.styles['Normal'])])
+
+        # Draw custom P&L table
+        pl_table = Table(table_data, colWidths=[90*mm, 45*mm, 45*mm])
+        pl_table.setStyle(TableStyle([
+            ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LINEBELOW', (0, 3), (-1, 3), 1, colors.black), # Under Net Revenue
+            ('LINEBELOW', (0, 8), (-1, 8), 1, colors.black), # Under Total COGS
+            ('LINEBELOW', (0, 10), (-1, 10), 2, colors.black), # Double under Gross Profit
+            ('LINEBELOW', (0, -4), (-1, -4), 1, colors.black), # Under Total Expenses
+            ('LINEBELOW', (0, -1), (-1, -1), 2, colors.black), # Double under Final Profit
+        ]))
+        
+        elements.append(pl_table)
+        
+        # Margin Analysis
+        elements.append(Spacer(1, 10*mm))
+        elements.append(Paragraph(f"<b>Gross Margin:</b> {prof.get('grossMargin', 0):.2f}%", self.styles['Normal']))
+        elements.append(Paragraph(f"<b>Net Margin:</b> {prof.get('netMargin', 0):.2f}%", self.styles['Normal']))
+
+        if prof.get('netProfitLoss', 0) > 0:
+            elements.append(Paragraph("<br/><b>Business Status: PROFITABLE</b>", self.styles['Normal']))
+        else:
+            elements.append(Paragraph("<br/><b>Business Status: LOSS/BREAK-EVEN</b>", self.styles['Normal']))
             
         return elements

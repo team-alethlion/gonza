@@ -3,8 +3,8 @@ import { getCustomerStatsAction } from '@/app/actions/customers';
 
 export interface CustomerStats {
   totalCustomers: number;
-  withBirthdays: number;
-  thisMonth: number;
+  birthdaysThisMonth: number;
+  newThisMonth: number;
   categoryBreakdown: Record<string, number>;
 }
 
@@ -13,7 +13,7 @@ export const useCustomerStats = (userId: string | undefined, branchId: string | 
     queryKey: ['customer_stats', branchId],
     queryFn: async () => {
       if (!userId || !branchId) {
-        return { totalCustomers: 0, withBirthdays: 0, thisMonth: 0, categoryBreakdown: {} };
+        return { totalCustomers: 0, birthdaysThisMonth: 0, newThisMonth: 0, categoryBreakdown: {} };
       }
 
       const result = await getCustomerStatsAction(userId, branchId);
@@ -25,15 +25,15 @@ export const useCustomerStats = (userId: string | undefined, branchId: string | 
       const d = result.data;
       return {
         totalCustomers: d.totalCustomers || 0,
-        withBirthdays: d.customersWithBirthdays || d.withBirthdays || 0,
-        thisMonth: d.customersThisMonth || d.thisMonth || 0,
+        birthdaysThisMonth: d.birthdaysThisMonth || 0,
+        newThisMonth: d.newThisMonth || 0,
         categoryBreakdown: d.categoryBreakdown || {}
       };
     },
     initialData: initialData ? {
         totalCustomers: initialData.totalCustomers || 0,
-        withBirthdays: initialData.customersWithBirthdays || initialData.withBirthdays || 0,
-        thisMonth: initialData.customersThisMonth || initialData.thisMonth || 0,
+        birthdaysThisMonth: initialData.birthdaysThisMonth || 0,
+        newThisMonth: initialData.newThisMonth || 0,
         categoryBreakdown: initialData.categoryBreakdown || {}
     } : undefined,
     enabled: !!userId && !!branchId,

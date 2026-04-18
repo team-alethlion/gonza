@@ -29,6 +29,9 @@ interface CustomerFiltersProps {
   validCategories: Array<{ id: string; name: string }>;
   filteredCustomers: any[];
   customerStats: {
+    totalCustomers: number;
+    newThisMonth: number;
+    birthdaysThisMonth: number;
     categoryBreakdown: Record<string, number>;
   };
   getCategoryName: (categoryId: string | null) => string;

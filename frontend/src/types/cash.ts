@@ -152,3 +152,23 @@ export const mapCashTransactionFormToDbInsert = (formData: CashTransactionFormDa
     receipt_image: formData.receiptImage || null
   };
 };
+
+export interface ProfitLossData {
+  sales: number;
+  salesReturns: number;
+  netSales: number;
+  totalCostSales: number;
+  costOfReturns: number;
+  carriageInwards: number;
+  totalCOGS: number;
+  grossProfit: number;
+  expensesByCategory: { [key: string]: number };
+  totalExpenses: number;
+  netProfitLoss: number;
+  taxPercentage: number;
+  taxAmount: number;
+  finalProfitAfterTax: number;
+  grossMargin: number;
+  netMargin: number;
+  basis: 'accrual' | 'cash';
+}

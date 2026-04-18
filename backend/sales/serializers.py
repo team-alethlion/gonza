@@ -33,6 +33,8 @@ class SaleSerializer(serializers.ModelSerializer):
     installments = InstallmentPaymentSerializer(many=True, read_only=True)
     receipt_url = serializers.SerializerMethodField()
     
+    cash_account_name = serializers.CharField(source='cash_transaction.account.name', read_only=True, default=None)
+    
     subtotal = serializers.FloatField()
     discount_amount = serializers.FloatField()
     tax_amount = serializers.FloatField()

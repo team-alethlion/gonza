@@ -5,7 +5,6 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { useCashAccounts } from "@/hooks/useCashAccounts";
 import CashContent from "@/components/cash/CashContent";
 import { CashAccountFormData } from "@/types/cash";
-import { useCashAccountRedirect } from "@/hooks/useCashAccountRedirect";
 import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,6 @@ const Cash = () => {
     useCashAccounts();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Handle redirect to last visited cash account
-  useCashAccountRedirect(accounts);
 
   const handleCreateAccount = async (data: CashAccountFormData) => {
     try {

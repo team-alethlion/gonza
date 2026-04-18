@@ -22,9 +22,7 @@ export default async function CustomersPage() {
       ]);
 
       if (listResult && listResult.success && listResult.data) {
-        initialCustomers = (listResult.data.customers || []).map(
-          (customer: any) => mapDbCustomerToCustomer(customer)
-        );
+        initialCustomers = listResult.data.customers || [];
         initialCount = listResult.data.count || 0;
       }
 

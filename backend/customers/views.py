@@ -20,11 +20,25 @@ class CustomerCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerCategorySerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        # 🛡️ SECURITY: Auto-assign agency from the creating user
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        serializer.save(agency_id=agency_id)
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        qs = super().get_queryset().select_related('branch', 'admin', 'category')
+        
+        user = self.request.user
+        if user.is_authenticated:
+            agency_id = getattr(user, 'agency_id', None)
+            if agency_id:
+                qs = qs.filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('name')
 
 
@@ -35,11 +49,25 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filterset_class = CustomerFilter
     search_fields = ['name', 'phone', 'email', 'address']
 
+    def perform_create(self, serializer):
+        # 🛡️ SECURITY: Auto-assign agency from the creating user
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        serializer.save(agency_id=agency_id)
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        qs = super().get_queryset().select_related('branch', 'admin', 'category')
+        
+        user = self.request.user
+        if user.is_authenticated:
+            agency_id = getattr(user, 'agency_id', None)
+            if agency_id:
+                qs = qs.filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('name')
 
     def list(self, request, *args, **kwargs):
@@ -170,8 +198,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
             
-        from .logic.summary import get_customer_module_summary
-        data = get_customer_module_summary(branch_id)
+        from .logic.summary_generator import CustomerSummaryGenerator
+        generator = CustomerSummaryGenerator(branch_id)
+        data = generator.get_full_summary()
+        
+        # Add categories for the full module summary
+        from .models import CustomerCategory
+        from .serializers import CustomerCategorySerializer
+        cats = CustomerCategory.objects.filter(branch_id=branch_id).order_by('name')
+        data['categories'] = CustomerCategorySerializer(cats, many=True).data
         
         return Response(data)
 
@@ -181,10 +216,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
             
-        from .logic.stats import get_customer_summary_stats
-        data = get_customer_summary_stats(branch_id)
+        from .logic.summary_generator import CustomerSummaryGenerator
+        generator = CustomerSummaryGenerator(branch_id)
+        data = generator.get_full_summary()
         
-        return Response(data)
+        # Return only the stats portion for the stats endpoint
+        return Response(data['stats'])
 
     @action(detail=False, methods=['post'])
     def merge(self, request):
@@ -297,10 +334,20 @@ class FavoriteCustomerViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteCustomerSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        return super().get_queryset().filter(agency_id=agency_id)
+
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        return super().get_queryset().filter(agency_id=agency_id)
 
 class CustomerLedgerViewSet(viewsets.ModelViewSet):
     queryset = CustomerLedger.objects.all()
@@ -308,7 +355,10 @@ class CustomerLedgerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('customer', 'branch').filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('branchId')
         customer_id = self.request.query_params.get('customerId')
         if branch_id:

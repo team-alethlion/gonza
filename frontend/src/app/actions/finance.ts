@@ -585,27 +585,40 @@ export async function getCashAccountSummaryAction(accountId: string, locationId:
     } catch (error: any) { return { success: false, error: error.message }; }
 }
 
-export async function getProfitLossAction(locationId: string, startDate: Date, endDate: Date, taxPercentage: number = 0) {
+export async function getProfitLossAction(locationId: string, startDate: Date, endDate: Date, taxPercentage: number = 0, basis: string = 'accrual') {
     try {
         await verifyBranchAccess(locationId);
         const start = startDate.toISOString();
         const end = endDate.toISOString();
-        const data = await djangoFetch(`finance/accounts/profit_loss/?branchId=${locationId}&startDate=${start}&endDate=${end}&taxPercentage=${taxPercentage}`);
+        const raw = await djangoFetch(`finance/accounts/profit_loss/?branchId=${locationId}&startDate=${start}&endDate=${end}&taxPercentage=${taxPercentage}&basis=${basis}`);
+        
+        // Map the new structured response
         return { 
             success: true, 
             data: {
-                ...data,
-                sales: toSafeNumber(data.sales),
-                salesReturns: toSafeNumber(data.salesReturns),
-                netSales: toSafeNumber(data.netSales),
-                carriageInwards: toSafeNumber(data.carriageInwards),
-                totalCostSales: toSafeNumber(data.totalCostSales),
-                totalCOGS: toSafeNumber(data.totalCOGS),
-                grossProfit: toSafeNumber(data.grossProfit),
-                totalExpenses: toSafeNumber(data.totalExpenses),
-                netProfitLoss: toSafeNumber(data.netProfitLoss),
-                taxAmount: toSafeNumber(data.taxAmount),
-                finalProfitAfterTax: toSafeNumber(data.finalProfitAfterTax)
+                // Revenue
+                sales: toSafeNumber(raw.revenue.turnover),
+                salesReturns: toSafeNumber(raw.revenue.salesReturns),
+                netSales: toSafeNumber(raw.revenue.netSales),
+                
+                // COGS
+                grossCostSales: toSafeNumber(raw.cogs.grossCostSales),
+                costOfReturns: toSafeNumber(raw.cogs.costOfReturns),
+                carriageInwards: toSafeNumber(raw.cogs.carriageInwards),
+                totalCOGS: toSafeNumber(raw.cogs.totalCOGS),
+                
+                // Expenses
+                totalExpenses: toSafeNumber(raw.expenses.total),
+                expensesByCategory: raw.expenses.breakdown || {},
+                
+                // Profitability
+                grossProfit: toSafeNumber(raw.profitability.grossProfit),
+                netProfitLoss: toSafeNumber(raw.profitability.netProfitLoss),
+                taxAmount: toSafeNumber(raw.profitability.taxAmount),
+                finalProfitAfterTax: toSafeNumber(raw.profitability.finalProfitAfterTax),
+                grossMargin: toSafeNumber(raw.profitability.grossMargin),
+                netMargin: toSafeNumber(raw.profitability.netMargin),
+                taxPercentage: taxPercentage
             } 
         };
     } catch (error: any) { return { success: false, error: error.message }; }

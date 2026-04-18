@@ -86,9 +86,9 @@ export const authConfig = {
       // 🛡️ RESTRICTED STATUS SYNC:
       // If the user is currently suspended or expired, check the backend even if the token isn't expired yet.
       // This allows them to "recover" immediately when an admin lifts a ban or a payment is processed.
-      const isRestricted = token.status === 'SUSPENDED' || token.subscriptionStatus === 'suspended' || token.status === 'EXPIRED' || token.error === "RefreshAccessTokenError";
+      const isRestricted = token.status === 'SUSPENDED' || token.subscriptionStatus === 'suspended' || token.subscriptionStatus === 'expired' || token.status === 'EXPIRED' || token.error === "RefreshAccessTokenError";
       const lastSync = token.lastStatusSync as number || 0;
-      const syncInterval = 60 * 1000; // 1 minute throttle
+      const syncInterval = 5 * 60 * 1000; // 5 minute throttle
 
       if (isRestricted && (now - lastSync > syncInterval) && token.agencyId) {
         try {

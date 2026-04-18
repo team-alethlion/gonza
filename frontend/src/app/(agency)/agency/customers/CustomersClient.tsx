@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -8,9 +9,7 @@ import { useCustomerCategories } from "@/hooks/useCustomerCategories";
 import { useCustomerData } from "@/hooks/useCustomerData";
 import { useCustomerStats } from "@/hooks/useCustomerStats";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { useSalesData } from "@/hooks/useSalesData";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getCustomerStatsAction } from "@/app/actions/customers";
 import CustomerPageSkeleton from "@/components/customers/CustomerPageSkeleton";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerStatsCards from "@/components/customers/CustomerStatsCards";
@@ -63,8 +62,16 @@ const CustomersClient = ({
   const { categories } = useCustomerCategories(initialSummary?.categories);
   const { settings } = useBusinessSettings();
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { hasPermission, isLoading: profilesLoading } = useProfiles();
+
   // New React Query based stats hook
-  const { data: globalStats } = useCustomerStats(user?.id, currentBusiness?.id, initialSummary?.stats);
+  const { data: globalStats } = useCustomerStats(
+    user?.id,
+    currentBusiness?.id,
+    initialSummary?.stats,
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -81,9 +88,6 @@ const CustomersClient = ({
     undefined,
   );
   const [activeTab, setActiveTab] = useState("list");
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { hasPermission, isLoading: profilesLoading } = useProfiles();
 
   useEffect(() => {
     setMounted(true);
@@ -112,7 +116,7 @@ const CustomersClient = ({
       searchTerm,
       selectedCategory,
       totalCount,
-      globalStats
+      globalStats,
     );
 
   useEffect(() => {
@@ -168,11 +172,13 @@ const CustomersClient = ({
 
   const findDuplicates = useCallback(async () => {
     if (!currentBusiness?.id) return;
-    
+
     try {
-      const { getDuplicateCustomersAction } = await import('@/app/actions/customers');
+      const { getDuplicateCustomersAction } = await import(
+        "@/app/actions/customers"
+      );
       const result = await getDuplicateCustomersAction(currentBusiness.id);
-      
+
       if (result.success && result.data) {
         if (result.data.length === 0) {
           toast.info("No duplicate customers found");
@@ -278,7 +284,7 @@ const CustomersClient = ({
       />
 
       {/* Pagination Controls - Only show for the main list tab */}
-      {activeTab === 'list' && (
+      {activeTab === "list" && (
         <div className="flex items-center justify-between p-3 md:p-4 border rounded">
           <div className="text-xs md:text-sm text-muted-foreground">
             Showing {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}–
@@ -341,7 +347,7 @@ const CustomersClient = ({
 
           <div className="space-y-4">
             {duplicateGroups.map((group, index) => (
-              <Card key={index} className="p-4">
+              <Card key={`duplicate-group-${index}-${group[0]?.id}`} className="p-4">
                 <CardContent className="p-0">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -364,7 +370,10 @@ const CustomersClient = ({
                         <div>
                           <div>{customer.phoneNumber || "No phone"}</div>
                           <div className="text-muted-foreground text-xs">
-                            Created: {mounted ? customer.createdAt.toLocaleDateString("en-US") : "---"}
+                            Created:{" "}
+                            {mounted
+                              ? customer.createdAt.toLocaleDateString("en-US")
+                              : "---"}
                           </div>
                         </div>
                         {customer.email && (
