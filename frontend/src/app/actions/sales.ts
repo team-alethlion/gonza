@@ -507,3 +507,41 @@ export async function bulkSyncSalesAction(sales: { localId: string, saleData: an
         return { success: false, error: error.message };
     }
 }
+
+export async function processSalesReturnAction(returnPayload: {
+    sale_id: string;
+    items: {
+        sale_item_id: string;
+        quantity: number;
+        refund_amount: number;
+        restock_inventory: boolean;
+    }[];
+    refund_amount: number;
+    cash_account_id?: string;
+    reason?: string;
+    locationId: string;
+}) {
+    try {
+        await verifyBranchAccess(returnPayload.locationId);
+        const result = await djangoFetch<any>(`sales/returns/`, {
+            method: 'POST',
+            body: JSON.stringify(returnPayload)
+        });
+        revalidatePath('/sales');
+        revalidatePath('/inventory');
+        return { success: true, data: result };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getSalesReturnsAction(locationId: string, page: number = 1, pageSize: number = 50) {
+    try {
+        await verifyBranchAccess(locationId);
+        const offset = (page - 1) * pageSize;
+        const data = await djangoFetch<any>(`sales/returns/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`);
+        return { success: true, data: { returns: data.results || [], count: data.count || 0 } };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}

@@ -24,9 +24,14 @@ export default async function AgencyLayoutWrapper({
   }
 
   try {
+    // 1. SUPER STRICT GUARD: Validates subscription and onboarding
+    // This is now the source of truth for access.
+    // This will handle redirects to /subscription or /onboarding even if token is dead.
+    const { syncNeeded } = await enforceStrictAccess(session);
+
     // 🛡️ RECOVERY PARADOX GUARD: 
-    // If tokens are dead but the account is recovered (Active), 
-    // throw an error to trigger the error boundary with a recovery path.
+    // If tokens are dead but the account is recovered and SUBSCRIBED, 
+    // throw an error to trigger the re-auth notice.
     const isTokenDead = (session as any)?.authError === "RefreshAccessTokenError";
     const userStatus = (session?.user as any)?.status;
     const subStatus = (session?.user as any)?.subscriptionStatus;
@@ -35,10 +40,6 @@ export default async function AgencyLayoutWrapper({
       console.log(`[AgencyLayout] Recovery Paradox Detected: User is Active but Token is Dead. Triggering Reauthentication Error.`);
       throw new Error("REAUTHENTICATION_REQUIRED");
     }
-
-    // 1. SUPER STRICT GUARD: Validates subscription and onboarding
-    // This is now the source of truth for access.
-    const { syncNeeded } = await enforceStrictAccess(session);
 
     // 2. DATA HYDRATION: Fetch shell data now that we know the user is valid
     const result = await getInitialAppDataAction();
@@ -83,8 +84,15 @@ export default async function AgencyLayoutWrapper({
       throw error;
     }
 
+    // 🚀 CLEAN RECOVERY: Catch re-auth request and display the specialized notice
+    // This avoids throwing to the root error boundary and logging code stack traces to terminal.
+    if (error.message === "REAUTHENTICATION_REQUIRED") {
+      console.log(`[AgencyLayout] Handling Session Refresh UI (Terminal Clean).`);
+      return <ReauthenticateNotice />;
+    }
+
     // Normalized errors for the error.tsx boundary
-    if (error.message === "REAUTHENTICATION_REQUIRED" || error.message === "UNAUTHORIZED") {
+    if (error.message === "UNAUTHORIZED") {
       throw error;
     }
 

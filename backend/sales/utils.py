@@ -21,3 +21,15 @@ def generate_receipt_number(branch_id):
     Backward compatible wrapper that increments the counter.
     """
     return get_next_receipt_number(branch_id, increment=True)
+
+def generate_return_number(branch_id):
+    """
+    Generates a professional return number.
+    Format: RET-{BRANCH}-{YYMM}-{SEQUENCE}
+    """
+    return NumberingEngine.get_next_number(
+        branch_id=branch_id, 
+        type_key='return', 
+        prefix='RET', 
+        increment=True
+    )

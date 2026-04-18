@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, Edit, Trash2, FileText, Heart, MessageSquare } from 'lucide-react';
+import { Printer, Edit, Trash2, FileText, Heart, MessageSquare, RotateCcw } from 'lucide-react';
 import { useProfiles } from '@/contexts/ProfileContext';
 import {
   Tooltip,
@@ -24,6 +24,7 @@ interface SalesTableRowProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale, reason?: string) => void;
+  onProcessReturn: (sale: Sale) => void;
   onSendPaymentReminder: (sale: Sale) => void;
   onSendThankYouNotice?: (sale: Sale) => void;
   onSendPaymentReminderSMS?: (sale: Sale) => void;
@@ -43,6 +44,7 @@ const SalesTableRow: React.FC<SalesTableRowProps> = React.memo(({
   onViewReceipt,
   onEditSale,
   onDeleteSale,
+  onProcessReturn,
   onSendPaymentReminder,
   onSendThankYouNotice,
   onSendPaymentReminderSMS,
@@ -79,12 +81,18 @@ const SalesTableRow: React.FC<SalesTableRowProps> = React.memo(({
   const getStatusStyling = () => {
     switch (sale.paymentStatus) {
       case 'Paid':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
       case 'Quote':
+      case 'QUOTE':
         return 'bg-purple-100 text-purple-800';
       case 'Installment Sale':
+      case 'INSTALLMENT':
         return 'bg-blue-100 text-blue-800';
+      case 'REFUNDED':
+        return 'bg-red-100 text-red-800';
       case 'NOT PAID':
+      case 'UNPAID':
       default:
         return 'bg-yellow-100 text-yellow-800';
     }
@@ -275,6 +283,20 @@ const SalesTableRow: React.FC<SalesTableRowProps> = React.memo(({
               <span className="sr-only">Send Thank You SMS</span>
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onProcessReturn(sale);
+            }}
+            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            title="Process Return"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span className="sr-only">Process Return</span>
+          </Button>
 
           {canEditSale && (
             <Button

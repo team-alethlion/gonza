@@ -54,6 +54,7 @@ interface SalesTableProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale, reason?: string) => void;
+  onProcessReturn?: (sale: Sale) => void;
   currency?: string;
   onDateFilterChange?: (value: string) => void;
   onDateRangeChange?: (range: {
@@ -82,6 +83,7 @@ const MobileCard = React.memo(
     onViewReceipt,
     onEditSale,
     onDeleteSale,
+    onProcessReturn,
     onSendPaymentReminder,
     onSendThankYouNotice,
     cashAccountName,
@@ -98,6 +100,7 @@ const MobileCard = React.memo(
     onViewReceipt: (sale: Sale) => void;
     onEditSale: (sale: Sale) => void;
     onDeleteSale: (sale: Sale, reason?: string) => void;
+    onProcessReturn?: (sale: Sale) => void;
     onSendPaymentReminder: (sale: Sale) => void;
     onSendThankYouNotice: (sale: Sale) => void;
     cashAccountName?: string | null;
@@ -329,6 +332,17 @@ const MobileCard = React.memo(
                 <Heart className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Thanks</span>
               </Button>
+
+              {onProcessReturn && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcessReturn(sale)}
+                  className="flex items-center gap-1.5 text-xs h-8 border-orange-200 text-orange-600 hover:bg-orange-50 flex-1 min-w-0">
+                  <RotateCcw className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Return</span>
+                </Button>
+              )}
             </div>
 
             <div className="flex justify-center gap-2">
@@ -367,6 +381,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onViewReceipt,
   onEditSale,
   onDeleteSale,
+  onProcessReturn,
   currency = "USD",
   onDateFilterChange,
   onDateRangeChange,
@@ -682,6 +697,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         onViewReceipt={onViewReceipt}
                         onEditSale={onEditSale}
                         onDeleteSale={handleDeleteSale}
+                        onProcessReturn={onProcessReturn}
                         onSendPaymentReminder={handleSendPaymentReminder}
                         onSendThankYouNotice={handleSendThankYouNotice}
                         cashAccountName={sale.cashAccountName}
@@ -729,7 +745,9 @@ const SalesTable: React.FC<SalesTableProps> = ({
                             onViewReceipt={onViewReceipt}
                             onEditSale={onEditSale}
                             onDeleteSale={handleDeleteSale}
+                            onProcessReturn={onProcessReturn}
                             onSendPaymentReminder={handleSendPaymentReminder}
+
                             onSendThankYouNotice={handleSendThankYouNotice}
                             isMobile={isMobile}
                             canViewCostPrice={financialVisibility.canViewCostPrice}

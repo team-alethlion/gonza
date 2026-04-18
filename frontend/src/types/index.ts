@@ -55,6 +55,36 @@ export interface Sale {
   updatedAt: Date;
 }
 
+export interface SalesReturnItem {
+  id: string;
+  salesReturnId: string;
+  saleItemId: string;
+  productName: string;
+  productId?: string;
+  quantity: number;
+  refundAmount: number;
+  restockInventory: boolean;
+  createdAt: Date;
+}
+
+export interface SalesReturn {
+  id: string;
+  saleId: string;
+  saleReceiptNumber: string;
+  returnNumber: string;
+  totalRefundAmount: number;
+  reason?: string;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  date: Date;
+  branchId: string;
+  userId: string;
+  cashAccountId?: string;
+  cashTransactionId?: string;
+  items: SalesReturnItem[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CustomerLedger {
   id: string;
   customer: string;

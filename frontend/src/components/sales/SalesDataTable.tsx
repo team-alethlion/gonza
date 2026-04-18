@@ -9,6 +9,7 @@ interface SalesDataTableProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale) => void;
+  onProcessReturn: (sale: Sale) => void;
   currency: string;
   isLoading: boolean;
   initialCategories?: any[];
@@ -19,6 +20,7 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
   onViewReceipt,
   onEditSale,
   onDeleteSale,
+  onProcessReturn,
   currency,
   isLoading,
   initialCategories
@@ -33,6 +35,7 @@ const SalesDataTable: React.FC<SalesDataTableProps> = ({
           onViewReceipt={onViewReceipt}
           onEditSale={onEditSale}
           onDeleteSale={onDeleteSale}
+          onProcessReturn={onProcessReturn}
           currency={currency}
           isLoading={isLoading}
           mobileOptimized={isMobile}

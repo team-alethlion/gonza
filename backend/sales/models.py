@@ -136,6 +136,7 @@ class SaleItem(models.Model):
     total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     
     cost_price = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    quantity_returned = models.IntegerField(default=0)
     
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='sale_items', null=True, blank=True)
     branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='sale_items', null=True, blank=True)

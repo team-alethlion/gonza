@@ -7,6 +7,8 @@ import SalesTableSkeleton from './SalesTableSkeleton';
 import NoBusinessState from './NoBusinessState';
 import SalesDataTable from './SalesDataTable';
 import SalesReceiptDialog from './SalesReceiptDialog';
+import ProcessReturnDialog from './ProcessReturnDialog';
+import ReturnsHistoryTab from './ReturnsHistoryTab';
 import SalesCategoryAnalysis from './SalesCategoryAnalysis';
 import { DeletedSalesTable } from './DeletedSalesTable';
 import { useSalesData } from '@/hooks/useSalesData';
@@ -15,8 +17,9 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useSalesActions } from '@/hooks/useSalesActions';
-import { RefreshCw, History, Trash2 } from 'lucide-react';
+import { RefreshCw, History, Trash2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Sale, SalesCategory } from '@/types';
 
@@ -31,6 +34,7 @@ export const SalesClient = ({
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
   const { settings } = useBusinessSettings();
   const { userId } = useCurrentUser();
+  const queryClient = useQueryClient();
 
   const {
     sales,
@@ -49,10 +53,13 @@ export const SalesClient = ({
   const {
     selectedSale,
     isReceiptDialogOpen,
+    isReturnDialogOpen,
     handleEditSale,
     handleViewReceipt,
+    handleProcessReturn,
     handleDeleteSale,
-    handleCloseReceiptDialog
+    handleCloseReceiptDialog,
+    handleCloseReturnDialog
   } = useSalesActions();
 
   // Show loading while business context OR user ID is loading
@@ -80,6 +87,9 @@ export const SalesClient = ({
   const handleRefresh = async () => {
     if (activeTab === 'deleted-sales') {
       await refetchDeleted();
+    } else if (activeTab === 'returns') {
+      // Logic handled by React Query but we can trigger it manually
+      queryClient.invalidateQueries({ queryKey: ['sales_returns'] });
     } else {
       await refetch();
     }
@@ -103,9 +113,13 @@ export const SalesClient = ({
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Sales Overview</TabsTrigger>
             <TabsTrigger value="analysis">Sales Source</TabsTrigger>
+            <TabsTrigger value="returns" className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Returns
+            </TabsTrigger>
             <TabsTrigger value="deleted-sales" className="flex items-center gap-2 text-destructive data-[state=active]:text-destructive">
               <Trash2 className="h-4 w-4" />
               Deleted Sales
@@ -123,6 +137,7 @@ export const SalesClient = ({
                 onViewReceipt={handleViewReceipt}
                 onEditSale={handleEditSale}
                 onDeleteSale={handleDeleteSale(deleteSale)}
+                onProcessReturn={handleProcessReturn}
                 currency={settings.currency}
                 isLoading={salesLoading}
                 initialCategories={initialCategories}
@@ -136,6 +151,10 @@ export const SalesClient = ({
               formatCurrency={formatCurrency}
               initialCategories={initialCategories}
             />
+          </TabsContent>
+
+          <TabsContent value="returns" className="mt-6">
+            <ReturnsHistoryTab />
           </TabsContent>
 
           <TabsContent value="deleted-sales" className="mt-6">
@@ -164,6 +183,16 @@ export const SalesClient = ({
         isOpen={isReceiptDialogOpen}
         onOpenChange={handleCloseReceiptDialog}
         currency={settings.currency}
+      />
+
+      <ProcessReturnDialog
+        sale={selectedSale}
+        isOpen={isReturnDialogOpen}
+        onOpenChange={handleCloseReturnDialog}
+        onSuccess={async () => {
+          await refetch();
+          await refetchDeleted();
+        }}
       />
     </>
   );

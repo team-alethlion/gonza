@@ -8,11 +8,12 @@ from django.utils import timezone
 from datetime import datetime, date
 from decimal import Decimal
 
-from .models import SalesGoal, SaleCategory, Sale, SaleItem, InstallmentPayment
+from .models import SalesGoal, SaleCategory, Sale, SaleItem, InstallmentPayment, SalesReturn, SalesReturnItem
 from .filters import SaleFilter
 from .serializers import (
     SalesGoalSerializer, SaleCategorySerializer,
-    SaleSerializer, SaleItemSerializer, InstallmentPaymentSerializer
+    SaleSerializer, SaleItemSerializer, InstallmentPaymentSerializer,
+    SalesReturnSerializer, SalesReturnItemSerializer
 )
 from inventory.models import Product, ProductHistory
 from finance.models import Expense, CashAccount, CashTransaction
@@ -771,6 +772,42 @@ class SaleItemViewSet(viewsets.ModelViewSet):
     queryset = SaleItem.objects.all()
     serializer_class = SaleItemSerializer
     permission_classes = [IsAuthenticated]
+
+from .logic.returns import process_sales_return
+
+class SalesReturnViewSet(viewsets.ModelViewSet):
+    queryset = SalesReturn.objects.all()
+    serializer_class = SalesReturnSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        branch_id = self.request.query_params.get('branchId') or self.request.user.branch_id
+        qs = super().get_queryset().filter(branch_id=branch_id).select_related('sale', 'user')
+        return qs.order_by('-date')
+
+    def create(self, request, *args, **kwargs):
+        sale_id = request.data.get('sale_id')
+        items_data = request.data.get('items', [])
+        refund_amount = request.data.get('refund_amount', 0)
+        cash_account_id = request.data.get('cash_account_id')
+        reason = request.data.get('reason')
+
+        if not sale_id:
+            return Response({"error": "sale_id is required"}, status=400)
+
+        try:
+            sales_return = process_sales_return(
+                sale_id=sale_id,
+                user_id=request.user.id,
+                items_data=items_data,
+                refund_amount=refund_amount,
+                cash_account_id=cash_account_id,
+                reason=reason
+            )
+            serializer = self.get_serializer(sales_return)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 class InstallmentPaymentViewSet(viewsets.ModelViewSet):
     queryset = InstallmentPayment.objects.all()

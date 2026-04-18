@@ -17,6 +17,7 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
   // List of endpoints that are allowed to be accessed without a token (Public-Friendly)
   const isPublicFriendly = endpoint.includes('core/packages/') || 
                            endpoint.includes('core/agencies/') ||
+                           endpoint.includes('users/users/me/') ||
                            endpoint.includes('auth/token') || 
                            endpoint.includes('public/');
 
