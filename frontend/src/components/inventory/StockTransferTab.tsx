@@ -56,6 +56,7 @@ const MobileTransferRow = ({
     panelOpen,
     closePanel,
     onProductSelect,
+    isSelectingRef,
 }: {
     item: TransferItem;
     isOver: boolean;
@@ -69,6 +70,7 @@ const MobileTransferRow = ({
     panelOpen: boolean;
     closePanel: () => void;
     onProductSelect: (p: Product) => void;
+    isSelectingRef: React.RefObject<boolean | any>;
 }) => (
     <Card className={cn("mb-3", isOver && "border-destructive border-2", item.productId && "border-green-200")}>
         <CardContent className="p-4 space-y-3">
@@ -138,7 +140,7 @@ const StockTransferTab = () => {
     const [destinationBranchId, setDestinationBranchId] = useState('');
     const [notes, setNotes] = useState('');
     const [items, setItems] = useState<TransferItem[]>([{
-        id: '1', productId: '', name: '', sku: '', availableStock: 0, quantity: 1, searchTerm: ''
+        id: '1', productId: '', name: '', sku: '', barcode: '', availableStock: 0, quantity: 1, searchTerm: ''
     }]);
     const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -248,7 +250,7 @@ const StockTransferTab = () => {
     };
 
     const resetForm = () => {
-        setItems([{ id: Date.now().toString(), productId: '', name: '', sku: '', availableStock: 0, quantity: 1, searchTerm: '' }]);
+        setItems([{ id: Date.now().toString(), productId: '', name: '', sku: '', barcode: '', availableStock: 0, quantity: 1, searchTerm: '' }]);
         setDestinationBranchId('');
         setNotes('');
     };
@@ -472,6 +474,7 @@ const StockTransferTab = () => {
                                                 panelOpen={panelOpen}
                                                 closePanel={closePanel}
                                                 onProductSelect={handleProductSelect}
+                                                isSelectingRef={isSelectingRef}
                                             />
                                         );
                                     })}

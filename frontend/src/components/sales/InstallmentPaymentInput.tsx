@@ -32,6 +32,7 @@ interface InstallmentPaymentInputProps {
   cashAccounts?: any[];
   onLinkToCash?: (paymentId: string, accountId: string) => Promise<void>;
   onUpdatePayment?: (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => Promise<void>;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
 }
 
 const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
@@ -52,6 +53,7 @@ const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
   cashAccounts = [],
   onLinkToCash,
   onUpdatePayment,
+  onDeletePayment,
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(paymentDate || new Date());
 
@@ -233,6 +235,7 @@ const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
           cashAccounts={cashAccounts}
           onLinkToCash={onLinkToCash}
           onUpdatePayment={onUpdatePayment}
+          onDeletePayment={onDeletePayment}
         />
       )}
     </div>

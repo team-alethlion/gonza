@@ -58,6 +58,7 @@ export const useProfitLossData = (
     netSales: 0,
     openingStock: 0,
     purchases: 0,
+    costOfReturns: 0,
     carriageInwards: 0,
     closingStock: 0,
     totalCostSales: 0,
@@ -69,6 +70,8 @@ export const useProfitLossData = (
     taxPercentage,
     taxAmount: 0,
     finalProfitAfterTax: 0,
+    grossMargin: 0,
+    netMargin: 0,
     basis
   };
 

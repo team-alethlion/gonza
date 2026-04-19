@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ProfitLossData } from '@/hooks/useProfitLossData';
+import { ProfitLossData } from '@/types/cash';
 import TaxCalculator from './TaxCalculator';
 import PLExportButton from './PLExportButton';
 import { cn } from '@/lib/utils';
@@ -48,7 +48,7 @@ const ProfitLossTable: React.FC<ProfitLossTableProps> = ({
     );
   }
 
-  const tableRows = [
+  const tableRows: any[] = [
     // --- TRADING ACCOUNT SECTION ---
     { detail: 'TRADING ACCOUNT', amount: null, isHeader: true },
     { detail: 'SALES / TURNOVER', amount: data.sales, isBold: true },

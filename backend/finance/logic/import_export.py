@@ -3,7 +3,7 @@ import io
 from datetime import datetime
 from django.db import transaction
 from ..models import Expense, ExpenseCategory, CashAccount, CashTransaction
-from .reports import to_decimal
+from core.utils import to_decimal
 
 def generate_expense_template(branch_id):
     """

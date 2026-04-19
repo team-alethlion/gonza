@@ -13,8 +13,9 @@ import { AlertCircle, RotateCcw, Save } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { processSalesReturnAction } from '@/app/actions/sales';
-import CashAccountSelection from './CashAccountSelection';
 import { useBusiness } from '@/contexts/BusinessContext';
+import { useCashAccounts } from '@/hooks/useCashAccounts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProcessReturnDialogProps {
   sale: Sale | null;
@@ -30,6 +31,7 @@ const ProcessReturnDialog: React.FC<ProcessReturnDialogProps> = ({
   onSuccess
 }) => {
   const { currentBusiness } = useBusiness();
+  const { accounts: cashAccounts } = useCashAccounts();
   const [items, setItems] = useState<any[]>([]);
   const [refundAmount, setRefundAmount] = useState<number>(0);
   const [cashAccountId, setCashAccountId] = useState<string>('');
@@ -43,12 +45,18 @@ const ProcessReturnDialog: React.FC<ProcessReturnDialogProps> = ({
         ...item,
         returnQty: 0,
         restock: true,
-        remainingQty: item.quantity - (item as any).quantityReturned // Backend field
+        remainingQty: item.quantity - ((item as any).quantityReturned || 0) // Backend field
       })));
       setRefundAmount(0);
       setReason('');
+
+      // Auto-select default cash account
+      if (cashAccounts.length > 0) {
+        const defaultAccount = cashAccounts.find(a => a.isDefault) || cashAccounts[0];
+        setCashAccountId(defaultAccount.id);
+      }
     }
-  }, [sale]);
+  }, [sale, cashAccounts]);
 
   const handleQtyChange = (index: number, val: string) => {
     const qty = parseInt(val) || 0;
@@ -201,10 +209,21 @@ const ProcessReturnDialog: React.FC<ProcessReturnDialogProps> = ({
             {refundAmount > 0 && (
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
                 <Label className="text-orange-700 font-bold">Refund Payment Source</Label>
-                <CashAccountSelection
-                  selectedAccountId={cashAccountId}
-                  onAccountSelect={setCashAccountId}
-                />
+                <Select
+                  value={cashAccountId}
+                  onValueChange={setCashAccountId}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select a cash account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cashAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} {account.isDefault && "(Default)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="text-[10px] text-muted-foreground uppercase">
                   This will record a CASH OUT transaction in the selected account.
                 </p>

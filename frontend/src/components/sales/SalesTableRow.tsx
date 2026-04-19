@@ -24,7 +24,7 @@ interface SalesTableRowProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale, reason?: string) => void;
-  onProcessReturn: (sale: Sale) => void;
+  onProcessReturn?: (sale: Sale) => void;
   onSendPaymentReminder: (sale: Sale) => void;
   onSendThankYouNotice?: (sale: Sale) => void;
   onSendPaymentReminderSMS?: (sale: Sale) => void;
@@ -284,19 +284,21 @@ const SalesTableRow: React.FC<SalesTableRowProps> = React.memo(({
             </Button>
           )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onProcessReturn(sale);
-            }}
-            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-            title="Process Return"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span className="sr-only">Process Return</span>
-          </Button>
+          {onProcessReturn && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onProcessReturn(sale);
+              }}
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              title="Process Return"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span className="sr-only">Process Return</span>
+            </Button>
+          )}
 
           {canEditSale && (
             <Button

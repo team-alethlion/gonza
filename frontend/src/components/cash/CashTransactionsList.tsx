@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CashTransaction } from '@/types/cash';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashAccounts } from '@/hooks/useCashAccounts';
+import { useBusiness } from '@/contexts/BusinessContext';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { exportCashTransactionsToPDF } from '@/utils/exportCashTransactionsToPDF';
 import { exportCashTransactionsToCSV } from '@/utils/exportCashTransactionsToCSV';
@@ -36,6 +37,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
   onViewTransaction,
   onTransactionDeleted
 }) => {
+  const { currentBusiness } = useBusiness();
   const { accounts } = useCashAccounts();
   const { settings } = useBusinessSettings();
   const { hasPermission } = useProfiles();
@@ -220,8 +222,6 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
         return 'font-semibold';
     }
   };
-
-  const { currentBusiness } = useBusinessSettings();
 
   const handleDelete = async (id: string) => {
     if (!currentBusiness?.id) return;

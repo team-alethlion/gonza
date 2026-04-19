@@ -139,6 +139,7 @@ class Transaction(models.Model):
     description = models.TextField(null=True, blank=True)
 
     type = models.CharField(max_length=50, default="topup") # "topup" | "subscription"
+    credits_amount = models.IntegerField(default=0)
     package_id = models.CharField(max_length=100, null=True, blank=True)
     billing_cycle = models.CharField(max_length=50, null=True, blank=True) # "monthly" | "yearly"
 

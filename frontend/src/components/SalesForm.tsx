@@ -125,7 +125,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
     handleRemoveItem,
     handleSelectCustomer,
     handleCategoryChange,
-    handleSalesCategoryChange,
     handleAmountPaidChange,
     handlePaymentDateChange,
     calculateTotalAmount,
@@ -139,13 +138,16 @@ const SalesForm: React.FC<SalesFormProps> = ({
     clearForm,
     selectedDate,
     setSelectedDate,
-    isSubmitted
+    isSubmitted,
+    handleSalesCategoryChange,
+    refreshSaleData
   } = useSaleFormLogic({
     initialData,
     defaultPaymentStatus: initialData?.paymentStatus || "Paid",
     cashAccounts,
     initialCategories,
   }) as any;
+
   const {
     createCashTransactionForSale,
     updateCashTransactionForSale,
@@ -156,6 +158,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const {
     linkPaymentToCashAccount,
     updatePayment: updatePaymentOriginal,
+    deletePayment: deletePaymentOriginal,
   } = useInstallmentPayments(initialData?.id);
 
   const { loading, handleSubmit } = useSaleSubmit({
@@ -260,7 +263,19 @@ const SalesForm: React.FC<SalesFormProps> = ({
   };
 
   const updatePayment = async (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => {
-    await updatePaymentOriginal(paymentId, updates);
+    const result = await updatePaymentOriginal(paymentId, updates);
+    if (result && refreshSaleData) {
+        // Trigger re-fetch of sale to update balance due on form
+        await refreshSaleData();
+    }
+  };
+
+  const deletePayment = async (paymentId: string) => {
+    const success = await deletePaymentOriginal(paymentId);
+    if (success && refreshSaleData) {
+        // Trigger re-fetch of sale to update balance due on form
+        await refreshSaleData();
+    }
   };
 
   const handleClearForm = () => {
@@ -393,6 +408,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         hasPaidWithHistory={formData.paymentStatus === "Paid" && payments.length > 0}
         onLinkPaymentToCash={(paymentId, accountId) => linkPaymentToCashAccount(paymentId, accountId)}
         onUpdatePayment={updatePayment}
+        onDeletePayment={deletePayment}
         onPaymentStatusChangeFromInstallment={async (newStatus) => handleSelectChange(newStatus)}
         notes={formData.notes}
         onNotesChange={handleChange}

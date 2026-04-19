@@ -50,6 +50,13 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Match legacy Supabase CORS flexibility
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-client-info",
+    "apikey",
+]
 CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'core.urls'
 WSGI_APPLICATION = 'core.wsgi.application'
@@ -73,11 +80,17 @@ import dj_database_url
 
 db_url = os.environ.get('DATABASE_URL')
 
+# Support for non-SSL connections (e.g. local development)
+ssl_require = True
+if db_url:
+    if db_url.startswith('sqlite') or 'localhost' in db_url or '127.0.0.1' in db_url or 'sslmode=disable' in db_url:
+        ssl_require = False
+
 DATABASES = {
     'default': dj_database_url.config(
         default=db_url,
         conn_max_age=0,
-        ssl_require=False if db_url and db_url.startswith('sqlite') else True
+        ssl_require=ssl_require
     )
 }
 
@@ -154,6 +167,22 @@ PESAPAL_CONSUMER_KEY = os.environ.get('PESAPAL_CONSUMER_KEY')
 PESAPAL_CONSUMER_SECRET = os.environ.get('PESAPAL_CONSUMER_SECRET')
 PESAPAL_IPN_ID = os.environ.get('PESAPAL_IPN_ID')
 PESAPAL_CALLBACK_URL = os.environ.get('PESAPAL_CALLBACK_URL')
+
+# Messaging Gateway Configuration
+SMS_PROVIDER_API_KEY = os.environ.get('SMS_PROVIDER_API_KEY')
+SMS_PROVIDER_USERNAME = os.environ.get('SMS_PROVIDER_USERNAME')
+SMS_SENDER_ID = os.environ.get('SMS_SENDER_ID', 'GONZA')
+
+VERNRA_API_KEY = os.environ.get('VERNRA_API_KEY')
+VERNRA_ACCOUNT_ID = os.environ.get('VERNRA_ACCOUNT_ID')
+VERNRA_BASE_URL = os.environ.get('VERNRA_BASE_URL', 'https://api.vernra.com')
+
+EAZIREACH_API_KEY = os.environ.get('EAZIREACH_API_KEY')
+EAZIREACH_ACCOUNT_ID = os.environ.get('EAZIREACH_ACCOUNT_ID')
+
+WHATSAPP_API_URL = os.environ.get('WHATSAPP_API_URL')
+WHATSAPP_API_KEY = os.environ.get('WHATSAPP_API_KEY')
+WHATSAPP_INSTANCE_PREFIX = os.environ.get('WHATSAPP_INSTANCE_PREFIX', 'gonza_')
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

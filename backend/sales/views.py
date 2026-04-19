@@ -774,6 +774,11 @@ class SaleItemViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 from .logic.returns import process_sales_return
+from .logic.installments import (
+    process_installment_payment, 
+    update_installment_payment, 
+    delete_installment_payment
+)
 
 class SalesReturnViewSet(viewsets.ModelViewSet):
     queryset = SalesReturn.objects.all()
@@ -822,84 +827,42 @@ class InstallmentPaymentViewSet(viewsets.ModelViewSet):
         if branch_id: qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-date')
 
-    @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
-        sale_id = data.get('saleId')
-        branch_id = data.get('locationId')
-        account_id = data.get('accountId')
-        amount = to_decimal(data.get('amount', 0))
-        date_val = data.get('paymentDate') or data.get('date') or datetime.now()
-        
-        if not sale_id:
-            return Response({"error": "saleId is required"}, status=400)
-            
         try:
-            sale = Sale.objects.select_for_update().get(id=sale_id)
-        except Sale.DoesNotExist:
-            return Response({"error": "Sale not found"}, status=404)
-
-        if amount <= 0:
-            return Response({"error": "Payment amount must be greater than zero"}, status=400)
-
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        payment = serializer.save(
-            branch_id=branch_id, 
-            agency_id=sale.agency_id,
-            amount=amount, 
-            date=date_val
-        )
-        
-        # Update sale totals
-        sale.amount_paid += amount
-        sale.balance_due = max(0, sale.total_amount - sale.amount_paid)
-        if sale.balance_due == 0:
-            sale.status = 'COMPLETED'
-        sale.save(update_fields=['amount_paid', 'balance_due', 'status'])
-        
-        if account_id and branch_id and not payment.cash_transaction_id:
-            from finance.models import CashTransaction
-            desc = f"Installment payment for {sale.customer.name if sale.customer else sale.customer_name} - Receipt #{sale.receipt_number}"
-            cash_tx = CashTransaction.objects.create(
-                user_id=payment.received_by_id or request.user.id,
-                branch_id=branch_id,
-                account_id=account_id,
-                amount=amount,
-                transaction_type='cash_in',
-                category='Installment payment',
-                description=desc,
-                date=date_val,
-                reference_id=payment.id,
-                reference_type='INSTALLMENT'
+            payment = process_installment_payment(
+                sale_id=data.get('saleId'),
+                amount=data.get('amount', 0),
+                user_id=request.user.id,
+                branch_id=data.get('locationId') or request.user.branch_id,
+                agency_id=getattr(request.user, 'agency_id', None),
+                account_id=data.get('accountId'),
+                notes=data.get('notes'),
+                date=data.get('paymentDate') or data.get('date')
             )
-            payment.cash_transaction = cash_tx
-            payment.save(update_fields=['cash_transaction'])
-            
-        return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
+            return Response(self.get_serializer(payment).data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @transaction.atomic
     def update(self, request, *args, **kwargs):
         payment = self.get_object()
-        serializer = self.get_serializer(payment, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        payment = serializer.save()
-        
-        if payment.cash_transaction_id:
-            payment.cash_transaction.amount = payment.amount
-            if 'paymentDate' in request.data or 'date' in request.data:
-                payment.cash_transaction.date = payment.date
-            payment.cash_transaction.save(update_fields=['amount', 'date'])
-            
-        return Response(self.get_serializer(payment).data)
+        try:
+            payment = update_installment_payment(
+                payment_id=payment.id,
+                updates=request.data,
+                user_id=request.user.id
+            )
+            return Response(self.get_serializer(payment).data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         payment = self.get_object()
-        if payment.cash_transaction_id:
-            payment.cash_transaction.delete()
-        payment.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            delete_installment_payment(payment.id)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def link_cash(self, request, pk=None):

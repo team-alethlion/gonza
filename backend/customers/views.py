@@ -86,6 +86,42 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         return Response(response_data)
 
+    @action(detail=False, methods=['get'])
+    def segment(self, request):
+        """
+        🎯 CUSTOMER SEGMENTATION ENGINE
+        Returns specific lists of customers for targeted messaging/actions.
+        """
+        from messaging.logic.core.segmentation import CustomerSegmenter
+        
+        branch_id = request.query_params.get('branchId')
+        segment_type = request.query_params.get('type', 'all')
+        days = int(request.query_params.get('days', 90))
+
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        if segment_type == 'unpaid':
+            queryset = CustomerSegmenter.get_unpaid_customers(branch_id)
+        elif segment_type == 'inactive':
+            queryset = CustomerSegmenter.get_inactive_customers(branch_id, days)
+        else:
+            queryset = CustomerSegmenter.get_all_customers(branch_id)
+
+        # Apply standard filters if needed (e.g., categories)
+        category_id = request.query_params.get('categoryId')
+        if category_id and category_id != 'all':
+            queryset = queryset.filter(category_id=category_id)
+
+        # Serialize
+        page = self.paginate_queryset(queryset)
+        customers = page if page is not None else queryset
+        serializer = self.get_serializer(customers, many=True)
+        
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
     def retrieve(self, request, *args, **kwargs):
         # 🚀 PERFORMANCE: Use stored totals instead of calculating on the fly
         instance = self.get_object()

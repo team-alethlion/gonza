@@ -369,6 +369,32 @@ export async function getDuplicateCustomersAction(branchId: string) {
     }
 }
 
+export async function getSegmentedCustomersAction(locationId: string, type: string = 'all', days: number = 90, categoryId?: string) {
+    try {
+        await verifyBranchAccess(locationId);
+        let url = `customers/customers/segment/?branchId=${locationId}&type=${type}&days=${days}`;
+        if (categoryId && categoryId !== 'all') {
+            url += `&categoryId=${categoryId}`;
+        }
+        
+        const data = await djangoFetch<any>(url);
+        
+        // Handle both paginated and simple list responses
+        const rawItems = Array.isArray(data) ? data : (data?.results || []);
+        
+        const mapped = rawItems.map((c: any) => mapDbCustomerToCustomer(c));
+
+        return { 
+            success: true, 
+            data: mapped,
+            count: Array.isArray(data) ? mapped.length : (data?.count || mapped.length)
+        };
+    } catch (error: any) {
+        console.error('Error fetching segmented customers:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 /**
  * 🚀 PERFORMANCE: Fetches stats, categories, and a snapshot of recent customers in ONE request.
  */

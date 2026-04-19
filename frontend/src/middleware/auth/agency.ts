@@ -19,7 +19,7 @@ export const agencyProxy = (auth: any, nextUrl: any) => {
     return true;
   }
 
-  // 3. SUBSCRIPTION GUARD: Must have an active trial or paid subscription
+  // 3. SUBSCRIPTION GUARD: Validates active dates and statuses
   const subStatus = user.subscriptionStatus;
   const subExpiry = user.subscriptionExpiry;
   const trialEnd = user.trialEndDate;
@@ -28,8 +28,17 @@ export const agencyProxy = (auth: any, nextUrl: any) => {
   const isTrialActive = subStatus === 'trial' && trialEnd && new Date(trialEnd) > now;
   const isSubActive = subStatus === 'active' && subExpiry && new Date(subExpiry) > now;
 
-  if (!isTrialActive && !isSubActive) {
-    console.log(`[AgencyProxy] ❌ Subscription Invalid (${subStatus}). Redirecting to /subscription`);
+  /**
+   * 🚀 RECOVERY BYPASS: 
+   * If the user is technically 'active' but the cookie date is expired (isSubActive is false), 
+   * we let them through to the /agency layout. 
+   * The Layout's server-side guard (StrictGuard) will then fetch the fresh date from the 
+   * database and either sync the session or show the "Re-authentication Required" screen.
+   */
+  const needsSync = subStatus === 'active' && !isSubActive;
+  
+  if (!isTrialActive && !isSubActive && !needsSync) {
+    console.log(`[AgencyProxy] ❌ Access Denied: Subscription Expired or Invalid (${subStatus})`);
     return NextResponse.redirect(new URL("/subscription", nextUrl));
   }
 

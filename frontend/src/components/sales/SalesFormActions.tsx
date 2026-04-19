@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageSquare, Printer } from "lucide-react";
-import { useMessages } from "@/hooks/useMessages";
+import { useMessages, MessageTemplate } from "@/hooks/useMessages";
 import { checkBridgeStatus } from "@/utils/thermalPrinterPlug";
 import {
   Select,
@@ -106,7 +106,7 @@ export const SalesFormActions: React.FC<SalesFormActionsProps> = ({
 
   const thankYouTemplates = useMemo(() => {
     return templates.filter(
-      (t) => t.category && String(t.category).trim() === "ThankYou"
+      (t: MessageTemplate) => t.category && String(t.category).trim() === "ThankYou"
     );
   }, [templates]);
 
@@ -119,7 +119,7 @@ export const SalesFormActions: React.FC<SalesFormActionsProps> = ({
       if (selectedTemplateId === 'default') {
         templateToUse = DEFAULT_TEMPLATE;
       } else if (selectedTemplateId && thankYouTemplates.length > 0) {
-        const tpl = thankYouTemplates.find((t) => t.id === selectedTemplateId);
+        const tpl = thankYouTemplates.find((t: MessageTemplate) => t.id === selectedTemplateId);
         if (tpl) {
           templateToUse = tpl.content;
         }
@@ -152,7 +152,7 @@ export const SalesFormActions: React.FC<SalesFormActionsProps> = ({
     if (id === 'default') {
       templateContent = DEFAULT_TEMPLATE;
     } else {
-      const tpl = thankYouTemplates.find((t) => t.id === id);
+      const tpl = thankYouTemplates.find((t: MessageTemplate) => t.id === id);
       if (tpl) {
         templateContent = tpl.content;
       }
@@ -257,7 +257,7 @@ export const SalesFormActions: React.FC<SalesFormActionsProps> = ({
                         <SelectItem value="default">
                           Default Template
                         </SelectItem>
-                        {thankYouTemplates.map((t) => (
+                        {thankYouTemplates.map((t: MessageTemplate) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name}
                           </SelectItem>

@@ -33,13 +33,15 @@ export async function POST(req: NextRequest) {
     // 3. Process if successful (status_code 1 is Success in Pesapal V3)
     let isCompleted = false;
     let valueAdded = 0;
+    let isSubscription = true;
 
     if (statusData.status_code === 1) {
-      // processSuccessfulSubscription now reaches out to Django and returns value_added
+      // processSuccessfulSubscription now reaches out to Django and returns metadata
       const result: any = await processSuccessfulSubscription(reference, statusData);
       if (result.success) {
         isCompleted = true;
-        valueAdded = result.value_added || 30; 
+        valueAdded = result.value_added || 0; 
+        isSubscription = result.is_subscription !== false;
       } else {
         return NextResponse.json(
           { success: false, error: result.error },
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
       tracking_id: orderTrackingId,
       merchant_reference: reference,
       value_added: valueAdded,
-      is_subscription: true,
+      is_subscription: isSubscription,
     });
   } catch (error: any) {
     console.error("[VerifyPayment API Error]:", error);

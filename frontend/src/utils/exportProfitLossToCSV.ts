@@ -1,5 +1,5 @@
 
-import { ProfitLossData } from '@/hooks/useProfitLossData';
+import { ProfitLossData } from '@/types/cash';
 import { format } from 'date-fns';
 
 interface ExportPLCSVOptions {
@@ -85,7 +85,7 @@ export const exportProfitLossToCSV = (options: ExportPLCSVOptions) => {
   csvRows.push('EXPENSES,');
   Object.entries(data.expensesByCategory).forEach(([category, amount]) => {
     const categoryName = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
-    csvRows.push(`${categoryName},${formatAmount(amount)}`);
+    csvRows.push(`${categoryName},${formatAmount(amount as number)}`);
   });
   csvRows.push(`TOTAL EXPENSES,${formatAmount(data.totalExpenses)}`);
 

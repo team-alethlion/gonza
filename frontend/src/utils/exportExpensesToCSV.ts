@@ -26,7 +26,7 @@ export const exportExpensesToCSV = (
     format(expense.date, 'yyyy-MM-dd'),
     `"${expense.description.replace(/"/g, '""')}"`,
     expense.category || '',
-    expense.amount.toString(),
+    (expense.amount || 0).toString(),
     expense.paymentMethod || '',
     expense.personInCharge || '',
     expense.cashAccountId ? 'Yes' : 'No',

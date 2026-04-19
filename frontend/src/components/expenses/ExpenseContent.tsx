@@ -12,7 +12,7 @@ interface ExpenseContentProps {
     thisMonthExpenses: number | null;
     transactionCount: number;
   };
-  formatCurrency: (amount: number) => string;
+  formatCurrency: (amount: number | null) => string;
   dateFilter: string;
   onUpdateExpense: (id: string, data: any) => Promise<any>;
   onDeleteExpense: (id: string) => Promise<boolean>;

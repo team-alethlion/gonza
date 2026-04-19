@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, MessageSquare } from "lucide-react";
-import { useMessages } from "@/hooks/useMessages";
+import { useMessages, MessageTemplate } from "@/hooks/useMessages";
 
 interface SaleSMSSectionProps {
   userId: string | undefined;
@@ -51,7 +51,7 @@ export const SaleSMSSection: React.FC<SaleSMSSectionProps> = ({
 
   const thankYouTemplates = useMemo(() => {
     return templates.filter(
-      (t) => t.category && String(t.category).trim() === "ThankYou"
+      (t: MessageTemplate) => t.category && String(t.category).trim() === "ThankYou"
     );
   }, [templates]);
 
@@ -60,7 +60,7 @@ export const SaleSMSSection: React.FC<SaleSMSSectionProps> = ({
 
     let templateToUse = DEFAULT_TEMPLATE;
     if (selectedTemplateId !== 'default') {
-      const tpl = thankYouTemplates.find((t) => t.id === selectedTemplateId);
+      const tpl = thankYouTemplates.find((t: MessageTemplate) => t.id === selectedTemplateId);
       if (tpl) templateToUse = tpl.content;
     }
 
@@ -74,7 +74,7 @@ export const SaleSMSSection: React.FC<SaleSMSSectionProps> = ({
     setSelectedTemplateId(id);
     let content = DEFAULT_TEMPLATE;
     if (id !== 'default') {
-      const tpl = thankYouTemplates.find((t) => t.id === id);
+      const tpl = thankYouTemplates.find((t: MessageTemplate) => t.id === id);
       if (tpl) content = tpl.content;
     }
     onSMSMessageChange(fillTemplate(content, customerName));
@@ -121,7 +121,7 @@ export const SaleSMSSection: React.FC<SaleSMSSectionProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="default">Default Template</SelectItem>
-                    {thankYouTemplates.map((t) => (
+                    {thankYouTemplates.map((t: MessageTemplate) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>

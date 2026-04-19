@@ -18,6 +18,7 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
   const isPublicFriendly = endpoint.includes('core/packages/') || 
                            endpoint.includes('core/agencies/') ||
                            endpoint.includes('users/users/me/') ||
+                           endpoint.includes('finance/transactions/') ||
                            endpoint.includes('auth/token') || 
                            endpoint.includes('public/');
 

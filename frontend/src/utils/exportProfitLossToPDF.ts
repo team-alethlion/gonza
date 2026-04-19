@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { ProfitLossData } from '@/hooks/useProfitLossData';
+import { ProfitLossData } from '@/types/cash';
 import { format } from 'date-fns';
 
 interface ExportPLPDFOptions {
@@ -178,7 +178,7 @@ export const exportProfitLossToPDF = async (options: ExportPLPDFOptions) => {
   // EXPENSES Section
   addSectionHeader('EXPENSES');
   Object.entries(data.expensesByCategory).forEach(([category, amount]) => {
-    addRow(category.charAt(0).toUpperCase() + category.slice(1).toLowerCase(), amount, { indent: true });
+    addRow(category.charAt(0).toUpperCase() + category.slice(1).toLowerCase(), amount as number | null, { indent: true });
   });
   addRow('TOTAL EXPENSES', data.totalExpenses, { isBold: true, isTotal: true });
   

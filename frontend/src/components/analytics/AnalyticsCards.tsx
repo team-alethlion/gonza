@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { TrendingUp, DollarSign, Percent, UserCheck, CreditCard, Package } from 'lucide-react';
 
 interface AnalyticsCardsProps {
-  analyticsData: AnalyticsData;
+  analyticsData: AnalyticsData | null;
   nonQuoteSalesCount: number;
   currency: string;
   expenses: number;

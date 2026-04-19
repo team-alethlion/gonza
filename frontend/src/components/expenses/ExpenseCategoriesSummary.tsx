@@ -208,7 +208,7 @@ const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
                       dataKey="value"
                       stroke="#ffffff"
                       strokeWidth={1.5}>
-                      {summarizedData.map((entry, index) => (
+                      {summarizedData.map((entry: any, index: number) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -240,7 +240,7 @@ const ExpenseCategoriesSummary: React.FC<ExpenseCategoriesSummaryProps> = ({
                   {viewMode === "category" ? "Categories" : "People"} Breakdown
                 </h3>
                 <div className="space-y-0 max-h-[220px] sm:max-h-[260px] overflow-y-auto pr-1 rounded-md">
-                  {summarizedData.map((item, index) => (
+                  {summarizedData.map((item: any, index: number) => (
                     <div
                       key={index}
                       className="flex justify-between items-center border-b border-border/40 py-2 px-1 hover:bg-muted/50 rounded-sm transition-colors">

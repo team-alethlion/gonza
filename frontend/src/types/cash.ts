@@ -157,9 +157,12 @@ export interface ProfitLossData {
   sales: number;
   salesReturns: number;
   netSales: number;
+  openingStock: number;
+  purchases: number;
   totalCostSales: number;
   costOfReturns: number;
   carriageInwards: number;
+  closingStock: number;
   totalCOGS: number;
   grossProfit: number;
   expensesByCategory: { [key: string]: number };
@@ -168,7 +171,7 @@ export interface ProfitLossData {
   taxPercentage: number;
   taxAmount: number;
   finalProfitAfterTax: number;
-  grossMargin: number;
-  netMargin: number;
+  grossMargin?: number;
+  netMargin?: number;
   basis: 'accrual' | 'cash';
 }

@@ -68,11 +68,17 @@ import dj_database_url
 
 db_url = os.environ.get('DATABASE_URL', 'postgres://a7e4d5d28715a731de0fb1b564139f0cca5c4a21d4995598be8c079ef627589c:sk_PaMCHF_TjeZVhlvS8hR0l@db.prisma.io:5432/postgres?sslmode=verify-full')
 
+# Support for non-SSL connections (e.g. local development)
+ssl_require = True
+if db_url:
+    if db_url.startswith('sqlite') or 'localhost' in db_url or '127.0.0.1' in db_url or 'sslmode=disable' in db_url:
+        ssl_require = False
+
 DATABASES = {
     'default': dj_database_url.config(
         default=db_url,
         conn_max_age=0,
-        ssl_require=False if db_url.startswith('sqlite') else True
+        ssl_require=ssl_require
     )
 }
 

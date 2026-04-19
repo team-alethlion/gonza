@@ -8,6 +8,7 @@ import { useFormValidation } from "./sale-form/useFormValidation";
 import { useFormCalculations } from "./sale-form/useFormCalculations";
 import { usePaymentOperations } from "./sale-form/usePaymentOperations";
 import { useBusinessSettings } from "./useBusinessSettings";
+import { SaleFormData } from "@/types";
 
 interface UseSaleFormLogicProps {
   initialData?: any;
@@ -167,7 +168,7 @@ export const useSaleFormLogic = ({
   // the financial fields in formData are recalculated based on the payment status.
   useEffect(() => {
     // We use the functional updater to avoid having formData in the dependency array
-    setFormData((prev: { items: any; taxRate: any; paymentStatus: string; amountPaid: any; amountDue: any; }) => {
+    setFormData((prev: SaleFormData) => {
       const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       
       // Recalculate using the resolver with CURRENT values from state

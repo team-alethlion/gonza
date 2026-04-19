@@ -66,7 +66,7 @@ const ViewExpenseDialog: React.FC<ViewExpenseDialogProps> = ({
             Amount
           </label>
           <p className="text-lg font-semibold text-red-600">
-            {formatCurrency(expense.amount)}
+            {formatCurrency(expense.amount || 0)}
           </p>
         </div>
       </div>

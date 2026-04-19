@@ -23,10 +23,12 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.db.models import Sum, Q, F, DecimalField, OuterRef, Subquery, Count
 from django.db.models.functions import Coalesce
 import uuid
-from .pesapal_utils import submit_pesapal_order, get_pesapal_transaction_status
+from .pesapal_utils import submit_pesapal_order, get_pesapal_transaction_status, register_pesapal_ipn
 from django.conf import settings
 from django.http import HttpResponse
 from .logic.reports import get_account_summary, get_live_balance
+from .logic.expenses import get_expense_stats
+from .logic.import_export import generate_expense_template, process_expense_import
 from core.utils import gen_tx_id, to_decimal
 
 class CashAccountViewSet(viewsets.ModelViewSet):
@@ -500,15 +502,40 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['post'])
+    def register_ipn(self, request):
+        """
+        🚀 IPN REGISTRATION UTILITY
+        Calls Pesapal's API to register the IPN listener and persists the ID.
+        """
+        try:
+            result = register_pesapal_ipn()
+            ipn_id = result.get('ipn_id')
+            
+            if ipn_id:
+                from core_app.models import SystemConfig
+                SystemConfig.objects.update_or_create(
+                    key='PESAPAL_IPN_ID',
+                    defaults={'value': {'id': ipn_id}}
+                )
+                
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['post'])
     def initiate_payment(self, request):
         try:
             user = request.user
+            
             amount = to_decimal(request.data.get('amount'))
             description = request.data.get('description', 'Payment')
             ttype = request.data.get('type', 'topup')
-            agency_id = request.data.get('agency_id')
-            package_id = request.data.get('package_id')
+            
+            # 🛡️ FIX: Ensure empty strings from frontend don't cause FK failures
+            agency_id = request.data.get('agency_id') or None
+            package_id = request.data.get('package_id') or None
             billing_cycle = request.data.get('billing_cycle')
+            credits_amount = int(request.data.get('credits_amount', 0))
             
             # Use current branch/location if possible, or just link via user
             branch_id = request.data.get('branch_id')
@@ -524,6 +551,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     agency_id=agency_id,
                     package_id=package_id,
                     billing_cycle=billing_cycle,
+                    credits_amount=credits_amount,
                     description=description,
                     pesapal_merchant_reference=reference,
                     status='pending'
@@ -556,7 +584,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 tx.save(update_fields=['pesapal_order_tracking_id'])
 
                 return Response({
-                    "success": true,
+                    "success": True,
+
                     "order_tracking_id": tx.pesapal_order_tracking_id,
                     "merchant_reference": reference,
                     "redirect_url": result.get('redirect_url')
@@ -583,19 +612,23 @@ class TransactionViewSet(viewsets.ModelViewSet):
             status_data = get_pesapal_transaction_status(tracking_id)
             status_code = status_data.get('status_code')
             
-            # Update status
-            # 1 = Completed, 0 = Failed, 2 = Pending
+            # Pesapal V3 Status Codes: 1 = Completed, 2 = Failed, 0 = Invalid, 3 = Reversed
             if str(status_code) == '1':
-                # Call existing logic to process success
-                # Since we are in the same viewset, we can call the detail action or helper
-                # Let's call a private method to keep it DRY
                 return self._finalize_success(tx, status_data.get('amount'))
-            elif str(status_code) == '0':
+            elif str(status_code) in ['0', '2']:
                 tx.status = 'failed'
                 tx.save(update_fields=['status', 'updated_at'])
-                return Response({"status": "failed"})
+                return Response({
+                    "status": "failed", 
+                    "success": False, 
+                    "status_code": status_code
+                })
             
-            return Response({"status": "pending"})
+            return Response({
+                "status": "pending", 
+                "success": False, 
+                "status_code": status_code
+            })
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
@@ -620,12 +653,20 @@ class TransactionViewSet(viewsets.ModelViewSet):
             
             if str(status_code) == '1':
                 return self._finalize_success(tx, status_data.get('amount'))
-            elif str(status_code) == '0':
+            elif str(status_code) in ['0', '2']:
                 tx.status = 'failed'
                 tx.save(update_fields=['status', 'updated_at'])
-                return Response({"status": "failed", "success": False})
+                return Response({
+                    "status": "failed", 
+                    "success": False, 
+                    "status_code": status_code
+                })
             
-            return Response({"status": "pending", "success": False})
+            return Response({
+                "status": "pending", 
+                "success": False, 
+                "status_code": status_code
+            })
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
@@ -649,6 +690,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 tx.status = 'completed'
                 tx.save(update_fields=['status', 'updated_at'])
 
+                if tx.type == 'topup' and tx.credits_amount > 0:
+                    # 🚀 TOP-UP LOGIC: Increment user credits
+                    user = tx.user
+                    user.credits = F('credits') + tx.credits_amount
+                    user.save(update_fields=['credits'])
+                    return Response({
+                        "success": True,
+
+                        "status": "completed", 
+                        "is_subscription": False, 
+                        "value_added": tx.credits_amount
+                    })
+
                 if tx.type == 'subscription' and tx.agency_id:
                     from core_app.models import Agency
                     from django.utils.timezone import now
@@ -662,21 +716,32 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         if agency.subscription_expiry and agency.subscription_expiry > current_time:
                             new_expiry = agency.subscription_expiry
 
+                        days_added = 0
                         if tx.billing_cycle and tx.billing_cycle.lower() == 'yearly':
                             new_expiry += relativedelta(years=1)
+                            days_added = 365
                         else:
                             new_expiry += relativedelta(months=1)
+                            days_added = 30
 
                         agency.subscription_status = 'active'
                         agency.subscription_expiry = new_expiry
                         if tx.package_id:
                             agency.package_id = tx.package_id
                         agency.save()
+                        
+                        return Response({
+                            "success": True,
+
+                            "status": "completed", 
+                            "is_subscription": True, 
+                            "value_added": days_added
+                        })
 
                     except Agency.DoesNotExist:
                         pass
 
-                return Response({"success": True, "status": "completed"})
+                return Response({"success": True, "status": "completed", "is_subscription": False, "value_added": 0})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 

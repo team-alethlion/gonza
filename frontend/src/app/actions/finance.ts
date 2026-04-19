@@ -602,7 +602,7 @@ export async function getProfitLossAction(locationId: string, startDate: Date, e
                 netSales: toSafeNumber(raw.revenue.netSales),
                 
                 // COGS
-                grossCostSales: toSafeNumber(raw.cogs.grossCostSales),
+                totalCostSales: toSafeNumber(raw.cogs.grossCostSales),
                 costOfReturns: toSafeNumber(raw.cogs.costOfReturns),
                 carriageInwards: toSafeNumber(raw.cogs.carriageInwards),
                 totalCOGS: toSafeNumber(raw.cogs.totalCOGS),

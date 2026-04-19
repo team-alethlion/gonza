@@ -1,0 +1,20 @@
+{
+  "files.exclude": {
+    "prev/**": true
+  },
+  "search.exclude": {
+    "prev/**": true
+  },
+  "files.watcherExclude": {
+    "prev/**": true
+  },
+  "python.analysis.exclude": ["prev/**"],
+  "python.analysis.ignore": ["prev/**"],
+  "eslint.options": {
+    "ignorePattern": ["prev/**"]
+  },
+  "typescript.preferences.autoImportFileExcludePatterns": ["prev/**"],
+  "typescript.tsserver.watchOptions": {
+    "excludeDirectories": ["**/node_modules", "**/prev"]
+  }
+}

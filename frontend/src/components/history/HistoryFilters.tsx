@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Search, RefreshCw } from "lucide-react";
-import { ActivityFilters } from "@/app/(agency)/agency/history/page";
+import { ActivityFilters } from "@/types";
 import { ActivityType, ModuleType } from "@/hooks/useActivityLogger";
 
 interface HistoryFiltersProps {

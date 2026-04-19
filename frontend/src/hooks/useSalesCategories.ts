@@ -9,6 +9,7 @@ import {
   deleteSalesCategoryAction
 } from '@/app/actions/sales';
 import { localDb } from '@/lib/dexie';
+import { SalesCategory } from '@/types';
 
 export const useSalesCategories = (initialData?: SalesCategory[]) => {
   const { currentBusiness } = useBusiness();

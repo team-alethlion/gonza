@@ -29,7 +29,7 @@ export interface Sale {
   customerContact?: string;
   customerId?: string;
   items: SaleItem[];
-  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale' | 'COMPLETED' | 'UNPAID' | 'INSTALLMENT' | 'QUOTE' | 'PENDING';
+  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale' | 'COMPLETED' | 'UNPAID' | 'INSTALLMENT' | 'QUOTE' | 'PENDING' | 'REFUNDED' | 'PARTIAL_REFUND';
   profit: number;
   total: number;
   totalCost: number;
@@ -183,7 +183,7 @@ export interface SaleFormData {
   customerContact: string;
   customerId?: string; // Added customerId field
   items: SaleItem[];
-  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale" | "COMPLETED" | "UNPAID" | "INSTALLMENT" | "QUOTE" | "PENDING";
+  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale" | "COMPLETED" | "UNPAID" | "INSTALLMENT" | "QUOTE" | "PENDING" | "REFUNDED" | "PARTIAL_REFUND";
   receiptNumber?: string;
   taxRate?: number | null;
   amountPaid?: number;

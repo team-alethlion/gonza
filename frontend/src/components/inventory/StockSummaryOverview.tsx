@@ -29,12 +29,21 @@ interface StockSummaryOverviewProps {
   data: StockSummaryData[];
   summary: {
     totalOpeningStock: number;
+    totalOpeningStockValue?: number;
     totalStockIn: number;
+    totalStockInValue?: number;
     totalItemsSold: number;
+    totalItemsSoldValue?: number;
     totalAdjustmentsIn: number;
+    totalAdjustmentsInValue?: number;
     totalAdjustmentsOut: number;
+    totalAdjustmentsOutValue?: number;
     totalClosingStock: number;
+    totalClosingStockValue?: number;
     totalRevaluation: number;
+    totalReturnInValue?: number;
+    totalReturnOutValue?: number;
+    totalTransferOutValue?: number;
   } | null;
   isFiltered?: boolean;
 }

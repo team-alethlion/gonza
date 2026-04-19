@@ -155,6 +155,10 @@ class SystemConfig(models.Model):
         return self.key
 
 class SubscriptionTransaction(models.Model):
+    """
+    ⚠️ DEPRECATED: Standardize on finance.Transaction for all Pesapal payments.
+    This model remains for legacy compatibility but should not be used for new transactions.
+    """
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('completed', 'Completed'),

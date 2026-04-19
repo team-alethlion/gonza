@@ -27,6 +27,7 @@ import { exportExpensesToCSV } from "@/utils/exportExpensesToCSV";
 import { exportExpensesToPDF } from "@/utils/exportExpensesToPDF";
 import { generateExpenseTemplate } from "@/utils/generateExpenseTemplate";
 import { formatCashCurrency } from "@/lib/utils";
+import { getDateRangeFromFilter } from "@/utils/dateFilters";
 
 const ExpensesClient = ({
   initialExpenses,
@@ -65,6 +66,14 @@ const ExpensesClient = ({
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isBulkEntryOpen, setIsBulkEntryOpen] = useState(false);
   const [isCSVUploadOpen, setIsCSVUploadOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
 
   const formatCurrency = useCallback((amount: number | null) => {
     if (amount === null) return '•••';
@@ -130,14 +139,14 @@ const ExpensesClient = ({
   const canCreate = hasPermission("expenses", "create");
 
   // Sync date filters from local state to hooks
-  const onDateFilterChange = (val: string, range?: any) => {
+  const handleDateFilterChange = (val: string, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDateFilter(val);
     const newFilters: any = {};
     if (val !== "all") {
       if (val === "custom" && range) {
         if (range.from) newFilters.date_from = range.from.toISOString();
         if (range.to) newFilters.date_to = range.to.toISOString();
       } else {
-        const { getDateRangeFromFilter } = require("@/utils/dateFilters");
         const r = getDateRangeFromFilter(val);
         if (r.from) newFilters.date_from = r.from.toISOString();
         if (r.to) newFilters.date_to = r.to.toISOString();
@@ -150,6 +159,11 @@ const ExpensesClient = ({
     } else {
       setListFilters(newFilters);
     }
+  };
+
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range);
+    handleDateFilterChange("custom", range);
   };
 
   return (
@@ -224,8 +238,10 @@ const ExpensesClient = ({
             />
 
             <ExpensesDateFilter
-              dateFilter={"all"} // Needs better management
-              onDateFilterChange={(val) => onDateFilterChange(val)}
+              dateFilter={dateFilter}
+              dateRange={dateRange}
+              onDateFilterChange={handleDateFilterChange}
+              onDateRangeChange={handleDateRangeChange}
             />
 
             <ExpenseContent
@@ -248,8 +264,10 @@ const ExpensesClient = ({
             value="expenses-list"
             className="space-y-6 animate-in fade-in-50 duration-300">
             <ExpensesDateFilter
-              dateFilter={"all"}
-              onDateFilterChange={(val) => onDateFilterChange(val)}
+              dateFilter={dateFilter}
+              dateRange={dateRange}
+              onDateFilterChange={handleDateFilterChange}
+              onDateRangeChange={handleDateRangeChange}
             />
 
             <ExpenseContent

@@ -157,3 +157,101 @@ export async function deleteMessageTemplateAction(id: string) {
         return { success: false, error: error.message };
     }
 }
+
+export async function getMessagingStatsAction(locationId: string) {
+    try {
+        await verifyBranchAccess(locationId);
+        const stats = await djangoFetch<any>(`messaging/messages/stats/?locationId=${locationId}`);
+        return { success: true, data: stats };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function bulkSendMessagesAction(data: {
+    locationId: string;
+    customerIds: string[];
+    content?: string;
+    templateId?: string;
+    channel?: 'sms' | 'whatsapp';
+}) {
+    try {
+        await verifyBranchAccess(data.locationId);
+        const result = await djangoFetch<any>(`messaging/messages/bulk_send/`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        revalidatePath('/messages');
+        return { success: true, data: result };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getWhatsAppStatusAction() {
+    try {
+        const result = await djangoFetch<any>(`messaging/whatsapp/status/`);
+        return { success: true, data: result };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function initializeWhatsAppAction(type: 'qr' | 'pairing' = 'qr', phoneNumber?: string) {
+    try {
+        const result = await djangoFetch<any>(`messaging/whatsapp/initialize/`, { 
+            method: 'POST',
+            body: JSON.stringify({ type, phoneNumber })
+        });
+        revalidatePath('/messages');
+        return { success: true, data: result };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function disconnectWhatsAppAction() {
+    try {
+        await djangoFetch<any>(`messaging/whatsapp/disconnect/`, { method: 'POST' });
+        revalidatePath('/messages');
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function initiateCreditPurchaseAction(params: {
+    amount: number;
+    credits_amount: number;
+    description: string;
+    reference: string;
+    locationId: string;
+}) {
+    try {
+        await verifyBranchAccess(params.locationId);
+        
+        // We import initiatePesapalPayment from lib/pesapal, which uses djangoFetch internally
+        const { initiatePesapalPayment } = await import("@/lib/pesapal");
+        
+        const result = await initiatePesapalPayment({
+            amount: params.amount,
+            credits_amount: params.credits_amount,
+            description: params.description,
+            reference: params.reference,
+            email: "", // Backend will use session user email
+            phoneNumber: "", // Backend will use session user phone
+            type: 'topup',
+            agency_id: "", // Backend will resolve
+        });
+
+        return { 
+            success: true, 
+            redirectUrl: result.redirect_url,
+            orderTrackingId: result.order_tracking_id,
+            merchantReference: result.merchant_reference
+        };
+    } catch (error: any) {
+        console.error("Top-up error:", error);
+        return { success: false, error: error.message };
+    }
+}

@@ -7,7 +7,7 @@ from core_app.models import Agency
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, ModelAdmin):
-    list_display = ('email', 'role', 'agency', 'branch', 'status', 'is_staff')
+    list_display = ('email', 'role', 'agency', 'branch', 'credits', 'status', 'is_staff')
     list_filter = ('status', 'role', 'is_staff', 'is_superuser')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)

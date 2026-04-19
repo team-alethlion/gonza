@@ -10,6 +10,7 @@ export interface BusinessRole {
   id: string;
   business_location_id: string;
   name: string;
+  pin_required: boolean;
   description?: string | null;
   permissions: Record<string, string[]>;
   created_at: string;
