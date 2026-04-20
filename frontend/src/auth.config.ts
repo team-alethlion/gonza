@@ -199,6 +199,7 @@ export const authConfig = {
       return session
     },
     authorized({ auth, request: { nextUrl } }) {
+      if (nextUrl.pathname.startsWith("/static")) return true;
       const isLoggedIn = !!auth?.user
       const user = auth?.user as any
       const role = user?.role?.toLowerCase()
