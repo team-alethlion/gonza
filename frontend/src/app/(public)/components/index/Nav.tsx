@@ -34,7 +34,7 @@ const Nav = () => {
             <Image
               width={32}
               height={32}
-              src="/lovable-uploads/logo sys white-01.png"
+              src="/logo/gonza_systems_white.png"
               alt="Gonza Logo"
               className="h-8 md:h-10"
             />

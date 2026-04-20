@@ -136,7 +136,7 @@ const ResetPassword = () => {
       <div
         className="flex flex-col items-center justify-center min-h-screen p-4 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('/lovable-uploads/2fca69a3-fd1f-4833-bb84-fd7f5764059f.png')`,
+          backgroundImage: `url('/banners/b5.png')`,
         }}>
         <Card className="w-full max-w-md border-primary/10 shadow-lg bg-white/90">
           <CardHeader className="space-y-1">
@@ -164,11 +164,11 @@ const ResetPassword = () => {
     <div
       className="flex flex-col items-center justify-center min-h-screen p-4 bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: `url('/lovable-uploads/2fca69a3-fd1f-4833-bb84-fd7f5764059f.png')`,
+        backgroundImage: `url('/banners/b5.png')`,
       }}>
       <div className="mb-6">
         <Image
-          src="/lovable-uploads/da3f3948-8e6b-4501-b4aa-5e365d8e799e.png"
+          src="/logo/sales_tracker_profit.png"
           alt="Gonzo Sales & Profit Tracker"
           // 1. Set these to the "base" (mobile) size to prevent layout jump
           width={204}

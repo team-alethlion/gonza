@@ -206,7 +206,7 @@ const SignUp = () => {
       <div className="mb-8">
         <div className="relative h-12 w-auto md:h-16">
           <Image
-            src="/lovable-uploads/798d07d7-1db7-498c-92f3-6f6346827d59.png"
+            src="/logo/gonza_systems_lg.png"
             alt="Gonzo Systems"
             fill
             className="object-contain"

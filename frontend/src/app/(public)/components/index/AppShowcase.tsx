@@ -127,7 +127,7 @@ const AppShowcase = ({ B }: { B: any }) => {
             />
             <div className="relative w-full overflow-visible">
               <Image
-                src="/lovable-uploads/hand.png"
+                src="/mockups/hand.png"
                 alt="Gonza app on iPhone"
                 width={4000}
                 height={3000}

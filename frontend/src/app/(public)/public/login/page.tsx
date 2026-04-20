@@ -19,7 +19,7 @@ export default function LoginPage() {
     <div
       className="flex flex-col items-center justify-center min-h-screen p-4 bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: `url('/lovable-uploads/2fca69a3-fd1f-4833-bb84-fd7f5764059f.png')`,
+        backgroundImage: `url('//banners/b5.png')`,
       }}>
       <div className="w-full max-w-md">
         <LoginLogo />
