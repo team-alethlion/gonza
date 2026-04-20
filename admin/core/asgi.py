@@ -8,6 +8,13 @@ https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Add current and backend directories to path
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR.parent / 'backend'))
 
 from django.core.asgi import get_asgi_application
 
