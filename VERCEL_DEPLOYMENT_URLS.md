@@ -9,8 +9,8 @@ Use these values to update your environment variables in the Vercel Dashboard.
 | **NEXT_PUBLIC_WEBSITE_URL** | `https://gonza-pi.vercel.app` |
 | **NEXT_PUBLIC_AUTH_URL** | `https://gonza-pi.vercel.app` |
 | **NEXT_PUBLIC_CLIENT_URL** | `https://gonza-pi.vercel.app` |
-| **NEXT_PUBLIC_ADMIN_URL** | `https://gonza-pi.vercel.app/_/admin` |
-| **NEXT_PUBLIC_DJANGO_API_URL** | `https://gonza-pi.vercel.app/_/api` |
+| **NEXT_PUBLIC_ADMIN_URL** | `https://gonza-pi.vercel.app/admin` |
+| **NEXT_PUBLIC_DJANGO_API_URL** | `https://gonza-pi.vercel.app/api` |
 
 ## Payment Callbacks
 | Variable | Value |
@@ -19,7 +19,8 @@ Use these values to update your environment variables in the Vercel Dashboard.
 
 ## Service Prefixes (Reference)
 *   **Frontend:** `https://gonza-pi.vercel.app/`
-*   **Backend (API & Admin):** `https://gonza-pi.vercel.app/_/`
+*   **Backend API:** `https://gonza-pi.vercel.app/api/`
+*   **Backend Admin:** `https://gonza-pi.vercel.app/admin/`
 
 ---
 **Note:** When adding these to Vercel, make sure `DEBUG` is set to `False`.
