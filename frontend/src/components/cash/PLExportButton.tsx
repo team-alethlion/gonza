@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Download, FileText, File } from 'lucide-react';
-import { ProfitLossData } from '@/hooks/useProfitLossData';
+import { ProfitLossData } from '@/types/cash';
 import { exportProfitLossToCSV } from '@/utils/exportProfitLossToCSV';
 import { exportProfitLossToPDF } from '@/utils/exportProfitLossToPDF';
 import { useToast } from '@/hooks/use-toast';

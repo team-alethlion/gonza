@@ -1,7 +1,26 @@
 from cuid2 import cuid_wrapper
+from decimal import Decimal, InvalidOperation
 
 # Create a CUID generator
 cuid_gen = cuid_wrapper()
+
+def to_decimal(val, default='0.00'):
+    """
+    Safely converts any value to a Decimal.
+    Handles None, empty strings, and invalid numeric strings (like 'None' or 'abc').
+    Ensures the application never crashes during financial calculations.
+    """
+    if val is None:
+        return Decimal(str(default))
+    
+    clean_val = str(val).strip().lower()
+    if clean_val in ['none', '', 'nan', 'undefined']:
+        return Decimal(str(default))
+        
+    try:
+        return Decimal(str(val))
+    except (TypeError, ValueError, InvalidOperation):
+        return Decimal(str(default))
 
 def generate_id(prefix=""):
     """
@@ -19,6 +38,7 @@ def gen_pe_id(): return generate_id("pe")
 def gen_pt_id(): return generate_id("pt")
 def gen_dr_id(): return generate_id("dr")
 def gen_ev_id(): return generate_id("ev")
+def gen_bi_id(): return generate_id("bi")
 
 # Core App
 def gen_pa_id(): return generate_id("pa")
@@ -57,6 +77,7 @@ def gen_cc_id(): return generate_id("cc")
 def gen_cu_id(): return generate_id("cu")
 def gen_fc_id(): return generate_id("fc")
 def gen_tk_id(): return generate_id("tk")
+def gen_cl_id(): return generate_id("cl")
 
 # Sales
 def gen_sg_id(): return generate_id("sg")
@@ -64,6 +85,8 @@ def gen_slc_id(): return generate_id("slc")
 def gen_sa_id(): return generate_id("sa")
 def gen_si_id(): return generate_id("si")
 def gen_ip_id(): return generate_id("ip")
+def gen_sr_id(): return generate_id("sr")
+def gen_sri_id(): return generate_id("sri")
 
 # Messaging
 def gen_cp_id(): return generate_id("cp")

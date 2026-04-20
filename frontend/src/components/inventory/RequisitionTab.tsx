@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Download, ChevronUp, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Download, ChevronUp, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useProducts } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
@@ -19,17 +19,8 @@ import { useProductSuggestions } from '@/hooks/useProductSuggestions';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useRequisitions } from '@/hooks/useRequisitions';
+import { getLowStockItemsAction, downloadRequisitionPDFAction } from '@/app/actions/inventory';
 import SavedRequisitions from './SavedRequisitions';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: any;
-  }
-}
 
 interface RequisitionItem {
   id: string;
@@ -179,7 +170,7 @@ const MobileRequisitionRow = ({
 
 const RequisitionTab = () => {
   const { user } = useAuth();
-  const { products } = useProducts(user?.id, 10000); // Load all products for proper lookup
+  const { products } = useProducts(user?.id, 10000); 
   const { settings } = useBusinessSettings();
   const { currentBusiness } = useBusiness();
   const { toast } = useToast();
@@ -200,6 +191,27 @@ const RequisitionTab = () => {
   const [notes, setNotes] = useState<string>('');
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [isLowStockLoading, setIsLowStockLoading] = useState(false);
+
+  // 🚀 PERFORMANCE: Fetch low stock items from backend instead of filtering 10,000 products in frontend
+  useEffect(() => {
+    const fetchLowStock = async () => {
+      if (!currentBusiness?.id) return;
+      setIsLowStockLoading(true);
+      try {
+        const result = await getLowStockItemsAction(currentBusiness.id);
+        if (result.success) {
+          setLowStockItems(result.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch low stock alerts:", err);
+      } finally {
+        setIsLowStockLoading(false);
+      }
+    };
+    fetchLowStock();
+  }, [currentBusiness?.id]);
 
   // Product suggestions hook
   const focusedRow = requisitionItems.find(row => row.id === focusedRowId);
@@ -208,11 +220,6 @@ const RequisitionTab = () => {
     isOpen: panelOpen,
     closePanel
   } = useProductSuggestions(products, focusedRow?.searchTerm || '');
-
-  // Get low stock items (items below minimum stock level)
-  const lowStockItems = products.filter(product =>
-    product.quantity <= product.minimumStock
-  );
 
   // Low stock pagination
   const [lowStockExpanded, setLowStockExpanded] = useState(false);
@@ -348,7 +355,7 @@ const RequisitionTab = () => {
     setFocusedRowId(rowId);
   }, []);
 
-  const addLowStockItem = useCallback((product: Product) => {
+  const addLowStockItem = useCallback((product: any) => {
     const existingRow = requisitionItems.find(row => row.productId === product.id);
     if (existingRow) {
       toast({
@@ -363,129 +370,36 @@ const RequisitionTab = () => {
       id: Date.now().toString(),
       productId: product.id,
       productName: product.name,
-      quantity: Math.max(1, product.minimumStock - product.quantity),
+      quantity: Math.max(1, product.min_stock - product.stock),
       searchTerm: product.name,
-      urgentItem: product.quantity === 0 // Mark as urgent if out of stock
+      urgentItem: product.stock === 0 
     };
     setRequisitionItems(prev => [...prev, newRow]);
   }, [requisitionItems, toast]);
 
-  const generateRequisitionNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const time = date.getTime().toString().slice(-4);
-    return `REQ${year}${month}${day}${time}`;
-  };
-
-  const generatePDF = useCallback(() => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-
-    // Header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PURCHASE REQUISITION', pageWidth / 2, 20, { align: 'center' });
-
-    // Business info
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Business: ${settings.businessName || 'Your Business Name'}`, 20, 40);
-    doc.text(`Date: ${format(new Date(), 'PPP')}`, 20, 50);
-    doc.text(`Requisition #: ${generateRequisitionNumber()}`, 20, 60);
-
-    if (requisitionTitle) {
-      doc.text(`Title: ${requisitionTitle}`, 20, 70);
-    }
-
-    // Filter items with products selected and quantity > 0
-    const validItems = requisitionItems.filter(item => item.productId && item.quantity > 0);
-
-    if (validItems.length === 0) {
-      doc.text('No items to requisition.', 20, 90);
-    } else {
-      // Calculate amounts for each item
-      const tableData = validItems.map((item, index) => {
-        const product = products.find(p => p.id === item.productId);
-        const amount = product ? product.costPrice * item.quantity : 0;
-        return [
-          index + 1,
-          item.productName,
-          formatNumber(item.quantity),
-          product ? `${settings.currency} ${formatNumber(product.costPrice)}` : '-',
-          `${settings.currency} ${formatNumber(amount)}`,
-          item.urgentItem ? 'Yes' : 'No'
-        ];
-      });
-
-      // Table
-      doc.autoTable({
-        head: [['#', 'Item Description', 'Qty', 'Unit Cost', 'Amount', 'Urgent']],
-        body: tableData,
-        startY: requisitionTitle ? 80 : 70,
-        theme: 'grid',
-        styles: {
-          fontSize: 10,
-          cellPadding: 3
-        },
-        headStyles: {
-          fillColor: [41, 128, 185],
-          textColor: 255
-        },
-        columnStyles: {
-          0: { cellWidth: 15 },
-          1: { cellWidth: 60 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 30 },
-          5: { cellWidth: 20 }
-        }
-      });
-
-      // Summary
-      const totalQuantity = validItems.reduce((sum, item) => sum + item.quantity, 0);
-      const urgentItems = validItems.filter(item => item.urgentItem).length;
-
-      const yPos = doc.lastAutoTable.finalY + 20;
-      doc.setFont('helvetica', 'bold');
-      doc.text('SUMMARY:', 20, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total Items: ${validItems.length}`, 20, yPos + 10);
-      doc.text(`Total Quantity: ${formatNumber(totalQuantity)}`, 20, yPos + 20);
-      doc.text(`Total Amount: ${settings.currency} ${formatNumber(totalAmount)}`, 20, yPos + 30);
-      doc.text(`Urgent Items: ${urgentItems}`, 20, yPos + 40);
-    }
-
-    // Notes section
-    if (notes) {
-      let notesY = validItems.length > 0 ? doc.lastAutoTable.finalY + 70 : 110;
-      if (notesY > 250) {
-        doc.addPage();
-        notesY = 30;
+  // 🚀 PERFORMANCE: Use backend-generated PDF for consistency and reliability
+  const handleDownloadSavedPDF = useCallback(async (requisitionId: string) => {
+    try {
+      const result = await downloadRequisitionPDFAction(requisitionId);
+      if (result.success && result.data) {
+        const blob = new Blob([result.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Requisition_${requisitionId}.pdf`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        throw new Error(result.error);
       }
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('NOTES:', 20, notesY);
-      doc.setFont('helvetica', 'normal');
-
-      const splitNotes = doc.splitTextToSize(notes, pageWidth - 40);
-      doc.text(splitNotes, 20, notesY + 10);
+    } catch (err: any) {
+      toast({
+        title: "Download failed",
+        description: err.message || "Could not generate PDF from server.",
+        variant: "destructive"
+      });
     }
-
-    // Footer
-    const finalY = doc.internal.pageSize.height - 30;
-    doc.setFontSize(10);
-    doc.text('Requested by: _____________________', 20, finalY);
-    doc.text('Date: _____________', 120, finalY);
-    doc.text('Approved by: _____________________', 20, finalY + 10);
-    doc.text('Date: _____________', 120, finalY + 10);
-
-    const fileName = `Requisition_${generateRequisitionNumber()}.pdf`;
-    doc.save(fileName);
-
-    return fileName;
-  }, [requisitionItems, requisitionTitle, notes, settings.businessName, products, settings.currency, totalAmount]);
+  }, [toast]);
 
   const saveRequisition = useCallback(async () => {
     if (!user || !currentBusiness) return;
@@ -547,25 +461,6 @@ const RequisitionTab = () => {
     }
   }, [user, currentBusiness, requisitionItems, requisitionTitle, notes, toast, createRequisition]);
 
-  const handleDownloadPDF = useCallback(() => {
-    const validItems = requisitionItems.filter(item => item.productId && item.quantity > 0);
-
-    if (validItems.length === 0) {
-      toast({
-        title: "No items to download",
-        description: "Please add at least one item with a quantity greater than 0.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const fileName = generatePDF();
-    toast({
-      title: "PDF downloaded",
-      description: `Requisition has been downloaded as ${fileName}.`
-    });
-  }, [requisitionItems, generatePDF, toast]);
-
   const totalQuantity = requisitionItems.reduce((sum, row) => sum + row.quantity, 0);
 
   return (
@@ -579,6 +474,7 @@ const RequisitionTab = () => {
                 <AlertTriangle size={20} />
                 Low Stock Items ({lowStockItems.length})
               </CardTitle>
+              {isLowStockLoading && <Loader2 className="h-4 w-4 animate-spin text-orange-500" />}
               {!lowStockExpanded && lowStockItems.length > lowStockItemsPerPage && (
                 <Button
                   variant="ghost"
@@ -604,7 +500,7 @@ const RequisitionTab = () => {
                   onClick={() => addLowStockItem(product)}
                   className="text-xs border-orange-300 hover:bg-orange-100"
                 >
-                  {product.name} ({product.quantity}/{product.minimumStock})
+                  {product.name} ({product.stock}/{product.min_stock})
                 </Button>
               ))}
               {!lowStockExpanded && lowStockItems.length > 5 && (
@@ -704,12 +600,6 @@ const RequisitionTab = () => {
                 className="gap-2 flex-1 md:flex-none"
               >
                 Save
-              </Button>
-              <Button
-                onClick={handleDownloadPDF}
-                className="gap-2 flex-1 md:flex-none"
-              >
-                <Download size={16} /> PDF
               </Button>
             </div>
           </div>
@@ -912,6 +802,7 @@ const RequisitionTab = () => {
         isLoading={requisitionsLoading}
         onRefresh={loadRequisitions}
         onDelete={deleteRequisition}
+        onDownloadPDF={handleDownloadSavedPDF}
         businessName={settings.businessName}
       />
     </div>

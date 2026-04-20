@@ -17,9 +17,30 @@ const TaxCalculator: React.FC<TaxCalculatorProps> = ({
   netProfitLoss,
   formatCurrency
 }) => {
-  const handleTaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 0;
-    onTaxChange(Math.max(0, Math.min(100, value))); // Clamp between 0-100
+  // 🚀 FIX: Use local string state to allow free typing of decimals/multi-digits
+  const [inputValue, setInputValue] = React.useState(taxPercentage.toString());
+
+  // Sync local state if prop changes externally (e.g. on mount or reset)
+  React.useEffect(() => {
+    if (parseFloat(inputValue) !== taxPercentage) {
+        setInputValue(taxPercentage.toString());
+    }
+  }, [taxPercentage]);
+
+  // Debounce the parent update to avoid jittery refreshes
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const val = parseFloat(inputValue);
+      if (!isNaN(val) && val !== taxPercentage) {
+        onTaxChange(Math.max(0, Math.min(100, val)));
+      }
+    }, 600); // 600ms wait after typing stops
+
+    return () => clearTimeout(timer);
+  }, [inputValue, onTaxChange, taxPercentage]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
   };
 
   const taxAmount = netProfitLoss > 0 ? (netProfitLoss * taxPercentage) / 100 : 0;
@@ -32,13 +53,12 @@ const TaxCalculator: React.FC<TaxCalculatorProps> = ({
         </Label>
         <Input
           id="tax-percentage"
-          type="number"
-          min="0"
-          max="100"
-          step="0.1"
-          value={taxPercentage}
-          onChange={handleTaxChange}
-          className="w-20 h-8 text-center"
+          type="text" // Change to text to avoid browser step-fighting with decimals while typing
+          inputMode="decimal"
+          value={inputValue}
+          onChange={handleInputChange}
+          className="w-24 h-8 text-center font-bold"
+          placeholder="0.0"
         />
       </div>
       <div className="text-sm">

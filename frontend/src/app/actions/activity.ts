@@ -3,6 +3,7 @@
 
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
+import { auth } from '@/auth';
 
 export interface ActivityLogInput {
     userId: string;
@@ -18,28 +19,33 @@ export interface ActivityLogInput {
     profileName?: string;
 }
 
+async function getAuthToken() {
+    const session = await auth();
+    return (session?.user as any)?.accessToken;
+}
+
 export async function logActivityAction(data: ActivityLogInput) {
     try {
         await verifyBranchAccess(data.locationId);
         await verifyUserAccess(data.userId);
+        const token = await getAuthToken();
         
         const payload = {
             user: data.userId,
-            location_id: data.locationId,
+            branch: data.locationId, // Backend uses 'branch' now
             activity_type: data.activityType,
             module: data.module,
             entity_type: data.entityType,
             entity_id: data.entityId || null,
             entity_name: data.entityName,
             description: data.description,
-            metadata: data.metadata || null,
-            profile_id: data.profileId || null,
-            profile_name: data.profileName || null
+            metadata: data.metadata || null
         };
 
-        const result = await djangoFetch('core/activity-history/', {
+        const result = await djangoFetch('activities/logs/', {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            accessToken: token
         });
 
         if (result && result.error) throw new Error(result.error);
@@ -69,6 +75,7 @@ export async function getActivityHistoryAction(
     try {
         const sessionUser = await verifyBranchAccess(locationId);
         const userRole = sessionUser.role?.toLowerCase();
+        const token = await getAuthToken();
 
         const actualPage = Math.max(1, Number(page) || 1);
         const actualPageSize = Math.max(1, Number(pageSize) || 20);
@@ -76,7 +83,6 @@ export async function getActivityHistoryAction(
 
         let queryParams = `locationId=${locationId}&limit=${actualPageSize}&offset=${offset}`;
 
-        // AUTHORIZATION: Only Admin/Manager can see 'ALL' users. Others forced to their own ID.
         const canViewAll = userRole === 'admin' || userRole === 'manager' || userRole === 'superadmin' || userRole === 'agency';
 
         if (!canViewAll) {
@@ -103,7 +109,7 @@ export async function getActivityHistoryAction(
             }
         }
 
-        const activities = await djangoFetch(`core/activity-history/?${queryParams}`);
+        const activities = await djangoFetch(`activities/logs/?${queryParams}`, { accessToken: token });
         const list = Array.isArray(activities) ? activities : (activities.results || []);
 
         return {
@@ -111,14 +117,8 @@ export async function getActivityHistoryAction(
             data: {
                 activities: list.map((a: any) => ({
                     ...a,
-                    created_at: a.created_at,
-                    activity_type: a.activity_type,
-                    location_id: a.location_id,
                     user_id: a.user,
-                    entity_type: a.entity_type,
-                    entity_id: a.entity_id,
-                    entity_name: a.entity_name,
-                    profile_id: a.profile_id,
+                    location_id: a.branch,
                     profile_name: a.profile_name
                 })),
                 count: activities.count || list.length
@@ -130,11 +130,33 @@ export async function getActivityHistoryAction(
     }
 }
 
+export async function getActivityStatsAction(locationId: string, filters?: ActivityFilters) {
+    try {
+        await verifyBranchAccess(locationId);
+        const token = await getAuthToken();
+        
+        let queryParams = `locationId=${locationId}`;
+        if (filters) {
+            if (filters.dateFrom) queryParams += `&dateFrom=${filters.dateFrom}`;
+            if (filters.dateTo) queryParams += `&dateTo=${filters.dateTo}`;
+            if (filters.activityType && filters.activityType !== 'ALL') queryParams += `&activityType=${filters.activityType}`;
+            if (filters.module && filters.module !== 'ALL') queryParams += `&module=${filters.module}`;
+        }
+
+        const stats = await djangoFetch(`activities/logs/stats/?${queryParams}`, { accessToken: token });
+        return { success: true, data: stats };
+    } catch (error: any) {
+        console.error('Error fetching activity stats:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 export async function getActivityHistoryByTypeAction(locationId: string, module: string, activityType: string) {
     try {
         await verifyBranchAccess(locationId);
+        const token = await getAuthToken();
 
-        const records = await djangoFetch(`core/activity-history/?locationId=${locationId}&module=${module}&activityType=${activityType}`);
+        const records = await djangoFetch(`activities/logs/?locationId=${locationId}&module=${module}&activityType=${activityType}`, { accessToken: token });
         const list = Array.isArray(records) ? records : (records.results || []);
 
         return {

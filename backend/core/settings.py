@@ -4,7 +4,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Load .env from backend dir and then from project root
 load_dotenv(BASE_DIR / '.env', override=True)
+load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-gonza-default-key-for-dev-only')
 DEBUG = True
@@ -29,6 +31,8 @@ INSTALLED_APPS = [
     'finance',
     'customers',
     'messaging',
+    'tasks',
+    'activities',
     'django_filters',
 ]
 
@@ -39,11 +43,20 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core_app.middleware.SentinelAccessMiddleware', # 🚀 ACCESS CONTROL
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'users.middleware.UserActivityMiddleware',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Match legacy Supabase CORS flexibility
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-client-info",
+    "apikey",
+]
 CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'core.urls'
 WSGI_APPLICATION = 'core.wsgi.application'
@@ -67,16 +80,22 @@ import dj_database_url
 
 db_url = os.environ.get('DATABASE_URL')
 
+# Support for non-SSL connections (e.g. local development)
+ssl_require = True
+if db_url:
+    if db_url.startswith('sqlite') or 'localhost' in db_url or '127.0.0.1' in db_url or 'sslmode=disable' in db_url:
+        ssl_require = False
+
 DATABASES = {
     'default': dj_database_url.config(
         default=db_url,
         conn_max_age=0,
-        ssl_require=False if db_url and db_url.startswith('sqlite') else True
+        ssl_require=ssl_require
     )
 }
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'UTC')
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
@@ -115,7 +134,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
-    'UPDATE_LAST_LOGIN': False,
+    'UPDATE_LAST_LOGIN': True,
     'SIGNING_KEY': JWT_KEY,
     'ALGORITHM': 'HS256',
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -128,6 +147,8 @@ AUTH_USER_MODEL = 'users.User'
 UNFOLD = {
     "SITE_TITLE": "Gonza Admin",
     "SITE_HEADER": "Gonza Systems Dashboard",
+    "SITE_ICON": lambda request: "/static/icon.png", 
+    "SITE_FAVICON": lambda request: "/static/favicon.ico",
     "SITE_SYMBOL": "speed", # material symbols name
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
@@ -146,6 +167,22 @@ PESAPAL_CONSUMER_KEY = os.environ.get('PESAPAL_CONSUMER_KEY')
 PESAPAL_CONSUMER_SECRET = os.environ.get('PESAPAL_CONSUMER_SECRET')
 PESAPAL_IPN_ID = os.environ.get('PESAPAL_IPN_ID')
 PESAPAL_CALLBACK_URL = os.environ.get('PESAPAL_CALLBACK_URL')
+
+# Messaging Gateway Configuration
+SMS_PROVIDER_API_KEY = os.environ.get('SMS_PROVIDER_API_KEY')
+SMS_PROVIDER_USERNAME = os.environ.get('SMS_PROVIDER_USERNAME')
+SMS_SENDER_ID = os.environ.get('SMS_SENDER_ID', 'GONZA')
+
+VERNRA_API_KEY = os.environ.get('VERNRA_API_KEY')
+VERNRA_ACCOUNT_ID = os.environ.get('VERNRA_ACCOUNT_ID')
+VERNRA_BASE_URL = os.environ.get('VERNRA_BASE_URL', 'https://api.vernra.com')
+
+EAZIREACH_API_KEY = os.environ.get('EAZIREACH_API_KEY')
+EAZIREACH_ACCOUNT_ID = os.environ.get('EAZIREACH_ACCOUNT_ID')
+
+WHATSAPP_API_URL = os.environ.get('WHATSAPP_API_URL')
+WHATSAPP_API_KEY = os.environ.get('WHATSAPP_API_KEY')
+WHATSAPP_INSTANCE_PREFIX = os.environ.get('WHATSAPP_INSTANCE_PREFIX', 'gonza_')
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

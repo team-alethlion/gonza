@@ -1,50 +1,53 @@
-import { useState, useEffect } from 'react';
-import { SalesCategory } from '@/types';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getSalesCategoriesAction,
   createSalesCategoryAction,
   updateSalesCategoryAction,
   deleteSalesCategoryAction
 } from '@/app/actions/sales';
+import { localDb } from '@/lib/dexie';
+import { SalesCategory } from '@/types';
 
-export const useSalesCategories = () => {
-  const [categories, setCategories] = useState<SalesCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const useSalesCategories = (initialData?: SalesCategory[]) => {
   const { currentBusiness } = useBusiness();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const fetchCategories = async () => {
-    if (!currentBusiness) {
-      setCategories([]);
-      setIsLoading(false);
-      return;
-    }
+  const queryKey = ['sales_categories', currentBusiness?.id];
 
-    try {
+  const { data: categories = [], isLoading, refetch } = useQuery<SalesCategory[]>({
+    queryKey,
+    queryFn: async () => {
+      if (!currentBusiness?.id) return [];
+
       const result = await getSalesCategoriesAction(currentBusiness.id);
-      if (result.success && result.data) {
-        setCategories(result.data as any);
-      } else {
-        throw new Error(result.error);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch sales categories');
       }
-    } catch (error) {
-      console.error('Error fetching sales categories:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch sales categories",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchCategories();
-  }, [currentBusiness]);
+      const fetched = result.data as SalesCategory[];
+      
+      // Update Dexie cache in the background
+      if (fetched.length > 0) {
+        const cacheData = fetched.map((c: any) => ({
+          ...c,
+          type: 'sale',
+          locationId: currentBusiness.id as string
+        }));
+        localDb.categories.where('[locationId+type]').equals([currentBusiness.id, 'sale']).delete().then(() => {
+            localDb.categories.bulkPut(cacheData as any);
+        });
+      }
+      
+      return fetched;
+    },
+    enabled: !!currentBusiness?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: initialData,
+  });
 
   const createCategory = async (name: string) => {
     if (!currentBusiness || !user) {
@@ -59,11 +62,11 @@ export const useSalesCategories = () => {
     try {
       const result = await createSalesCategoryAction(currentBusiness.id, user.id, name);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Sales category created successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -83,11 +86,11 @@ export const useSalesCategories = () => {
     try {
       const result = await updateSalesCategoryAction(id, name);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Sales category updated successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -107,11 +110,11 @@ export const useSalesCategories = () => {
     try {
       const result = await deleteSalesCategoryAction(id);
       if (result.success) {
+        queryClient.invalidateQueries({ queryKey });
         toast({
           title: "Success",
           description: "Sales category deleted successfully",
         });
-        fetchCategories();
         return true;
       } else {
         throw new Error(result.error);
@@ -136,7 +139,7 @@ export const useSalesCategories = () => {
       for (const name of defaultCategories) {
         await createSalesCategoryAction(currentBusiness.id, user.id, name, true);
       }
-      fetchCategories();
+      queryClient.invalidateQueries({ queryKey });
     } catch (error) {
       console.error('Error creating default categories:', error);
     }
@@ -149,6 +152,6 @@ export const useSalesCategories = () => {
     updateCategory,
     deleteCategory,
     createDefaultCategories,
-    refetch: fetchCategories,
+    refetch,
   };
 };

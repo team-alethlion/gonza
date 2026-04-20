@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -11,25 +12,28 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { generateThermalReceipt } from "@/utils/generateThermalReceipt";
 import { print } from "@/utils/thermalPrinterPlug";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { useProductSync } from "@/hooks/useProductSync";
-import {
-  getCustomerByNameAction,
-  updateSaleCustomerAction,
-} from "@/app/actions/sales";
+import { getCustomerByNameAction, updateSaleCustomerAction } from "@/app/actions/sales";
 
 export const useNewSaleActions = (
   editSale?: Sale,
   onSaveSuccess?: () => void,
+  initialData?: {
+    initialCustomers?: any[];
+    initialCategories?: any[];
+    initialAccounts?: any[];
+  }
 ) => {
   const router = useRouter();
   const { user } = useAuth();
   const { toast: uiToast } = useToast();
-  const { customers, createCustomer } = useCustomers();
-  const { addSale, updateSale } = useSalesData(user?.id);
+  const { customers, createCustomer } = useCustomers(50, { 
+    customers: initialData?.initialCustomers || [], 
+    count: initialData?.initialCustomers?.length || 0 
+  });
+  const { addSale, updateSale } = useSalesData(user?.id, 'desc', undefined, true, undefined, { disableFetch: true });
   const { logActivity } = useActivityLogger();
   const { currentBusiness } = useBusiness();
   const { settings } = useBusinessSettings();
-  const { syncProducts } = useProductSync();
 
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -51,11 +55,8 @@ export const useNewSaleActions = (
         clearDraft();
       }
 
-      // ⚡️ SYNC INVENTORY: Trigger a background sync to update local stock counts
-      // after the server has processed the deductions.
-      setTimeout(() => {
-        syncProducts();
-      }, 500); // Small delay to let DB write complete
+      // ⚡️ NOTE: Inventory sync is now handled globally by SyncManager.
+      // No need to trigger manual sync here after sale.
 
       // Only save customer to customers database if they don't exist already
       if (user?.id && sale.customerName && typeof sale.customerName === 'string' && sale.customerName.trim()) {
@@ -123,21 +124,32 @@ export const useNewSaleActions = (
       const taxAmount = sale.taxRate ? (itemsTotal * sale.taxRate) / 100 : 0;
       const grandTotal = itemsTotal + taxAmount;
 
+      // Attempt to load the explicitly validated visual preview
+      let finalReceiptSale = sale;
+      try {
+        const storedPreview = sessionStorage.getItem("last_completed_preview_sale");
+        if (storedPreview) {
+          finalReceiptSale = JSON.parse(storedPreview);
+        }
+      } catch (e) {
+        console.error("Failed to retrieve isolated session preview:", e);
+      }
+
       // Log activity with comprehensive details
       await logActivity({
         activityType: editSale ? "UPDATE" : "CREATE",
         module: "SALES",
         entityType: "sale",
-        entityId: sale.id,
-        entityName: `Sale #${sale.receiptNumber}`,
+        entityId: sale.id, // the backend ID is valid
+        entityName: `Sale #${finalReceiptSale.receiptNumber}`,
         description: `${editSale ? "Updated" : "Created"} sale for ${
-          sale.customerName
+          finalReceiptSale.customerName
         } - Total: UGX ${grandTotal.toLocaleString()}`,
         metadata: {
-          receiptNumber: sale.receiptNumber,
-          customerName: sale.customerName,
-          customerAddress: sale.customerAddress,
-          customerContact: sale.customerContact,
+          receiptNumber: finalReceiptSale.receiptNumber,
+          customerName: finalReceiptSale.customerName,
+          customerAddress: finalReceiptSale.customerAddress,
+          customerContact: finalReceiptSale.customerContact,
           totalAmount: grandTotal,
           amountPaid: sale.amountPaid,
           profit: sale.profit,
@@ -160,9 +172,9 @@ export const useNewSaleActions = (
       uiToast({
         title: editSale ? "Sale Updated" : "Sale Created",
         description: `${editSale ? "Updated" : "Created"} sale for ${
-          sale.customerName
+          finalReceiptSale.customerName
         }. ${
-          sale.paymentStatus === "NOT PAID"
+          finalReceiptSale.paymentStatus === "NOT PAID"
             ? "Inventory has been updated for this credit sale."
             : ""
         }`,
@@ -176,8 +188,8 @@ export const useNewSaleActions = (
         }
       });
 
-      // Store the completed sale
-      setCompletedSale(sale);
+      // Store the completed sale mathematically mapped for pure Visuals inside the Receipt Modal
+      setCompletedSale(finalReceiptSale);
 
       // ⚡️ INSTANT UPDATE: Add/update sale in cache immediately (like your campaign example)
       if (editSale) {
@@ -196,7 +208,7 @@ export const useNewSaleActions = (
         // If thermal auto-print is enabled, trigger it
         if (thermalPrintAfterSave) {
           try {
-            const thermalData = await generateThermalReceipt(sale, settings);
+            const thermalData = await generateThermalReceipt(finalReceiptSale, settings);
             await print(thermalData, settings.defaultPrinterName);
           } catch (printErr) {
             console.error("Auto-print failed:", printErr);

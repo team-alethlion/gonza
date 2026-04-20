@@ -12,6 +12,7 @@ import { Product } from "@/types";
 import { toast } from "sonner";
 import ProductDetails from "@/components/inventory/ProductDetails";
 import ProductStockHistory from "@/components/inventory/ProductStockHistory";
+import Image from "next/image";
 
 const ProductDetail = () => {
   const params = useParams();
@@ -125,8 +126,10 @@ const ProductDetail = () => {
   if (isProductLoading || isRefreshing || !product) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <img
-          src="/lovable-uploads/7f7549a3-e9df-4762-b8b9-8e041e34f55d.png"
+        <Image
+          width={64}
+          height={64}
+          src="/icon.png"
           alt="Loading"
           className="w-16 h-16 animate-spin"
         />

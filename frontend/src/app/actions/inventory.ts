@@ -113,7 +113,8 @@ export async function bulkAdjustStockAction(
   adjustments: Array<{
     productId?: string;
     sku?: string;
-    quantity: number;
+    quantity?: number;
+    absoluteQuantity?: number;
     type: string;
     reason: string;
     createdAt?: string;
@@ -150,6 +151,30 @@ export async function getStockSummaryReportAction(
     await verifyBranchAccess(locationId);
     const data = await djangoFetch(
       `inventory/products/summary_report/?locationId=${locationId}&startDate=${startDate}&endDate=${endDate}`,
+    );
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getLowStockItemsAction(locationId: string) {
+  try {
+    await verifyBranchAccess(locationId);
+    const data = await djangoFetch(
+      `inventory/products/low_stock/?branchId=${locationId}`,
+    );
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function downloadRequisitionPDFAction(requisitionId: string) {
+  try {
+    const data = await djangoFetch(
+      `inventory/requisitions/${requisitionId}/pdf/`,
+      { responseType: 'blob' } as any
     );
     return { success: true, data };
   } catch (error: any) {
@@ -335,6 +360,34 @@ export async function recordStockAuditAction(data: any) {
 
     revalidatePath("/agency/inventory");
     return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function saveStockAuditDraftAction(data: any) {
+  try {
+    const branchId = data.branch;
+    await verifyBranchAccess(branchId);
+
+    const result = await djangoFetch("inventory/stock-audits/save_draft/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+
+    return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getStockAuditDraftAction(branchId: string) {
+  try {
+    await verifyBranchAccess(branchId);
+    const data = await djangoFetch<any>(
+      `inventory/stock-audits/get_draft/?branchId=${branchId}`,
+    );
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

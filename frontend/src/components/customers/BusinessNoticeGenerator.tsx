@@ -33,6 +33,7 @@ const BusinessNoticeGenerator: React.FC<BusinessNoticeGeneratorProps> = ({
   defaultTemplate,
   sale
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('none');
   const [subject, setSubject] = useState<string>('');
   const [message, setMessage] = useState<string>('');
@@ -43,6 +44,10 @@ const BusinessNoticeGenerator: React.FC<BusinessNoticeGeneratorProps> = ({
   const { settings } = useBusinessSettings();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load default template when dialog opens
   useEffect(() => {
@@ -356,7 +361,7 @@ We appreciate your business and look forward to serving you again.`;
 
                     {/* Date and Customer */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>Date: {new Date().toLocaleDateString()}</div>
+                      <div>Date: {mounted ? new Date().toLocaleDateString("en-US") : "---"}</div>
                       <div className="font-medium truncate">{customer.fullName}</div>
                     </div>
 

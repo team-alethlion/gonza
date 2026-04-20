@@ -31,6 +31,7 @@ interface InstallmentPaymentHistoryProps {
   cashAccounts?: CashAccount[];
   onLinkToCash?: (paymentId: string, accountId: string) => Promise<void>;
   onUpdatePayment?: (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => Promise<void>;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
 }
 
 const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
@@ -43,6 +44,7 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
   cashAccounts = [],
   onLinkToCash,
   onUpdatePayment,
+  onDeletePayment,
 }) => {
   const [editingPayment, setEditingPayment] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'amount' | 'notes' | 'date' | null>(null);
@@ -137,11 +139,17 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
         }
       });
     } else if (onUpdatePayment) {
-      // Direct update mode - skip date updates as they're handled separately
-      await onUpdatePayment(payment.id, {
-        amount: editingField === 'amount' ? numericAmount : undefined,
-        notes: editingField === 'notes' ? (editNotes.trim() || undefined) : undefined,
-      });
+      // Direct update mode
+      const updates: { amount?: number; notes?: string } = {};
+      
+      if (editingField === 'amount' || editingField === null) {
+          updates.amount = numericAmount;
+      }
+      if (editingField === 'notes' || editingField === null) {
+          updates.notes = editNotes.trim() || undefined;
+      }
+
+      await onUpdatePayment(payment.id, updates);
     }
 
     setEditingPayment(null);
@@ -157,25 +165,26 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
   };
 
   const handleStageDelete = (payment: InstallmentPayment) => {
-    if (!onStageChange) return;
+    if (!onStageChange && !onDeletePayment) return;
     
     // Show different confirmation messages based on payment amount
     const isZeroPayment = payment.amount === 0;
     const confirmMessage = isZeroPayment 
       ? 'Are you sure you want to remove this zero-amount payment entry?'
-      : 'Are you sure you want to mark this payment for deletion?';
+      : `Are you sure you want to delete this payment of ${currency} ${formatNumber(payment.amount)}? This will increase the balance due on the original sale.`;
     
     if (window.confirm(confirmMessage)) {
-      console.log('🟡 STAGING deletion locally - NO DATABASE CALL');
-      
-      // Stage the deletion directly without any async operations
-      onStageChange({
-        id: payment.id,
-        type: 'delete',
-        originalPayment: payment
-      });
-      
-      console.log('✅ Deletion staged successfully');
+      if (onStageChange) {
+          console.log('🟡 STAGING deletion locally - NO DATABASE CALL');
+          onStageChange({
+            id: payment.id,
+            type: 'delete',
+            originalPayment: payment
+          });
+      } else if (onDeletePayment) {
+          console.log('🔴 DELETING directly from database');
+          onDeletePayment(payment.id);
+      }
     }
   };
 
@@ -198,9 +207,11 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
 
   // Helper function to check if a payment can be deleted
   const canDeletePayment = (payment: InstallmentPayment) => {
-    if (!isLocalMode || !onStageChange) return false;
-    const status = getPaymentStatus(payment.id);
-    return status !== 'deleted'; // Allow deletion of any payment that's not already marked for deletion
+    if (isLocalMode) {
+        const status = getPaymentStatus(payment.id);
+        return status !== 'deleted';
+    }
+    return !!onDeletePayment;
   };
 
   const handleStartCashLink = (paymentId: string) => {
@@ -488,7 +499,7 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
                       )}
                     </div>
                     
-                    {showInlineEdit && canDelete && (
+                    {(showInlineEdit || onDeletePayment) && canDelete && (
                       <div className="flex justify-end gap-2">
                         <Button
                           size="sm"
@@ -526,7 +537,7 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
                 <TableHead className="text-xs text-right">Amount</TableHead>
                 <TableHead className="text-xs">Notes</TableHead>
                 <TableHead className="text-xs">Cash Account</TableHead>
-                {showInlineEdit && (
+                {(showInlineEdit || onDeletePayment) && (
                   <TableHead className="text-xs w-16">Actions</TableHead>
                 )}
               </TableRow>
@@ -763,7 +774,7 @@ const InstallmentPaymentHistory: React.FC<InstallmentPaymentHistoryProps> = ({
                           </div>
                        )}
                      </TableCell>
-                    {showInlineEdit && (
+                    {(showInlineEdit || onDeletePayment) && (
                       <TableCell className="text-xs">
                         {!isEditingThis && canDelete && (
                           <Button

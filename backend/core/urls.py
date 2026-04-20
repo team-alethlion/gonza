@@ -22,6 +22,8 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic.base import RedirectView
+from django.conf import settings
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -29,6 +31,7 @@ from rest_framework_simplejwt.views import (
 )
 
 urlpatterns = [
+    path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico')),
     path('admin/', admin.site.urls),
     
     # Auth endpoints
@@ -44,4 +47,6 @@ urlpatterns = [
     path('api/finance/', include('finance.urls')),
     path('api/customers/', include('customers.urls')),
     path('api/messaging/', include('messaging.urls')),
+    path('api/tasks/', include('tasks.urls')),
+    path('api/activities/', include('activities.urls')),
 ]

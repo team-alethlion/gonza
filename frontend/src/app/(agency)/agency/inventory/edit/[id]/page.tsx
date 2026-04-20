@@ -148,19 +148,18 @@ const EditProduct = () => {
         const updateData = {
           name: formData.name,
           description: formData.description || "",
-          category: formData.category || "",
-          quantity: formData.quantity,
+          categoryId: formData.category || null,
           costPrice: formData.costPrice ?? 0,
           sellingPrice: formData.sellingPrice ?? 0,
           supplier: formData.supplier || "",
           minimumStock: formData.minimumStock ?? 0,
-          imageUrl: formData.imageUrl || null,
+          imageUrl: formData.imageUrl,
           createdAt: formData.createdAt,
           barcode: formData.barcode,
           manufacturerBarcode: formData.manufacturerBarcode,
         };
 
-        const result = await updateProduct(id, updateData);
+        const result = await updateProduct(id, updateData, null, false, undefined, undefined, undefined, undefined, formData.quantity);
 
         if (result.success && result.data) {
           toast.success("Product updated successfully");

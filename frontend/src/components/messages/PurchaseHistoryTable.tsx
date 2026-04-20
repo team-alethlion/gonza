@@ -33,6 +33,12 @@ const formatDate = (dateString: string) => {
 };
 
 const PurchaseHistoryTable: React.FC<PurchaseHistoryTableProps> = ({ purchases }) => {
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
             case 'completed':
@@ -111,7 +117,7 @@ const PurchaseHistoryTable: React.FC<PurchaseHistoryTableProps> = ({ purchases }
                         {purchases.map((purchase) => (
                             <tr key={purchase.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {formatDate(purchase.created_at || purchase.createdAt || '')}
+                                    {mounted ? formatDate(purchase.created_at || purchase.createdAt || '') : '---'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     {(purchase.credits_amount || purchase.creditsAmount || 0).toLocaleString()} credits

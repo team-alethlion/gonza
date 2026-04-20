@@ -20,7 +20,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   onDelete,
   canManage = true
 }) => {
+  const [mounted, setMounted] = React.useState(false);
   const { toggleProfileStatus, currentProfile } = useProfiles();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleToggleStatus = async () => {
     if (!canManage) return;
@@ -109,7 +114,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         )}
 
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-          <span>Created {new Date(profile.created_at).toLocaleDateString()}</span>
+          <span>Created {mounted ? new Date(profile.created_at).toLocaleDateString("en-US") : "---"}</span>
           <Badge
             variant={profile.is_active ? "default" : "secondary"}
             className="text-xs"

@@ -4,6 +4,7 @@
 import { Zap, TrendingUp, ShieldCheck, Star, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useReveal } from "@/hooks/useReveal";
+import Image from "next/image";
 
 const WhySection = ({ B }: { B: any }) => {
   const { ref, visible } = useReveal();
@@ -112,7 +113,8 @@ const WhySection = ({ B }: { B: any }) => {
                 </span>
               </div>
             </div>
-            <img
+            <Image
+              fill
               src="/lovable-uploads/5de523b3-1d7b-4772-9dd4-ba050fa3fba3.png"
               alt="Gonza business dashboard"
               style={{ width: "100%", height: "auto", display: "block" }}

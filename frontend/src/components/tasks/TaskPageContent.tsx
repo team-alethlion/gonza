@@ -13,27 +13,37 @@ import TaskItems from './TaskItems';
 interface TaskPageContentProps {
   tasks: Task[];
   todayTasks: Task[];
+  stats?: any;
+  isStatsLoading?: boolean;
   onToggleComplete: (id: string) => Promise<boolean>;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => Promise<boolean>;
   onBulkComplete: (taskIds: string[]) => Promise<boolean>;
+  onBulkDelete?: (taskIds: string[]) => Promise<boolean>;
   onCreateTask: () => void;
   canCreate?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  searchTerm?: string;
+  onSearchChange?: (val: string) => void;
 }
 
 const TaskPageContent: React.FC<TaskPageContentProps> = ({
   tasks,
   todayTasks,
+  stats,
+  isStatsLoading,
   onToggleComplete,
   onEdit,
   onDelete,
   onBulkComplete,
+  onBulkDelete,
   onCreateTask,
   canCreate = true,
   canEdit = true,
   canDelete = true,
+  searchTerm,
+  onSearchChange
 }) => {
   return (
     <>
@@ -44,8 +54,11 @@ const TaskPageContent: React.FC<TaskPageContentProps> = ({
           onEdit={onEdit}
           onDelete={onDelete}
           onBulkComplete={onBulkComplete}
+          onBulkDelete={onBulkDelete}
           canEdit={canEdit}
           canDelete={canDelete}
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
         />
       </TabsContent>
 
@@ -94,7 +107,7 @@ const TaskPageContent: React.FC<TaskPageContentProps> = ({
       </TabsContent>
 
       <TabsContent value="stats" className="space-y-6">
-        <TaskStats tasks={tasks} />
+        <TaskStats tasks={tasks} stats={stats} isLoading={isStatsLoading} />
       </TabsContent>
     </>
   );

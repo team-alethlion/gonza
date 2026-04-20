@@ -121,12 +121,9 @@ export const useRequisitions = (userId: string | undefined, locationId: string |
     if (!userId || !locationId) return null;
 
     try {
-      const requisitionNumber = generateRequisitionNumber();
-
       const result = await createRequisitionAction({
         userId,
         locationId,
-        requisitionNumber,
         title,
         items,
         notes: notes || null,
@@ -140,16 +137,17 @@ export const useRequisitions = (userId: string | undefined, locationId: string |
       const data = result.data;
       const newRequisition: Requisition = {
         ...data,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt),
-        branchId: data.branchId || locationId
+        createdAt: new Date(data.createdAt || data.created_at || new Date()),
+        updatedAt: new Date(data.updatedAt || data.updated_at || new Date()),
+        branchId: data.branchId || data.branch || locationId,
+        estimated_total: data.estimated_total || 0
       };
 
       setRequisitions(prev => [newRequisition, ...prev]);
 
       toast({
         title: "Requisition created",
-        description: `Requisition ${requisitionNumber} has been created successfully.`
+        description: `Requisition ${data.requisition_number || 'New'} has been created successfully.`
       });
 
       return newRequisition;
@@ -180,9 +178,10 @@ export const useRequisitions = (userId: string | undefined, locationId: string |
       const data = result.data;
       const updatedRequisition: Requisition = {
         ...data,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt),
-        branchId: data.branchId || locationId
+        createdAt: new Date(data.createdAt || data.created_at || new Date()),
+        updatedAt: new Date(data.updatedAt || data.updated_at || new Date()),
+        branchId: data.branchId || data.branch || locationId,
+        estimated_total: data.estimated_total || 0
       };
 
       setRequisitions(prev => prev.map(req => req.id === id ? updatedRequisition : req));

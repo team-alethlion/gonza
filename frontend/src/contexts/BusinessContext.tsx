@@ -19,6 +19,8 @@ import {
   updateBusinessAction,
   deleteBusinessAction,
   resetBusinessAction,
+  inviteManagerAction,
+  removeManagerAction,
 } from "@/app/actions/business";
 import { getAccountStatusAction } from "@/app/actions/business-settings";
 import { 
@@ -36,6 +38,12 @@ export interface BusinessLocation {
   created_at: string;
   updated_at: string;
   switch_password_hash?: string;
+  managers?: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+  }[];
 }
 
 export interface AccountStatus {
@@ -66,6 +74,8 @@ interface BusinessContextType {
   updateBusiness: (id: string, name: string) => Promise<boolean>;
   deleteBusiness: (id: string) => Promise<boolean>;
   resetBusiness: (id: string) => Promise<boolean>;
+  inviteManager: (email: string, branchId: string) => Promise<{ success: boolean; error?: string }>;
+  removeManager: (managerId: string) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
   error: string | null;
   locationLimit: number;
@@ -98,7 +108,6 @@ export const BusinessProvider: React.FC<{
   initialBusinessSettings: rawSettings = null,
   initialAnalyticsSummary = null,
 }) => {
-  console.log("[DEBUG] BusinessProvider: Initializing...");
   const { user, updateSession } = useAuth();
 
   // 🚀 MAP DATA: Convert raw DB settings to frontend camelCase format
@@ -173,8 +182,10 @@ export const BusinessProvider: React.FC<{
       );
       return await getAccountStatusAction(user.id);
     },
-    enabled: !!user?.id && !isUnauthorized,
-    staleTime: 60 * 1000, // Increase stale time from 10s to 60s
+    // 🚀 OPTIMIZATION: If we have initialData from SSR, we disable the automatic fetch.
+    // This prevents the redundant 'users/me' POST on every page mount.
+    enabled: !!user?.id && !isUnauthorized && !initialAccountStatus,
+    staleTime: 5 * 60 * 1000, // Increase stale time to 5 minutes
     initialData: initialAccountStatus,
   });
 
@@ -494,6 +505,40 @@ export const BusinessProvider: React.FC<{
     [user, loadBusinessLocations],
   );
 
+  const inviteManager = React.useCallback(
+    async (email: string, branchId: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "No authenticated user" };
+      
+      try {
+        const result = await inviteManagerAction(email, branchId);
+        return result;
+      } catch (error: any) {
+        console.error("Error in inviteManager context:", error);
+        return { success: false, error: error.message };
+      }
+    },
+    [user]
+  );
+
+  const removeManager = React.useCallback(
+    async (managerId: string): Promise<{ success: boolean; error?: string }> => {
+      if (!user) return { success: false, error: "No authenticated user" };
+      
+      try {
+        const result = await removeManagerAction(managerId);
+        if (result.success) {
+          // Refresh list to update UI
+          await loadBusinessLocations();
+        }
+        return result;
+      } catch (error: any) {
+        console.error("Error in removeManager context:", error);
+        return { success: false, error: error.message };
+      }
+    },
+    [user, loadBusinessLocations]
+  );
+
   const contextValue = React.useMemo(
     () => ({
       currentBusiness,
@@ -504,6 +549,8 @@ export const BusinessProvider: React.FC<{
       updateBusiness,
       deleteBusiness,
       resetBusiness,
+      inviteManager,
+      removeManager,
       isLoading,
       error,
       locationLimit,
@@ -519,6 +566,8 @@ export const BusinessProvider: React.FC<{
       updateBusiness,
       deleteBusiness,
       resetBusiness,
+      inviteManager,
+      removeManager,
       isLoading,
       error,
       locationLimit,

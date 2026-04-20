@@ -42,4 +42,8 @@ frontend/build/
 frontend/.yarn/
 frontend/.pnp.*
 frontend/public/lovable-uploads/
-
+hidden
+.hidden
+# Legacy Folder
+prev/
+backup/

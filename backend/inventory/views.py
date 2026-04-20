@@ -11,9 +11,11 @@ import csv
 import io
 from decimal import Decimal
 import uuid
+from core.utils import to_decimal
 from core_app.models import Agency
 from core_app.pdf_utils import StockSummaryGenerator, generate_pdf_response
 import io
+import uuid
 
 from .models import (
     Supplier, Category, Product, StockAudit, StockAuditItem,
@@ -25,7 +27,7 @@ from .serializers import (
     StockAuditSerializer, ProductHistorySerializer, StockTransferSerializer,
     RequisitionSerializer
 )
-from core_app.models import BranchCounter
+from core_app.models import BranchCounter, Branch
 from .filters import ProductFilter
 
 class SupplierViewSet(viewsets.ModelViewSet):
@@ -33,10 +35,28 @@ class SupplierViewSet(viewsets.ModelViewSet):
     serializer_class = SupplierSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
+
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -44,13 +64,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_class = ProductFilter
     search_fields = ['name', 'sku', 'barcode', 'description']
-    
-    def get_queryset(self):
-        # We don't always need to filter by branch here if the filterset handles it,
-        # but for security/correctness we still baseline it.
-        # However, the filterset 'branch_id' field will handle the query_param.
-        return super().get_queryset()
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('category', 'supplier', 'branch').filter(agency_id=agency_id)
+        branch_id = self.request.query_params.get('branchId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        return qs
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         branch_id = data.get('branch_id') or data.get('branch')
@@ -80,17 +102,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             product = serializer.save()
             
-            if product.stock > 0 and user_id and branch_id:
-                ProductHistory.objects.create(
-                    user_id=user_id,
-                    branch_id=branch_id,
-                    product=product,
-                    type='CREATED',
-                    old_stock=0,
-                    new_stock=product.stock,
-                    quantity_change=product.stock,
-                    reason=f"[{product.name}] | Initial stock",
-                )
+            # 🛡️ SIGNAL CONTEXT: Logging is handled by signals.py
+            # If stock was provided, the signal will capture it automatically.
+            # We just need to ensure the user_id is passed if available.
+            if user_id:
+                product._history_user_id = user_id
+                product.save(update_fields=[]) # Trigger signal without DB change
                 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -108,8 +125,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         custom_reason = request.data.get('customChangeReason')
         is_from_sale = request.data.get('isFromSale')
         
+        # 🚀 SUPPORT ABSOLUTE STOCK SETTING
+        absolute_stock = request.data.get('absoluteStock')
+        
         with transaction.atomic():
-            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            data = request.data.copy()
+            if absolute_stock is not None:
+                # If absolute stock is provided, ensure the serializer sets the stock correctly
+                data['stock'] = absolute_stock
+
+            serializer = self.get_serializer(instance, data=data, partial=partial)
             serializer.is_valid(raise_exception=True)
             product = serializer.save()
             
@@ -117,22 +142,77 @@ class ProductViewSet(viewsets.ModelViewSet):
                 change_reason = custom_reason
                 if not change_reason:
                     if is_from_sale: change_reason = "Sale"
+                    elif absolute_stock is not None: change_reason = "Opening Stock Adjustment" # 🛡️ Accurate Reason
                     elif product.stock > old_stock: change_reason = "Manual stock addition"
                     else: change_reason = "Manual stock reduction"
                 
+                # Determine type - use ADJUSTMENT for absolute setting
                 type_enum = 'SALE' if is_from_sale else ('RESTOCK' if product.stock > old_stock else 'ADJUSTMENT')
-                ProductHistory.objects.create(
-                    user_id=user_id,
-                    branch_id=product.branch_id,
-                    product=product,
-                    type=type_enum,
-                    old_stock=old_stock,
-                    new_stock=product.stock,
-                    quantity_change=product.stock - old_stock,
-                    reason=f"[{product.name}] | {change_reason}",
-                    reference_id=request.data.get('referenceId')
-                )
+                if absolute_stock is not None: type_enum = 'ADJUSTMENT'
+
+                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
+                from django.utils import timezone
+                final_created_at = None
+                created_at_raw = request.data.get('adjustmentDate') or request.data.get('createdAt')
+                
+                if created_at_raw:
+                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
+                    if parsed_dt:
+                        if parsed_dt < product.created_at:
+                            from datetime import timedelta
+                            final_created_at = product.created_at + timedelta(seconds=1)
+                        else:
+                            final_created_at = parsed_dt
+                
+                if final_created_at is None:
+                    final_created_at = timezone.now()
+
+                # 🛡️ SIGNAL CONTEXT
+                product._history_user_id = user_id
+                product._history_type = type_enum
+                product._history_reason = f"[{product.name}] | {change_reason}"
+                product._history_reference_id = request.data.get('referenceId')
+                product._history_created_at = final_created_at
+                
+                product.save() # Signal will catch and log automatically
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def low_stock(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from inventory.logic.requisitions import get_low_stock_items
+        items = get_low_stock_items(branch_id)
+        return Response(items)
+
+    @action(detail=False, methods=['get'])
+    def delta(self, request):
+        branch_id = self.request.query_params.get('branch_id')
+        since = self.request.query_params.get('since', '0')
+        
+        from django.utils import timezone
+        server_now = int(timezone.now().timestamp() * 1000)
+        
+        qs = self.get_queryset()
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+            
+        if since and since != '0':
+            try:
+                # Convert since (milliseconds) to datetime
+                from django.utils import timezone
+                since_dt = timezone.datetime.fromtimestamp(int(since) / 1000.0, tz=timezone.get_current_timezone())
+                qs = qs.filter(updated_at__gt=since_dt)
+            except (ValueError, TypeError):
+                pass
+                
+        serializer = self.get_serializer(qs, many=True)
+        return Response({
+            "products": serializer.data,
+            "server_time": server_now
+        })
 
     @action(detail=False, methods=['get'])
     def lookup(self, request):
@@ -223,20 +303,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                         # Update fields from CSV
                         if 'Description' in row: product.description = row['Description']
                         
-                        # Handle potential empty strings for numeric fields
-                        def to_decimal(val, default=0):
-                            if not val or val.strip() == '': return Decimal(str(default))
-                            try: return Decimal(val.replace(',', ''))
-                            except: return Decimal(str(default))
-
-                        def to_int(val, default=0):
-                            if not val or val.strip() == '': return default
-                            try: return int(float(val.replace(',', '')))
-                            except: return default
-
+                        # Use global hardened utilities
                         if 'Cost Price' in row: product.cost_price = to_decimal(row['Cost Price'])
                         if 'Selling Price' in row: product.selling_price = to_decimal(row['Selling Price'])
-                        if 'Minimum Stock Level' in row: product.min_stock = to_int(row['Minimum Stock Level'])
+                        
+                        if 'Minimum Stock Level' in row:
+                            try:
+                                product.min_stock = int(float(str(row['Minimum Stock Level']).replace(',', '') or 0))
+                            except (ValueError, TypeError):
+                                product.min_stock = 0
+                                
                         if 'Manufacturer Barcode' in row: product.manufacturer_barcode = row['Manufacturer Barcode']
                         if 'Barcode' in row: product.barcode = row['Barcode']
                         
@@ -267,32 +343,18 @@ class ProductViewSet(viewsets.ModelViewSet):
 
                         product.save()
 
-                        # History logging
-                        hist_id = f"hist_{uuid.uuid4().hex[:10]}"
+                        # 🛡️ SIGNAL CONTEXT: Logging is handled by signals.py
+                        # We just provide the context before the final trigger save
                         if is_new:
-                            ProductHistory.objects.create(
-                                id=hist_id,
-                                user_id=user_id,
-                                branch_id=branch_id,
-                                product=product,
-                                type='CREATED',
-                                old_stock=0,
-                                new_stock=product.stock,
-                                quantity_change=product.stock,
-                                reason=f"Bulk Upload | Created",
-                            )
+                            product._history_user_id = user_id
+                            product._history_type = 'CREATED'
+                            product._history_reason = "Bulk Upload | Created"
                         elif product.stock != old_stock:
-                            ProductHistory.objects.create(
-                                id=hist_id,
-                                user_id=user_id,
-                                branch_id=branch_id,
-                                product=product,
-                                type='ADJUSTMENT',
-                                old_stock=old_stock,
-                                new_stock=product.stock,
-                                quantity_change=product.stock - old_stock,
-                                reason=f"Bulk Upload | Updated",
-                            )
+                            product._history_user_id = user_id
+                            product._history_type = 'ADJUSTMENT'
+                            product._history_reason = "Bulk Upload | Updated"
+                        
+                        product.save() # Trigger signal
 
                         results["successCount"] += 1
 
@@ -306,127 +368,19 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary_report(self, request):
         branch_id = request.query_params.get('locationId')
-        start_date = request.query_params.get('startDate')
-        end_date = request.query_params.get('endDate')
+        start_date_str = request.query_params.get('startDate')
+        end_date_str = request.query_params.get('endDate')
         
-        if not all([branch_id, start_date, end_date]):
+        if not all([branch_id, start_date_str, end_date_str]):
             return Response({"error": "Missing parameters"}, status=400)
             
         try:
-            start_date = parse_datetime(start_date) or parse_date(start_date)
-            end_date = parse_datetime(end_date) or parse_date(end_date)
-            if not start_date or not end_date:
-                raise ValueError()
-        except Exception:
-            return Response({"error": "Invalid dates"}, status=400)
-
-        query = """
-            WITH ProductMetrics AS (
-                SELECT 
-                    "product_id",
-                    SUM(CASE WHEN "type" = 'SALE' THEN ABS("new_stock" - "old_stock") ELSE 0 END) as "itemsSold",
-                    SUM(CASE WHEN "type" IN ('STOCK_IN', 'RESTOCK') THEN ("new_stock" - "old_stock") ELSE 0 END) as "stockIn",
-                    SUM(CASE WHEN ("new_stock" - "old_stock") > 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsIn",
-                    SUM(CASE WHEN ("new_stock" - "old_stock") < 0 AND "type" NOT IN ('STOCK_IN', 'RESTOCK', 'SALE') THEN ABS("new_stock" - "old_stock") ELSE 0 END) as "adjustmentsOut"
-                FROM inventory_producthistory
-                WHERE branch_id = %s AND created_at BETWEEN %s AND %s
-                GROUP BY "product_id"
-            ),
-            LastHistoryID AS (
-                SELECT "product_id", MAX(id) as max_id
-                FROM inventory_producthistory
-                WHERE branch_id = %s AND created_at <= %s
-                GROUP BY "product_id"
-            ),
-            ClosingStock AS (
-                SELECT h."product_id", h."new_stock" as "closingStock"
-                FROM inventory_producthistory h
-                JOIN LastHistoryID lh ON h.id = lh.max_id
-            )
-            SELECT 
-                p.id as "productId",
-                p.name as "productName",
-                p.sku as "itemNumber",
-                p.image as "imageUrl",
-                p.cost_price as "costPrice",
-                p.selling_price as "sellingPrice",
-                c.name as "category",
-                COALESCE(cs."closingStock", 0) as "closingStock",
-                COALESCE(pm."itemsSold", 0) as "itemsSold",
-                COALESCE(pm."stockIn", 0) as "stockIn",
-                COALESCE(pm."adjustmentsIn", 0) as "adjustmentsIn",
-                COALESCE(pm."adjustmentsOut", 0) as "adjustmentsOut"
-            FROM inventory_product p
-            LEFT JOIN inventory_category c ON p.category_id = c.id
-            LEFT JOIN ProductMetrics pm ON p.id = pm."product_id"
-            LEFT JOIN ClosingStock cs ON p.id = cs."product_id"
-            WHERE p.branch_id = %s
-        """
-        
-        with connection.cursor() as cursor:
-            # Note: MaxHistoryID needs branch_id and end_date too
-            cursor.execute(query, [branch_id, start_date, end_date, branch_id, end_date, branch_id])
-            columns = [col[0] for col in cursor.description]
-            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        formatted = []
-        summary = {
-            "totalOpeningStock": 0,
-            "totalStockIn": 0,
-            "totalItemsSold": 0,
-            "totalAdjustmentsIn": 0,
-            "totalAdjustmentsOut": 0,
-            "totalClosingStock": 0,
-            "totalRevaluation": 0
-        }
-
-        for row in results:
-            def safe_float(v):
-                try: return float(v or 0)
-                except: return 0.0
-
-            closing_stock = safe_float(row.get('closingStock'))
-            items_sold = safe_float(row.get('itemsSold'))
-            stock_in = safe_float(row.get('stockIn'))
-            adj_in = safe_float(row.get('adjustmentsIn'))
-            adj_out = safe_float(row.get('adjustmentsOut'))
-            cost_price = safe_float(row.get('costPrice'))
-            
-            opening_stock = closing_stock - (stock_in + adj_in) + (items_sold + adj_out)
-            revaluation = closing_stock * cost_price
-
-            formatted.append({
-                "productId": row.get('productId'),
-                "productName": row.get('productName'),
-                "itemNumber": row.get('itemNumber') or row.get('productId'),
-                "imageUrl": row.get('imageUrl'),
-                "costPrice": cost_price,
-                "sellingPrice": safe_float(row.get('sellingPrice')),
-                "category": row.get('category'),
-                "openingStock": opening_stock,
-                "itemsSold": items_sold,
-                "stockIn": stock_in,
-                "transferOut": 0,
-                "returnIn": 0,
-                "returnOut": 0,
-                "adjustmentsIn": adj_in,
-                "adjustmentsOut": adj_out,
-                "closingStock": closing_stock,
-                "revaluation": revaluation
-            })
-
-            summary["totalOpeningStock"] += opening_stock
-            summary["totalStockIn"] += stock_in
-            summary["totalItemsSold"] += items_sold
-            summary["totalAdjustmentsIn"] += adj_in
-            summary["totalAdjustmentsOut"] += adj_out
-            summary["totalClosingStock"] += closing_stock
-            summary["totalRevaluation"] += revaluation
-
-        return Response({
-            "items": formatted,
-            "summary": summary
-        })
+            from inventory.logic.reports import get_stock_summary_data
+            result = get_stock_summary_data(branch_id, start_date_str, end_date_str)
+            return Response(result)
+        except Exception as e:
+            print(f"[StockSummary] Error: {str(e)}")
+            return Response({"error": str(e)}, status=400)
     @action(detail=False, methods=['get'])
     def sold_items(self, request):
         branch_id = request.query_params.get('branchId')
@@ -451,8 +405,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         # 1. Get the SOURCE OF TRUTH from the Sale table (matching Sales Overview)
         sales_qs = Sale.objects.filter(
             branch_id=branch_id,
-            date__range=[start_date, end_date]
-        ).exclude(status='QUOTE')
+            date__gte=start_date,
+            date__lte=end_date
+        ).filter(is_deleted=False)
+
+        # Include everything except explicit Cancelled/Refunded if needed, 
+        # but let's keep it broad for now.
+        # .exclude(status__in=['CANCELLED', 'REFUNDED'])
 
         sales_totals = sales_qs.aggregate(
             total=Sum('total_amount'),
@@ -464,54 +423,95 @@ class ProductViewSet(viewsets.ModelViewSet):
         total_discount = float(sales_totals['discount'] or 0)
         total_profit = float(sales_totals['profit'] or 0)
 
-        # 2. Get the items and attribute the Sale-level discount and profit pro-rata
+        # 2. Attribute Sale-level discount and profit pro-rata with remainder handling
         # This ensures the sum of items EXACTLY matches the Sale totals
-        item_qs = SaleItem.objects.filter(sale__in=sales_qs).annotate(
-            # Calculate item's share of the parent sale's subtotal to distribute discount/profit
-            sale_subtotal=F('sale__subtotal'),
-            sale_discount=F('sale__discount_amount'),
-            sale_profit=F('sale__profit'),
-            # Handle division by zero for sales with 0 subtotal
-            weight=Case(
-                When(sale_subtotal=0, then=Value(1.0)),
-                default=Cast(F('subtotal'), DecimalField()) / Cast(F('sale_subtotal'), DecimalField()),
-                output_field=DecimalField(max_digits=10, decimal_places=4)
-            )
-        ).annotate(
-            attributed_discount=ExpressionWrapper(F('weight') * F('sale_discount'), output_field=DecimalField()),
-            attributed_profit=ExpressionWrapper(F('weight') * F('sale_profit'), output_field=DecimalField()),
-            attributed_total=ExpressionWrapper(F('subtotal') - (F('weight') * F('sale_discount')), output_field=DecimalField())
-        )
+        product_data = {}
 
-        # 3. Aggregate by Product using the attributed values
-        aggregates = item_qs.values('product_id', 'product_name').annotate(
-            totalQuantity=Sum('quantity'),
-            totalAmount=Sum('attributed_total'),
-            totalCost=Sum(F('cost_price') * F('quantity')),
-            totalProfit=Sum('attributed_profit'),
-            totalDiscount=Sum('attributed_discount'),
-            avgPrice=Cast(Sum('attributed_total') / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2)),
-            avgCost=Cast(Sum(F('cost_price') * F('quantity')) / Sum('quantity'), DecimalField(max_digits=15, decimal_places=2))
-        ).order_by('-totalAmount')
+        # Prefetch items to avoid N+1
+        sales_with_items = sales_qs.prefetch_related('items')
 
+        for sale in sales_with_items:
+            items = list(sale.items.all())
+            if not items:
+                continue
+
+            sale_subtotal = sale.subtotal or Decimal('0')
+            sale_discount = sale.discount_amount or Decimal('0')
+            sale_profit = sale.profit or Decimal('0')
+
+            remaining_discount = sale_discount
+            remaining_profit = sale_profit
+
+            for i, item in enumerate(items):
+                is_last = (i == len(items) - 1)
+                
+                # Calculate weights and attributed values
+                if is_last:
+                    attributed_discount = remaining_discount
+                    attributed_profit = remaining_profit
+                else:
+                    if sale_subtotal > 0:
+                        weight = item.subtotal / sale_subtotal
+                        attributed_discount = (weight * sale_discount).quantize(Decimal('0.01'))
+                        attributed_profit = (weight * sale_profit).quantize(Decimal('0.01'))
+                    else:
+                        # If subtotal is 0 but there's discount/profit (edge case), distribute evenly
+                        attributed_discount = (sale_discount / len(items)).quantize(Decimal('0.01'))
+                        attributed_profit = (sale_profit / len(items)).quantize(Decimal('0.01'))
+                    
+                    remaining_discount -= attributed_discount
+                    remaining_profit -= attributed_profit
+
+                attributed_total = item.subtotal - attributed_discount
+                cost_value = item.cost_price * item.quantity
+
+                # 🚀 FALLBACK LOGIC: Group by product_id if available, otherwise by product_name
+                # This ensures "Custom Items" are still aggregated correctly.
+                p_id = item.product_id or f"custom_{item.product_name}"
+                if p_id not in product_data:
+                    product_data[p_id] = {
+                        "description": item.product_name,
+                        "totalQuantity": Decimal('0'),
+                        "totalAmount": Decimal('0'),
+                        "totalCost": Decimal('0'),
+                        "totalProfit": Decimal('0'),
+                        "totalDiscount": Decimal('0'),
+                        "productIds": [item.product_id] if item.product_id else []
+                    }
+                
+                pd = product_data[p_id]
+                pd["totalQuantity"] += item.quantity
+                pd["totalAmount"] += attributed_total
+                pd["totalCost"] += cost_value
+                pd["totalProfit"] += attributed_profit
+                pd["totalDiscount"] += attributed_discount
+
+        # 3. Format results for Response
         formatted = []
-        for row in aggregates:
+        for p_id, pd in product_data.items():
+            qty = float(pd["totalQuantity"])
+            total_amt = float(pd["totalAmount"])
+            total_cost = float(pd["totalCost"])
+            
             formatted.append({
-                "description": row['product_name'],
-                "totalQuantity": float(row['totalQuantity'] or 0),
-                "averagePrice": float(row['avgPrice'] or 0),
-                "totalAmount": float(row['totalAmount'] or 0),
-                "totalCost": float(row['totalCost'] or 0),
-                "totalProfit": float(row['totalProfit'] or 0),
-                "totalDiscount": float(row['totalDiscount'] or 0),
-                "averageCost": float(row['avgCost'] or 0),
-                "productIds": [row['product_id']] if row['product_id'] else []
+                "description": pd["description"],
+                "totalQuantity": qty,
+                "averagePrice": round(total_amt / qty, 2) if qty > 0 else 0,
+                "totalAmount": total_amt,
+                "totalCost": total_cost,
+                "totalProfit": float(pd["totalProfit"]),
+                "totalDiscount": float(pd["totalDiscount"]),
+                "averageCost": round(total_cost / qty, 2) if qty > 0 else 0,
+                "productIds": pd["productIds"]
             })
 
+        # Sort by totalAmount descending
+        formatted.sort(key=lambda x: x["totalAmount"], reverse=True)
+
         summary = {
-            "totalQuantity": float(item_qs.aggregate(q=Sum('quantity'))['q'] or 0),
+            "totalQuantity": sum(float(pd["totalQuantity"]) for pd in product_data.values()),
             "totalAmount": total_sales,
-            "totalCost": float(item_qs.aggregate(c=Sum(F('cost_price') * F('quantity')))['c'] or 0),
+            "totalCost": sum(float(pd["totalCost"]) for pd in product_data.values()),
             "totalProfit": total_profit,
             "totalDiscount": total_discount
         }
@@ -533,49 +533,65 @@ class ProductViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             for adj in adjustments:
                 p_id = adj.get('productId')
-                # Optional: handle if productId is not provided but SKU is
                 sku = adj.get('sku')
-                
-                delta = Decimal(str(adj.get('quantity', 0)))
-                new_price = adj.get('price')
-                adj_type = adj.get('type', 'ADJUSTMENT')
-                reason = adj.get('reason', '')
-                created_at = adj.get('createdAt')
                 
                 product = None
                 if p_id:
-                    product = Product.objects.select_for_update().filter(id=p_id, branch_id=branch_id).first()
+                    product = Product.objects.filter(id=p_id, branch_id=branch_id).first()
                 elif sku:
-                    product = Product.objects.select_for_update().filter(sku=sku, branch_id=branch_id).first()
-                
+                    product = Product.objects.filter(sku=sku, branch_id=branch_id).first()
+
                 if not product:
-                    # Log error or skip
+                    print(f"[BulkAdjust] Product not found: ID={p_id}, SKU={sku}")
                     continue
+
+                # 🚀 Extract adjustment data
+                delta = Decimal(str(adj.get('quantity', 0)))
+                absolute_qty = adj.get('absoluteQuantity')
+                new_price = adj.get('price')
+                adj_type = adj.get('type', 'ADJUSTMENT')
+                reason = adj.get('reason', '')
+                created_at_raw = adj.get('createdAt')
+
+                # 🛡️ DATA INTEGRITY: Prevent backdating before product creation
+                from django.utils import timezone
+                final_created_at = None
+                if created_at_raw:
+                    parsed_dt = parse_datetime(created_at_raw) if isinstance(created_at_raw, str) else created_at_raw
+                    if parsed_dt:
+                        # Ensure it's not before product creation
+                        if parsed_dt < product.created_at:
+                            # Clamp to product creation + 1 second to maintain order
+                            from datetime import timedelta
+                            final_created_at = product.created_at + timedelta(seconds=1)
+                        else:
+                            final_created_at = parsed_dt
                 
+                if final_created_at is None:
+                    final_created_at = timezone.now()
+
                 if new_price is not None:
-                    product.cost_price = Decimal(str(new_price))
+                    product.cost_price = to_decimal(new_price)
 
                 old_stock = product.stock
-                new_stock = old_stock + delta
+
+                # 🛡️ DATA INTEGRITY: Calculate delta on server if absolute quantity is requested
+                if absolute_qty is not None:
+                    absolute_qty_dec = to_decimal(absolute_qty)
+                    delta = absolute_qty_dec - old_stock
+                    new_stock = absolute_qty_dec
+                else:
+                    new_stock = old_stock + delta
+
                 product.stock = new_stock
-                product.save(update_fields=['stock', 'cost_price'])
-                
-                ProductHistory.objects.create(
-                    id=f"hist_{uuid.uuid4().hex[:10]}",
-                    user_id=user_id,
-                    branch_id=branch_id,
-                    product=product,
-                    type=adj_type,
-                    old_stock=old_stock,
-                    new_stock=new_stock,
-                    quantity_change=delta,
-                    reason=reason,
-                    created_at=created_at or datetime.now(),
-                    old_cost=product.cost_price,
-                    new_cost=Decimal(str(new_price)) if new_price is not None else product.cost_price,
-                    old_price=product.selling_price,
-                    new_price=product.selling_price
-                )
+
+                # 🛡️ SIGNAL CONTEXT
+                product._history_user_id = user_id
+                product._history_type = adj_type
+                product._history_reason = reason
+                product._history_created_at = final_created_at
+
+                product.save()
         return Response({"status": "success"})
 
     @action(detail=False, methods=['get'])
@@ -606,23 +622,23 @@ class StockAuditViewSet(viewsets.ModelViewSet):
         data = request.data
         items_data = data.pop('items', [])
         branch_id = data.get('branch')
-        
-        from core_app.models import BranchCounter
-        
+
+        from core_app.models import Branch
+
         with transaction.atomic():
             if not data.get('audit_number'):
                 counter, _ = BranchCounter.objects.get_or_create(branch_id=branch_id, type='audit', defaults={'count': 0})
                 counter.count += 1
                 counter.save()
                 data['audit_number'] = f"AUD-{str(counter.count).zfill(4)}"
-            
+
             if not data.get('id'):
                 data['id'] = f"aud_{uuid.uuid4().hex[:8]}"
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             audit = serializer.save()
-            
+
             for item in items_data:
                 item_id = f"aitm_{uuid.uuid4().hex[:8]}"
                 StockAuditItem.objects.create(
@@ -636,16 +652,76 @@ class StockAuditViewSet(viewsets.ModelViewSet):
                     variance=item.get('variance', 0),
                     status=item.get('status', 'Pending')
                 )
-                
+
         return Response(self.get_serializer(audit).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'])
+    def save_draft(self, request):
+        data = request.data
+        items_data = data.pop('items', [])
+        branch_id = data.get('branch')
+        user_id = data.get('user')
+
+        if not branch_id:
+            return Response({"error": "branch required"}, status=400)
+
+        with transaction.atomic():
+            # Find existing draft for this branch
+            audit = StockAudit.objects.filter(branch_id=branch_id, status='Draft').first()
+
+            if not audit:
+                audit_id = f"aud_drft_{uuid.uuid4().hex[:6]}"
+                audit = StockAudit.objects.create(
+                    id=audit_id,
+                    branch_id=branch_id,
+                    user_id=user_id,
+                    status='Draft',
+                    audit_number='DRAFT'
+                )
+
+            # Clear existing items and replace with new ones
+            audit.items.all().delete()
+
+            for item in items_data:
+                StockAuditItem.objects.create(
+                    id=f"aitm_{uuid.uuid4().hex[:8]}",
+                    audit=audit,
+                    product_id=item.get('productId'),
+                    product_name=item.get('productName'),
+                    sku=item.get('sku'),
+                    expected_qty=item.get('expected_qty', 0),
+                    counted_qty=item.get('counted_qty', 0),
+                    variance=item.get('variance', 0),
+                    status=item.get('status', 'Pending')
+                )
+
+            # Update audit timestamp
+            audit.save()
+
+        return Response({"status": "draft saved", "id": audit.id})
+
+    @action(detail=False, methods=['get'])
+    def get_draft(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        audit = StockAudit.objects.filter(branch_id=branch_id, status='Draft').first()
+        if not audit:
+            return Response({"status": "no draft found"}, status=404)
+
+        serializer = self.get_serializer(audit)
+        return Response(serializer.data)
 class ProductHistoryViewSet(viewsets.ModelViewSet):
     queryset = ProductHistory.objects.all()
     serializer_class = ProductHistorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('product', 'user', 'branch').filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('locationId')
         product_id = self.request.query_params.get('productId')
         if branch_id:
@@ -668,29 +744,18 @@ class ProductHistoryViewSet(viewsets.ModelViewSet):
             current_stock = product.stock
             change = float(data.get('newQuantity', 0)) - float(data.get('previousQuantity', 0))
             actual_new_stock = current_stock + change
-            
-            history = ProductHistory.objects.create(
-                user=request.user,
-                branch_id=branch_id,
-                product=product,
-                old_stock=current_stock,
-                new_stock=actual_new_stock,
-                type=data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT'),
-                change_reason=data.get('changeReason'),
-                reference_id=data.get('referenceId'),
-                created_at=data.get('createdAt') or datetime.now(),
-                old_cost=product.cost_price,
-                new_cost=product.cost_price,
-                old_price=product.selling_price,
-                new_price=product.selling_price
-            )
-            
-            product.stock = actual_new_stock
-            product.save(update_fields=['stock'])
-            
-            serializer = self.get_serializer(history)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+            # 🛡️ SIGNAL CONTEXT
+            product._history_user_id = request.user.id
+            product._history_type = data.get('type') or ('RESTOCK' if change >= 0 else 'ADJUSTMENT')
+            product._history_reason = data.get('changeReason')
+            product._history_reference_id = data.get('referenceId')
+            product._history_created_at = data.get('createdAt')
+
+            product.stock = actual_new_stock
+            product.save() # Signal will catch and log automatically
+
+            return Response({"status": "success"}, status=status.HTTP_201_CREATED)
     @action(detail=False, methods=['delete'])
     def delete_by_reference(self, request):
         ref_id = request.query_params.get('referenceId')
@@ -733,7 +798,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
         to_branch_id = data.get('to_branch')
         user_id = data.get('user') or request.user.id
         
-        from core_app.models import BranchCounter, Branch
+        
         
         with transaction.atomic():
             if not data.get('transfer_number'):
@@ -754,48 +819,97 @@ class StockTransferViewSet(viewsets.ModelViewSet):
             to_branch = transfer.to_branch
 
             for item in items_data:
+                src_p_id = item.get('productId')
                 sku = item.get('sku')
+                barcode = item.get('barcode')
+                name = item.get('productName')
                 qty = int(item.get('quantity', 0))
+
+                # 1. Deduct from source (ZERO RISK: use the exact ID provided by the UI)
+                src_product = Product.objects.select_for_update().filter(id=src_p_id).first()
+                if not src_product:
+                    # Fallback to SKU if ID is missing (legacy support)
+                    src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+
+                if not src_product:
+                    raise serializers.ValidationError({"error": f"Product '{name or sku}' not found in source branch."})
+
+                # 🛡️ DATA INTEGRITY: Strict stock check on server (with override)
+                allow_negative = data.get('allow_negative', False)
+                if src_product.stock < qty and not allow_negative:
+                    raise serializers.ValidationError({
+                        "error": f"Insufficient stock for {src_product.name}. Requested: {qty}, Available: {src_product.stock}. Provide 'allow_negative' to override."
+                    })
+
+                # 2. Add to destination (WATERFALL SEARCH)
+                dest_product = None
                 
-                # Deduct from source
-                src_product = Product.objects.select_for_update().filter(sku=sku, branch_id=from_branch_id).first()
+                # Priority 1: Match by SKU
+                if sku:
+                    dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
+                
+                # Priority 2: Match by Barcode
+                if not dest_product and barcode:
+                    dest_product = Product.objects.select_for_update().filter(barcode=barcode, branch_id=to_branch_id).first()
+                
+                # Priority 3: Match by exact Name
+                if not dest_product and name:
+                    dest_product = Product.objects.select_for_update().filter(name=name, branch_id=to_branch_id).first()
+
+                # 🛡️ DATA LOSS PROTECTION: Create the product in destination branch if it doesn't exist
+                if not dest_product:
+                    # Handle category (it's AGENCY-scoped now)
+                    new_category = None
+                    if src_product.category:
+                        new_category, _ = Category.objects.get_or_create(
+                            name=src_product.category.name,
+                            agency_id=src_product.agency_id,
+                            defaults={
+                                'user_id': user_id
+                            }
+                        )
+                    
+                    dest_product = Product.objects.create(
+                        branch_id=to_branch_id,
+                        user_id=user_id,
+                        agency_id=src_product.agency_id,
+                        name=src_product.name,
+                        description=src_product.description,
+                        sku=src_product.sku,
+                        barcode=src_product.barcode,
+                        manufacturer_barcode=src_product.manufacturer_barcode,
+                        image_url=src_product.image_url,
+                        cost_price=src_product.cost_price,
+                        selling_price=src_product.selling_price,
+                        min_stock=src_product.min_stock,
+                        category=new_category,
+                        supplier=src_product.supplier,
+                        stock=0
+                    )
+
                 if src_product:
                     old_stock = src_product.stock
                     src_product.stock -= qty
-                    src_product.save(update_fields=['stock'])
                     
-                    ProductHistory.objects.create(
-                        id=f"hist_{uuid.uuid4().hex[:10]}",
-                        user_id=user_id,
-                        branch_id=from_branch_id,
-                        product=src_product,
-                        type='TRANSFER_OUT',
-                        old_stock=old_stock,
-                        new_stock=src_product.stock,
-                        quantity_change=-qty,
-                        reason=f"Transfer to {to_branch.name} | {transfer.transfer_number}",
-                        reference_id=transfer.id
-                    )
+                    # 🛡️ SIGNAL CONTEXT
+                    src_product._history_user_id = user_id
+                    src_product._history_type = 'TRANSFER_OUT'
+                    src_product._history_reason = f"Transfer to {to_branch.name} | {transfer.transfer_number}"
+                    src_product._history_reference_id = transfer.id
+
+                    src_product.save()
                 
-                # Add to destination
-                dest_product = Product.objects.select_for_update().filter(sku=sku, branch_id=to_branch_id).first()
                 if dest_product:
                     old_stock = dest_product.stock
                     dest_product.stock += qty
-                    dest_product.save(update_fields=['stock'])
                     
-                    ProductHistory.objects.create(
-                        id=f"hist_{uuid.uuid4().hex[:10]}",
-                        user_id=user_id,
-                        branch_id=to_branch_id,
-                        product=dest_product,
-                        type='TRANSFER_IN',
-                        old_stock=old_stock,
-                        new_stock=dest_product.stock,
-                        quantity_change=qty,
-                        reason=f"Transfer from {from_branch.name} | {transfer.transfer_number}",
-                        reference_id=transfer.id
-                    )
+                    # 🛡️ SIGNAL CONTEXT
+                    dest_product._history_user_id = user_id
+                    dest_product._history_type = 'TRANSFER_IN'
+                    dest_product._history_reason = f"Transfer from {from_branch.name} | {transfer.transfer_number}"
+                    dest_product._history_reference_id = transfer.id
+
+                    dest_product.save()
                 
                 StockTransferItem.objects.create(
                     id=f"titem_{uuid.uuid4().hex[:10]}",
@@ -807,11 +921,21 @@ class StockTransferViewSet(viewsets.ModelViewSet):
                 )
                 
         return Response(self.get_serializer(transfer).data, status=status.HTTP_201_CREATED)
-
 class RequisitionViewSet(viewsets.ModelViewSet):
     queryset = Requisition.objects.all()
     serializer_class = RequisitionSerializer
     permission_classes = [IsAuthenticated]
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        from inventory.logic.requisitions import calculate_requisition_total
+        response.data['estimated_total'] = float(calculate_requisition_total(kwargs.get('pk')))
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        from inventory.logic.requisitions import calculate_requisition_total
+        response.data['estimated_total'] = float(calculate_requisition_total(kwargs.get('pk')))
+        return response
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -820,22 +944,72 @@ class RequisitionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs.order_by('-created_at')
 
-    def create(self, request, *args, **kwargs):
-        data = request.data
-        items_data = data.pop('items', [])
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # 🚀 PERFORMANCE: Add estimated total to each requisition in the list
+        from inventory.logic.requisitions import calculate_requisition_total
+        # Handle both paginated and non-paginated responses
+        data_list = response.data.get('results') if isinstance(response.data, dict) else response.data
+        if isinstance(data_list, list):
+            for req in data_list:
+                req['estimated_total'] = float(calculate_requisition_total(req['id']))
+        return response
+
+    @action(detail=True, methods=['get'])
+    def pdf(self, request, pk=None):
+        requisition = self.get_object()
+        from inventory.logic.requisitions import RequisitionPDFGenerator
+        from core_app.pdf_utils import generate_pdf_response
+        import io
         
+        buffer = io.BytesIO()
+        report = RequisitionPDFGenerator(buffer, title="Purchase Requisition")
+        elements = report.generate(requisition)
+        
+        return generate_pdf_response(elements, f"Requisition_{requisition.requisition_number}", buffer)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() # Make mutable copy
+        items_data = data.pop('items', [])
+        branch_id = data.get('locationId') or data.get('branchId') or data.get('branch')
+        
+        from core_app.models import BranchCounter
+        import uuid
+
         with transaction.atomic():
+            # 🚀 AUTO-NUMBERING: Generate requisition number on server
+            if not data.get('requisition_number'):
+                counter, _ = BranchCounter.objects.get_or_create(branch_id=branch_id, type='requisition', defaults={'count': 0})
+                counter.count += 1
+                counter.save()
+                data['requisition_number'] = f"REQ-{str(counter.count).zfill(4)}"
+
+            if not data.get('id'):
+                data['id'] = f"req_{uuid.uuid4().hex[:8]}"
+
+            # Ensure branch is correctly mapped for the serializer
+            if branch_id:
+                data['branch'] = branch_id
+
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             requisition = serializer.save(status='PENDING')
             
             for item in items_data:
+                p_id = item.get('productId')
                 RequisitionItem.objects.create(
                     requisition=requisition,
+                    product_id=p_id, # 🚀 LINK TO ACTUAL PRODUCT
                     product_name=item.get('productName'),
                     sku=item.get('sku'),
-                    quantity=item.get('quantity')
+                    quantity=item.get('quantity'),
+                    urgent_item=item.get('urgentItem', False)
                 )
+        
+        # 🚀 PERFORMANCE: Calculate total for the response immediately
+        from inventory.logic.requisitions import calculate_requisition_total
+        res_data = self.get_serializer(requisition).data
+        res_data['estimated_total'] = float(calculate_requisition_total(requisition.id))
                 
-        return Response(self.get_serializer(requisition).data, status=status.HTTP_201_CREATED)
+        return Response(res_data, status=status.HTTP_201_CREATED)
 

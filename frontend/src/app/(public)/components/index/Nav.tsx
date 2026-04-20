@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import Image from "next/image";
 
 const Nav = () => {
   const { user, status } = useAuth();
   const [scrolled, setScrolled] = useState(false);
-  
+
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", fn);
@@ -30,7 +31,9 @@ const Nav = () => {
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Link href="/" className="flex items-center">
-            <img
+            <Image
+              width={32}
+              height={32}
               src="/lovable-uploads/logo sys white-01.png"
               alt="Gonza Logo"
               className="h-8 md:h-10"
@@ -38,7 +41,7 @@ const Nav = () => {
           </Link>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {status === 'loading' ? (
+          {status === "loading" ? (
             <div className="w-24 h-9 bg-slate-100/50 animate-pulse rounded-lg" />
           ) : user ? (
             <Link
@@ -49,7 +52,10 @@ const Nav = () => {
             </Link>
           ) : (
             <>
-              <Link href="/public/login" className="lp-btn-ghost" style={{ fontSize: 13 }}>
+              <Link
+                href="/public/login"
+                className="lp-btn-ghost"
+                style={{ fontSize: 13 }}>
                 Log In
               </Link>
               <Link

@@ -8,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, ArrowUp, ArrowDown, Save, X, Info, Receipt, Wallet, Link } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, ArrowUp, ArrowDown, Save, X, Info, Receipt, Wallet, Link, User as UserIcon } from 'lucide-react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useCashAccounts } from '@/hooks/useCashAccounts';
+import { useExpenseCategories } from '@/hooks/useExpenseCategories';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -53,6 +54,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
     const isMobile = useIsMobile();
     const { user } = useAuth();
     const { accounts } = useCashAccounts();
+    const { categories } = useExpenseCategories();
     const { createBulkExpenses } = useExpenses();
     const [rows, setRows] = useState<ExpenseRow[]>([]);
     const [globalDate, setGlobalDate] = useState<Date>(new Date());
@@ -157,11 +159,13 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                 <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                     <TableRow>
                         <TableHead className="w-[140px]">Date</TableHead>
-                        <TableHead className="w-[130px]">Amount</TableHead>
+                        <TableHead className="w-[120px]">Amount</TableHead>
                         <TableHead>Description</TableHead>
-                        <TableHead className="w-[140px]">Category</TableHead>
-                        <TableHead className="w-[180px]">Link to Cash</TableHead>
-                        <TableHead className="w-[120px] text-right">Actions</TableHead>
+                        <TableHead className="w-[130px]">Category</TableHead>
+                        <TableHead className="w-[130px]">Person</TableHead>
+                        <TableHead className="w-[120px]">Payment</TableHead>
+                        <TableHead className="w-[160px]">Link to Cash</TableHead>
+                        <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -176,7 +180,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                             className={cn("w-full justify-start text-left font-normal h-9 rounded-lg", !row.date && "text-muted-foreground")}
                                         >
                                             <CalendarIcon className="mr-2 h-3 w-3 shrink-0" />
-                                            <span className="truncate">{row.date ? format(row.date, "MMM dd, yyyy") : "Date"}</span>
+                                            <span className="truncate">{formatDate(row.date)}</span>
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0 z-[70]" align="start">
@@ -212,18 +216,31 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                     onValueChange={(val) => updateRow(row.id, { category: val })}
                                 >
                                     <SelectTrigger className="h-9 rounded-lg">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Category" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Sales">Sales</SelectItem>
-                                        <SelectItem value="Expenses">Expenses</SelectItem>
-                                        <SelectItem value="Payroll">Payroll</SelectItem>
-                                        <SelectItem value="Supplies">Supplies</SelectItem>
-                                        <SelectItem value="Utilities">Utilities</SelectItem>
-                                        <SelectItem value="Rent">Rent</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                        ))}
+                                        {categories.length === 0 && <SelectItem value="Other">Other</SelectItem>}
                                     </SelectContent>
                                 </Select>
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                    value={row.personInCharge}
+                                    onChange={(e) => updateRow(row.id, { personInCharge: e.target.value })}
+                                    placeholder="Person..."
+                                    className="h-9 rounded-lg"
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                    value={row.paymentMethod}
+                                    onChange={(e) => updateRow(row.id, { paymentMethod: e.target.value })}
+                                    placeholder="Method..."
+                                    className="h-9 rounded-lg"
+                                />
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col gap-1.5 p-1 bg-slate-50/50 dark:bg-slate-800/50 rounded-lg">
@@ -233,7 +250,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                             checked={row.linkToCash}
                                             onCheckedChange={(checked) => updateRow(row.id, { linkToCash: !!checked })}
                                         />
-                                        <Label htmlFor={`link-${row.id}`} className="text-[10px] font-medium text-slate-600">Link Transaction</Label>
+                                        <Label htmlFor={`link-${row.id}`} className="text-[10px] font-medium text-slate-600">Link</Label>
                                     </div>
                                     {row.linkToCash && (
                                         <Select
@@ -241,7 +258,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                             onValueChange={(val) => updateRow(row.id, { cashAccountId: val })}
                                         >
                                             <SelectTrigger className="text-[10px] h-7 px-2 rounded-md">
-                                                <SelectValue placeholder="Select Account" />
+                                                <SelectValue placeholder="Account" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {accounts.map(acc => (
@@ -256,9 +273,6 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                 <div className="flex items-center justify-end gap-0.5">
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => moveRow(row.id, 'up')}>
                                         <ArrowUp className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => moveRow(row.id, 'down')}>
-                                        <ArrowDown className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => removeRow(row.id)}>
                                         <Trash2 className="h-3.5 w-3.5" />
@@ -299,7 +313,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                         className={cn("w-full justify-start text-left font-normal h-9 rounded-lg", !row.date && "text-muted-foreground")}
                                     >
                                         <CalendarIcon className="mr-2 h-3 w-3" />
-                                        <span className="truncate text-xs">{row.date ? format(row.date, "MMM dd, yyyy") : "Date"}</span>
+                                        <span className="truncate text-xs">{formatDate(row.date)}</span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0 z-[70]" align="start">
@@ -336,27 +350,26 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                     <SelectValue placeholder="Category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Sales">Sales</SelectItem>
-                                    <SelectItem value="Expenses">Expenses</SelectItem>
-                                    <SelectItem value="Payroll">Payroll</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                    ))}
+                                    {categories.length === 0 && <SelectItem value="Other">Other</SelectItem>}
                                 </SelectContent>
                             </Select>
-                            <Select
-                                value={row.paymentMethod}
-                                onValueChange={(val) => updateRow(row.id, { paymentMethod: val })}
-                            >
-                                <SelectTrigger className="h-9 text-xs rounded-lg">
-                                    <SelectValue placeholder="Method" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Cash">Cash</SelectItem>
-                                    <SelectItem value="M-Pesa">M-Pesa</SelectItem>
-                                    <SelectItem value="Bank">Bank</SelectItem>
-                                    <SelectItem value="Card">Card</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Input
+                                placeholder="Person"
+                                value={row.personInCharge}
+                                onChange={(e) => updateRow(row.id, { personInCharge: e.target.value })}
+                                className="h-9 text-xs rounded-lg"
+                            />
                         </div>
+
+                        <Input
+                            placeholder="Payment Method (Cash, Bank, etc.)"
+                            value={row.paymentMethod}
+                            onChange={(e) => updateRow(row.id, { paymentMethod: e.target.value })}
+                            className="h-9 text-xs rounded-lg"
+                        />
 
                         <div className="flex flex-col gap-2 p-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
                             <div className="flex items-center space-x-2">
@@ -439,7 +452,7 @@ const ExpenseBulkAddDialog: React.FC<ExpenseBulkAddDialogProps> = ({
                                                 <PopoverTrigger asChild>
                                                     <Button variant="outline" className={cn("justify-start text-left font-normal w-full md:w-[220px] h-10 shadow-sm rounded-lg", !globalDate && "text-muted-foreground")}>
                                                         <CalendarIcon className="mr-2 h-4 w-4 text-red-500" />
-                                                        {globalDate ? format(globalDate, "PPP") : <span>Pick a date</span>}
+                                                        {globalDate ? formatDate(globalDate) : <span>Pick a date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0 z-[100]" align="start">

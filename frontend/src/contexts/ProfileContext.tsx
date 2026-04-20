@@ -10,6 +10,7 @@ export interface BusinessRole {
   id: string;
   business_location_id: string;
   name: string;
+  pin_required: boolean;
   description?: string | null;
   permissions: Record<string, string[]>;
   created_at: string;
@@ -53,7 +54,7 @@ interface ProfileContextType {
   dismissFirstTimeSetup: () => void;
 }
 
-const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
+export const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfiles?: BusinessProfile[] }> = ({ children, initialProfiles = [] }) => {
   const { user, signOut } = useAuth();
@@ -89,14 +90,22 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
   const [isProfileVerified, setIsProfileVerified] = useState(() => {
     if (!currentProfile) return false;
     
-    const role = (currentProfile.role || "").toLowerCase();
+    // 🛡️ DATA HARDENING: Handle role as an object
+    const roleObj = currentProfile.role as any;
+    const roleName = (roleObj?.name || "").toLowerCase();
     const businessRoleName = (currentProfile.business_role?.name || "").toLowerCase();
     
-    // PIN Bypass for Admin (Agency Owner) and Manager roles
+    // 🛡️ DATABASE-DRIVEN BYPASS: Use the pin_required flag from the backend
+    const isPinRequired = currentProfile.business_role?.pin_required ?? roleObj?.pin_required ?? true;
+    if (isPinRequired === false) {
+      return true;
+    }
+
+    // LEGACY: PIN Bypass for Admin (Agency Owner) and Manager roles (Fallback)
     if (
-      role === 'admin' || 
-      role === 'manager' || 
-      role === 'owner' || 
+      roleName === 'admin' || 
+      roleName === 'manager' || 
+      roleName === 'owner' || 
       businessRoleName === 'admin' || 
       businessRoleName === 'owner'
     ) {
@@ -304,36 +313,43 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
   const hasPermission = React.useCallback((module: string, action: string = 'view'): boolean => {
     if (!currentProfile) return false;
 
-    const role = (currentProfile.role || "").toLowerCase();
+    // 🛡️ DATA HARDENING: Backend 'role' is an object { name, permissions: [...] }
+    const roleObj = currentProfile.role as any;
+    const roleName = (roleObj?.name || "").toLowerCase();
     const businessRoleName = (currentProfile.business_role?.name || "").toLowerCase();
 
-    // Full access for Admin (Agency Owner) and Manager (as requested)
+    // 1. Check granular permissions from the backend map FIRST
+    // Backend returns permissions as an array of permission objects [{ name: "module:action" }, ...]
+    const permissionsList = currentProfile.business_role?.permissions || roleObj?.permissions;
+    if (Array.isArray(permissionsList)) {
+      const permKey = `${module.toLowerCase()}:${action.toLowerCase()}`;
+      const hasDirectPerm = permissionsList.some((p: any) => 
+        (typeof p === 'string' ? p.toLowerCase() : p.name?.toLowerCase()) === permKey
+      );
+      if (hasDirectPerm) return true;
+    }
+
+    // 2. LEGACY Fallback: Full access for Admin (Agency Owner) and Manager
     if (
-      role === 'admin' || 
-      role === 'manager' || 
-      role === 'owner' || 
+      roleName === 'admin' || 
+      roleName === 'manager' || 
+      roleName === 'owner' || 
       businessRoleName === 'admin' || 
       businessRoleName === 'owner'
     ) return true;
 
-    const permissions = currentProfile.business_role?.permissions;
-    if (!permissions) {
-      // Fallback for staff or other roles
-      if (role === 'staff') {
+    // 🛡️ DATA HARDENING: Support both map and list permission formats
+    const permissionsMap = (currentProfile.business_role as any)?.permissions;
+    if (permissionsMap && !Array.isArray(permissionsMap)) {
+      // Fallback for staff or other roles using legacy map format
+      if (roleName === 'staff') {
         if (action === 'view') return true;
         if (['sales', 'tasks'].includes(module.toLowerCase()) && action === 'create') return true;
       }
       return false;
     }
 
-    const modulePermissions = permissions[module.toLowerCase()];
-    if (!modulePermissions) return false;
-
-    const hasPerm = modulePermissions.includes(action.toLowerCase());
-    if (!hasPerm) {
-        console.log(`ProfileContext: Permission denied for ${module}:${action} for profile ${currentProfile.profile_name}`);
-    }
-    return hasPerm;
+    return false;
   }, [currentProfile]);
 
   // Load profiles when business changes
@@ -351,7 +367,6 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode, initialProfi
       const needsLoad = !hasLoadedInitial.current && !hasCorrectInitialData;
       
       if (needsLoad) {
-        console.log('[Profiles] No SSR data found. Triggering client-side fetch.');
         loadProfiles();
       } else {
         // If we have SSR data, mark as loaded so we don't trigger again

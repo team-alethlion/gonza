@@ -1,33 +1,35 @@
-from django.db import transaction
-from django.utils import timezone
-from core_app.models import BranchCounter, Branch
+from core.logic.number_generator import NumberingEngine
+
+def get_next_receipt_number(branch_id, increment=False):
+    """
+    Generates a professional, industry-standard receipt number.
+    Format: GZ-{BRANCH}-{YYMM}-{SEQUENCE}
+    Example: GZ-KLA-2603-0042
+    
+    If increment=True, it updates the database counter.
+    If increment=False, it previews the next number.
+    """
+    return NumberingEngine.get_next_number(
+        branch_id=branch_id, 
+        type_key='sale', 
+        prefix='GZ', 
+        increment=increment
+    )
 
 def generate_receipt_number(branch_id):
     """
-    Generates a unique, sequential receipt number for a specific branch.
-    Format: RCP-BRANCH_NAME-YYYY-XXXX
+    Backward compatible wrapper that increments the counter.
     """
-    if not branch_id:
-        return None
+    return get_next_receipt_number(branch_id, increment=True)
 
-    with transaction.atomic():
-        branch = Branch.objects.get(id=branch_id)
-        # Use short name if possible, otherwise first 3 letters
-        branch_code = branch.name[:3].upper().replace(" ", "")
-        
-        year = timezone.now().year
-        
-        # Use select_for_update to handle concurrency safely
-        counter, created = BranchCounter.objects.select_for_update().get_or_create(
-            branch=branch,
-            type='sale',
-            defaults={'count': 0}
-        )
-        
-        counter.count += 1
-        counter.save()
-        
-        # Format: RCP-BRA-2026-00001
-        receipt_number = f"RCP-{branch_code}-{year}-{counter.count:05d}"
-        
-        return receipt_number
+def generate_return_number(branch_id):
+    """
+    Generates a professional return number.
+    Format: RET-{BRANCH}-{YYMM}-{SEQUENCE}
+    """
+    return NumberingEngine.get_next_number(
+        branch_id=branch_id, 
+        type_key='return', 
+        prefix='RET', 
+        increment=True
+    )

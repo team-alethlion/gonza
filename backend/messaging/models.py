@@ -1,5 +1,6 @@
 from django.db import models
 from core.utils import gen_cp_id, gen_me_id, gen_mt_id, gen_ws_id
+from .utils import encrypt_data, decrypt_data
 
 class Campaign(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_cp_id)
@@ -68,3 +69,20 @@ class WhatsAppSession(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # 🛡️ SECURITY: Encrypt session_data if it's not already encrypted
+        if self.session_data and not self.session_data.startswith('ENC:'):
+            self.session_data = f"ENC:{encrypt_data(self.session_data)}"
+        super().save(*args, **kwargs)
+
+    def get_session_data(self):
+        """
+        Helper method to retrieve decrypted session data.
+        """
+        if self.session_data and self.session_data.startswith('ENC:'):
+            return decrypt_data(self.session_data[4:])
+        return self.session_data
+
+    class Meta:
+        verbose_name_plural = "WhatsApp Sessions"

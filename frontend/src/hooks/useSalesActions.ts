@@ -6,18 +6,21 @@ export const useSalesActions = () => {
   const router = useRouter();
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [isDeletingSale, setIsDeletingSale] = useState(false);
 
   const handleEditSale = useCallback((sale: Sale) => {
-    // Next.js params will be handled differently perhaps, but router.push does not take state object easily.
-    // Assuming edit goes to new-sale page, but new-sale usually uses id param instead of passing the whole object
-    // For now we push to /agency/new-sale?editId=${sale.id} or similar.
     router.push(`/agency/new-sale?editId=${sale.id}`);
   }, [router]);
 
   const handleViewReceipt = useCallback((sale: Sale) => {
     setSelectedSale(sale);
     setIsReceiptDialogOpen(true);
+  }, []);
+
+  const handleProcessReturn = useCallback((sale: Sale) => {
+    setSelectedSale(sale);
+    setIsReturnDialogOpen(true);
   }, []);
 
   const handleDeleteSale = useCallback((deleteSale: (id: string, reason?: string) => Promise<boolean>) => {
@@ -36,13 +39,21 @@ export const useSalesActions = () => {
     if (!open) setSelectedSale(null);
   }, []);
 
+  const handleCloseReturnDialog = useCallback((open: boolean) => {
+    setIsReturnDialogOpen(open);
+    if (!open) setSelectedSale(null);
+  }, []);
+
   return {
     selectedSale,
     isReceiptDialogOpen,
+    isReturnDialogOpen,
     isDeletingSale,
     handleEditSale,
     handleViewReceipt,
+    handleProcessReturn,
     handleDeleteSale,
-    handleCloseReceiptDialog
+    handleCloseReceiptDialog,
+    handleCloseReturnDialog
   };
 };

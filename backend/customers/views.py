@@ -7,11 +7,12 @@ from django.db.models import Sum, Count, Q
 from django.db.models.functions import Coalesce
 from django.utils.timezone import now
 
-from .models import CustomerCategory, Customer, FavoriteCustomer, Ticket
+from .models import CustomerCategory, Customer, FavoriteCustomer, Ticket, CustomerLedger
 from .filters import CustomerFilter
 from .serializers import (
     CustomerCategorySerializer, CustomerSerializer,
-    FavoriteCustomerSerializer, TicketSerializer
+    FavoriteCustomerSerializer, TicketSerializer,
+    CustomerLedgerSerializer
 )
 
 class CustomerCategoryViewSet(viewsets.ModelViewSet):
@@ -19,11 +20,25 @@ class CustomerCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerCategorySerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        # 🛡️ SECURITY: Auto-assign agency from the creating user
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        serializer.save(agency_id=agency_id)
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        qs = super().get_queryset().select_related('branch', 'admin', 'category')
+        
+        user = self.request.user
+        if user.is_authenticated:
+            agency_id = getattr(user, 'agency_id', None)
+            if agency_id:
+                qs = qs.filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('name')
 
 
@@ -34,91 +49,215 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filterset_class = CustomerFilter
     search_fields = ['name', 'phone', 'email', 'address']
 
+    def perform_create(self, serializer):
+        # 🛡️ SECURITY: Auto-assign agency from the creating user
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        serializer.save(agency_id=agency_id)
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        qs = super().get_queryset().select_related('branch', 'admin', 'category')
+        
+        user = self.request.user
+        if user.is_authenticated:
+            agency_id = getattr(user, 'agency_id', None)
+            if agency_id:
+                qs = qs.filter(agency_id=agency_id)
+        
         branch_id = self.request.query_params.get('branchId')
         if branch_id:
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('name')
 
     def list(self, request, *args, **kwargs):
-        from django.db.models import Sum, Count, Q, OuterRef, Subquery, FloatField
-        from django.db.models.functions import Coalesce
-        from sales.models import Sale
-
-        # Create a subquery for total sales amount
-        sales_subquery = Sale.objects.filter(
-            Q(customer_id=OuterRef('pk')) | Q(customer_name__iexact=OuterRef('name')),
-            branch_id=OuterRef('branch_id')
-        ).exclude(status='QUOTE')
-
-        total_spent_subquery = sales_subquery.values('branch_id').annotate(
-            total=Sum('total_amount')
-        ).values('total')
-
-        order_count_subquery = sales_subquery.values('branch_id').annotate(
-            count=Count('id')
-        ).values('count')
-
-        queryset = self.filter_queryset(self.get_queryset()).annotate(
-            total_spent=Coalesce(Subquery(total_spent_subquery), 0.0, output_field=FloatField()),
-            orders_count=Coalesce(Subquery(order_count_subquery), 0, output_field=FloatField())
-        )
+        # 🚀 PERFORMANCE: Removed heavy subqueries for total spent/orders count.
+        # These are now provided on-demand in the retrieve (detail) action.
+        queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
         customers = page if page is not None else queryset
         
-        response_data = []
-        for customer in customers:
-             serializer = self.get_serializer(customer)
-             data = serializer.data
-             data['lifetimeValue'] = float(customer.total_spent)
-             data['orderCount'] = int(customer.orders_count)
-             response_data.append(data)
+        serializer = self.get_serializer(customers, many=True)
+        response_data = serializer.data
              
         if page is not None:
             return self.get_paginated_response(response_data)
 
         return Response(response_data)
 
-    def retrieve(self, request, *args, **kwargs):
-        from django.db.models import Sum, Count, Q, FloatField
-        from django.db.models.functions import Coalesce
-        from sales.models import Sale
+    @action(detail=False, methods=['get'])
+    def segment(self, request):
+        """
+        🎯 CUSTOMER SEGMENTATION ENGINE
+        Returns specific lists of customers for targeted messaging/actions.
+        """
+        from messaging.logic.core.segmentation import CustomerSegmenter
+        
+        branch_id = request.query_params.get('branchId')
+        segment_type = request.query_params.get('type', 'all')
+        days = int(request.query_params.get('days', 90))
 
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        if segment_type == 'unpaid':
+            queryset = CustomerSegmenter.get_unpaid_customers(branch_id)
+        elif segment_type == 'inactive':
+            queryset = CustomerSegmenter.get_inactive_customers(branch_id, days)
+        else:
+            queryset = CustomerSegmenter.get_all_customers(branch_id)
+
+        # Apply standard filters if needed (e.g., categories)
+        category_id = request.query_params.get('categoryId')
+        if category_id and category_id != 'all':
+            queryset = queryset.filter(category_id=category_id)
+
+        # Serialize
+        page = self.paginate_queryset(queryset)
+        customers = page if page is not None else queryset
+        serializer = self.get_serializer(customers, many=True)
+        
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        # 🚀 PERFORMANCE: Use stored totals instead of calculating on the fly
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         data = serializer.data
         
-        sales = Sale.objects.filter(
-            Q(customer_id=instance.id) | Q(customer_name__iexact=instance.name),
-            branch_id=instance.branch_id
-        ).exclude(status='QUOTE')
+        # We use the denormalized fields we just created
+        data['lifetimeValue'] = float(instance.total_spent)
+        data['orderCount'] = int(instance.order_count)
         
-        agg = sales.aggregate(
-            total_spent=Coalesce(Sum('total_amount'), 0.0, output_field=FloatField()),
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def top(self, request):
+        from sales.models import Sale
+        from django.db.models import Sum, Count, Q
+        
+        branch_id = request.query_params.get('branchId')
+        start_date = request.query_params.get('startDate')
+        end_date = request.query_params.get('endDate')
+        category_id = request.query_params.get('categoryId')
+        
+        # Base query: non-quote sales for this branch
+        sales_qs = Sale.objects.filter(branch_id=branch_id).exclude(status='QUOTE')
+        
+        if start_date:
+            sales_qs = sales_qs.filter(date__gte=start_date)
+        if end_date:
+            sales_qs = sales_qs.filter(date__lte=end_date)
+            
+        # If category is filtered, we need to join with Customer table
+        if category_id and category_id != 'all':
+            sales_qs = sales_qs.filter(
+                Q(customer__category_id=category_id) | 
+                Q(customer_id__isnull=True) # Guest sales usually don't have category anyway
+            )
+
+        # Aggregate by customer_id (first) and customer_name
+        # This groups guest sales by name and registered sales by ID
+        stats = sales_qs.values('customer_id', 'customer_name').annotate(
+            total_purchases=Sum('total_amount'),
             order_count=Count('id')
+        ).order_by('-total_purchases')
+        
+        # We only want the top ones (e.g., 100)
+        top_stats = stats[:100]
+        
+        response_data = []
+        for item in top_stats:
+            response_data.append({
+                "id": item['customer_id'],
+                "name": item['customer_name'],
+                "totalPurchases": float(item['total_purchases'] or 0),
+                "orderCount": item['order_count']
+            })
+            
+        return Response(response_data)
+
+    @action(detail=False, methods=['get'])
+    def inactive(self, request):
+        from sales.models import Sale
+        from datetime import timedelta
+        from django.db.models import Max, Q
+        
+        branch_id = request.query_params.get('branchId')
+        days = int(request.query_params.get('days', 30))
+        category_id = request.query_params.get('categoryId')
+        
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        cutoff_date = now() - timedelta(days=days)
+        cutoff_date_only = cutoff_date.date()
+        
+        # 🚀 FIX: Identify active customers first (Date >= cutoff AND Status != QUOTE)
+        active_customer_ids = Sale.objects.filter(
+            branch_id=branch_id,
+            date__gte=cutoff_date_only
+        ).exclude(status='QUOTE').values_list('customer_id', flat=True).distinct()
+
+        # Filter the main queryset to exclude these active IDs
+        queryset = Customer.objects.filter(branch_id=branch_id).exclude(
+            id__in=active_customer_ids
+        ).annotate(
+            last_purchase_date=Max('sales__date', filter=~Q(sales__status='QUOTE'))
         )
         
-        data['lifetimeValue'] = float(agg['total_spent'])
-        data['orderCount'] = int(agg['order_count'])
+        if category_id and category_id != 'all':
+            queryset = queryset.filter(category_id=category_id)
+            
+        # Serialize the results
+        page = self.paginate_queryset(queryset)
+        customers = page if page is not None else queryset
+        
+        response_data = []
+        for customer in customers:
+            data = self.get_serializer(customer).data
+            # Use the annotated value directly
+            data['lastPurchaseDate'] = customer.last_purchase_date.isoformat() if customer.last_purchase_date else None
+            response_data.append(data)
+                
+        if page is not None:
+            return self.get_paginated_response(response_data)
+            
+        return Response(response_data)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from .logic.summary_generator import CustomerSummaryGenerator
+        generator = CustomerSummaryGenerator(branch_id)
+        data = generator.get_full_summary()
+        
+        # Add categories for the full module summary
+        from .models import CustomerCategory
+        from .serializers import CustomerCategorySerializer
+        cats = CustomerCategory.objects.filter(branch_id=branch_id).order_by('name')
+        data['categories'] = CustomerCategorySerializer(cats, many=True).data
+        
         return Response(data)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
         branch_id = request.query_params.get('branchId')
-        qs = self.get_queryset()
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+            
+        from .logic.summary_generator import CustomerSummaryGenerator
+        generator = CustomerSummaryGenerator(branch_id)
+        data = generator.get_full_summary()
         
-        today = now()
-        start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        this_month_count = qs.filter(created_at__gte=start_of_month).count()
-        with_birthdays = qs.exclude(birthday__isnull=True).count()
-        
-        return Response({
-            "thisMonth": this_month_count,
-            "withBirthdays": with_birthdays
-        })
+        # Return only the stats portion for the stats endpoint
+        return Response(data['stats'])
 
     @action(detail=False, methods=['post'])
     def merge(self, request):
@@ -143,6 +282,64 @@ class CustomerViewSet(viewsets.ModelViewSet):
             return Response({"status": "merged"})
         except Customer.DoesNotExist:
             return Response({"error": "Primary customer not found"}, status=404)
+
+    @action(detail=False, methods=['get'])
+    def duplicates(self, request):
+        branch_id = request.query_params.get('branchId')
+        if not branch_id:
+            return Response({"error": "branchId required"}, status=400)
+
+        # 🚀 PERFORMANCE: Scan entire branch database for duplicates
+        # We check Phone, Email, and Name (normalized)
+        from django.db.models import Count
+        from django.db.models.functions import Lower, Replace
+        from django.db import models
+
+        # 1. Find duplicate phone numbers
+        phone_dupes = Customer.objects.filter(branch_id=branch_id).exclude(phone__isnull=True).exclude(phone='').values('phone').annotate(count=Count('id')).filter(count__gt=1)
+        
+        # 2. Find duplicate emails
+        email_dupes = Customer.objects.filter(branch_id=branch_id).exclude(email__isnull=True).exclude(email='').values('email').annotate(count=Count('id')).filter(count__gt=1)
+        
+        # 3. Find duplicate names (normalized: lowercase and no spaces)
+        name_dupes = Customer.objects.filter(branch_id=branch_id).annotate(
+            norm_name=Replace(Lower('name'), models.Value(' '), models.Value(''))
+        ).values('norm_name').annotate(count=Count('id')).filter(count__gt=1)
+
+        # Collect all duplicate IDs
+        duplicate_groups = []
+        seen_ids = set()
+
+        # Helper to group by a field
+        def add_groups(queryset, field_name):
+            for item in queryset:
+                val = item[field_name]
+                group_qs = Customer.objects.filter(branch_id=branch_id, **{field_name: val})
+                ids = list(group_qs.values_list('id', flat=True))
+                if any(id in seen_ids for id in ids): continue # Avoid overlap
+                
+                group_data = self.get_serializer(group_qs, many=True).data
+                duplicate_groups.append(group_data)
+                seen_ids.update(ids)
+
+        add_groups(phone_dupes, 'phone')
+        add_groups(email_dupes, 'email')
+        
+        # For names, it's slightly different due to normalization
+        for item in name_dupes:
+            val = item['norm_name']
+            group_qs = Customer.objects.filter(branch_id=branch_id).annotate(
+                norm_name=Replace(Lower('name'), models.Value(' '), models.Value(''))
+            ).filter(norm_name=val)
+            
+            ids = list(group_qs.values_list('id', flat=True))
+            if any(id in seen_ids for id in ids): continue
+            
+            group_data = self.get_serializer(group_qs, many=True).data
+            duplicate_groups.append(group_data)
+            seen_ids.update(ids)
+
+        return Response(duplicate_groups)
 
     @action(detail=False, methods=['get'])
     def lifetime_stats(self, request):
@@ -173,7 +370,35 @@ class FavoriteCustomerViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteCustomerSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        return super().get_queryset().filter(agency_id=agency_id)
+
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        return super().get_queryset().filter(agency_id=agency_id)
+
+class CustomerLedgerViewSet(viewsets.ModelViewSet):
+    queryset = CustomerLedger.objects.all()
+    serializer_class = CustomerLedgerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 🛡️ SECURITY: Strict Multi-tenant isolation
+        agency_id = getattr(self.request.user, 'agency_id', None)
+        qs = super().get_queryset().select_related('customer', 'branch').filter(agency_id=agency_id)
+        
+        branch_id = self.request.query_params.get('branchId')
+        customer_id = self.request.query_params.get('customerId')
+        if branch_id:
+            qs = qs.filter(branch_id=branch_id)
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        return qs.order_by('-date', '-created_at')

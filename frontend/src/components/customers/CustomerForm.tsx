@@ -75,6 +75,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       phoneNumber: initialData?.phoneNumber || "",
       location: initialData?.location || "",
       notes: initialData?.notes || "",
+      creditLimit: initialData?.creditLimit || 0,
     },
   });
 
@@ -154,6 +155,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     try {
       const customerData: Partial<Customer> = {
         ...data,
+        creditLimit: Number(data.creditLimit || 0),
         gender: selectedGender,
         birthday: date,
         categoryId: selectedCategoryId === "none" ? null : selectedCategoryId,
@@ -255,6 +257,18 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
           <div className="space-y-2">
             <Label htmlFor="location">Location</Label>
             <Input id="location" {...register("location")} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="creditLimit">Credit Limit ({initialData?.branchId ? '' : 'Optional'})</Label>
+            <Input 
+              id="creditLimit" 
+              type="number" 
+              step="0.01"
+              {...register("creditLimit")} 
+              placeholder="0.00"
+            />
+            <p className="text-[10px] text-muted-foreground">Maximum debt allowed for this customer.</p>
           </div>
 
           <div className="space-y-2">

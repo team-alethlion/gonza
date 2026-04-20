@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CashTransaction } from '@/types/cash';
 import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashAccounts } from '@/hooks/useCashAccounts';
+import { useBusiness } from '@/contexts/BusinessContext';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { exportCashTransactionsToPDF } from '@/utils/exportCashTransactionsToPDF';
 import { exportCashTransactionsToCSV } from '@/utils/exportCashTransactionsToCSV';
@@ -36,7 +37,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
   onViewTransaction,
   onTransactionDeleted
 }) => {
-  const { deleteTransaction, transactions: allTransactions } = useCashTransactions(accountId || undefined);
+  const { currentBusiness } = useBusiness();
   const { accounts } = useCashAccounts();
   const { settings } = useBusinessSettings();
   const { hasPermission } = useProfiles();
@@ -139,7 +140,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
     const dayBeforeEarliestStr = dayBeforeEarliest.toISOString().split('T')[0];
 
     // Get all transactions up to the day before the earliest transaction
-    let transactionsBeforeRange = allTransactions.filter(t =>
+    let transactionsBeforeRange = transactions.filter(t =>
       t.date.toISOString().split('T')[0] <= dayBeforeEarliestStr
     );
 
@@ -223,10 +224,13 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
   };
 
   const handleDelete = async (id: string) => {
+    if (!currentBusiness?.id) return;
+    
     setDeletingId(id);
     try {
-      const success = await deleteTransaction(id);
-      if (success && onTransactionDeleted) {
+      const { deleteCashTransactionAction } = await import('@/app/actions/finance');
+      const result = await deleteCashTransactionAction(id, currentBusiness.id);
+      if (result.success && onTransactionDeleted) {
         onTransactionDeleted();
       }
     } catch (error) {
@@ -422,7 +426,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
                     {transaction.tags && transaction.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {transaction.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
+                          <Badge key={`${tag}-${index}`} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
@@ -483,7 +487,7 @@ const CashTransactionsList: React.FC<CashTransactionsListProps> = ({
                         {transaction.tags && transaction.tags.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {transaction.tags.map((tag, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
+                              <Badge key={`${tag}-${index}`} variant="secondary" className="text-xs">
                                 {tag}
                               </Badge>
                             ))}

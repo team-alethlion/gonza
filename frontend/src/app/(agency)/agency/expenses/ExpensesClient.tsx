@@ -1,30 +1,23 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useExpenses } from "@/hooks/useExpenses";
-import { useExpenseData } from "@/hooks/useExpenseData";
+import { useExpenses, useExpenseSummary, Expense } from "@/hooks/useExpenses";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import ExpenseHeader from "@/components/expenses/ExpenseHeader";
 import ExpenseContent from "@/components/expenses/ExpenseContent";
 import ExpensesDateFilter from "@/components/expenses/ExpensesDateFilter";
-import EditExpenseDialog from "@/components/expenses/EditExpenseDialog"; // Use existing EditExpenseDialog or ViewExpenseDialog for single entry?
-import ExpenseForm from "@/components/expenses/ExpenseForm"; // Use ExpenseForm directly or in a Dialog
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import ExpenseForm from "@/components/expenses/ExpenseForm";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ExpenseBulkAddDialog from "@/components/expenses/ExpenseBulkAddDialog";
 import ExpenseCSVUploadDialog from "@/components/expenses/ExpenseCSVUploadDialog";
 import ExpenseCenter from "@/components/expenses/ExpenseCenter";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { formatCashCurrency } from "@/lib/utils";
 import {
-  LayoutGrid,
   List,
   PieChart,
-  Plus,
-  Upload,
   AlertCircle,
 } from "lucide-react";
 import { useProfiles } from "@/contexts/ProfileContext";
@@ -33,22 +26,36 @@ import { useRouter } from "next/navigation";
 import { exportExpensesToCSV } from "@/utils/exportExpensesToCSV";
 import { exportExpensesToPDF } from "@/utils/exportExpensesToPDF";
 import { generateExpenseTemplate } from "@/utils/generateExpenseTemplate";
-
-import { Expense } from "@/hooks/useExpenses";
+import { formatCashCurrency } from "@/lib/utils";
+import { getDateRangeFromFilter } from "@/utils/dateFilters";
 
 const ExpensesClient = ({
   initialExpenses,
+  initialStats,
 }: {
   initialExpenses?: Expense[];
+  initialStats?: any;
 }) => {
-  const { user } = useAuth();
   const router = useRouter();
   const isMobile = useIsMobile();
   const { hasPermission, isLoading: profilesLoading } = useProfiles();
   const { settings } = useBusinessSettings();
+
+  // 1. Separate Hooks for Summary and List
+  const { 
+    stats, 
+    isLoading: isStatsLoading, 
+    filters: summaryFilters, 
+    setFilters: setSummaryFilters 
+  } = useExpenseSummary(initialStats);
+
   const {
     expenses,
-    isLoading,
+    isLoading: isListLoading,
+    searchTerm,
+    setSearchTerm,
+    filters: listFilters,
+    setFilters: setListFilters,
     createExpense,
     updateExpense,
     deleteExpense,
@@ -60,7 +67,7 @@ const ExpensesClient = ({
   const [isBulkEntryOpen, setIsBulkEntryOpen] = useState(false);
   const [isCSVUploadOpen, setIsCSVUploadOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("all");
-  const [customDateRange, setCustomDateRange] = useState<{
+  const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
   }>({
@@ -68,11 +75,11 @@ const ExpensesClient = ({
     to: undefined,
   });
 
-  const { filteredExpenses, expenseStats, formatCurrency } = useExpenseData(
-    expenses || [],
-    dateFilter,
-    customDateRange,
-  );
+  const formatCurrency = useCallback((amount: number | null) => {
+    if (amount === null) return '•••';
+    const currency = settings?.currency || "USD";
+    return formatCashCurrency(amount, currency);
+  }, [settings?.currency]);
 
   const handleCreateExpense = async (data: any) => {
     try {
@@ -85,23 +92,23 @@ const ExpensesClient = ({
 
   const handleExportCSV = useCallback(() => {
     const currency = settings?.currency || "USD";
-    exportExpensesToCSV(filteredExpenses, formatCurrency, currency);
-  }, [filteredExpenses, formatCurrency, settings?.currency]);
+    exportExpensesToCSV(expenses, formatCurrency as any, currency);
+  }, [expenses, formatCurrency, settings?.currency]);
 
   const handleExportPDF = useCallback(() => {
     const currency = settings?.currency || "USD";
     exportExpensesToPDF(
-      filteredExpenses,
-      formatCurrency,
+      expenses,
+      formatCurrency as any,
       currency,
       settings?.businessName,
       settings?.businessLogo,
-      dateFilter,
-      customDateRange,
+      'custom',
+      { from: undefined, to: undefined } // Simplify for now or pass actual dates
     );
-  }, [filteredExpenses, formatCurrency, settings, dateFilter, customDateRange]);
+  }, [expenses, formatCurrency, settings]);
 
-  if (profilesLoading || isLoading) {
+  if (profilesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -131,11 +138,39 @@ const ExpensesClient = ({
 
   const canCreate = hasPermission("expenses", "create");
 
+  // Sync date filters from local state to hooks
+  const handleDateFilterChange = (val: string, range?: { from: Date | undefined; to: Date | undefined }) => {
+    setDateFilter(val);
+    const newFilters: any = {};
+    if (val !== "all") {
+      if (val === "custom" && range) {
+        if (range.from) newFilters.date_from = range.from.toISOString();
+        if (range.to) newFilters.date_to = range.to.toISOString();
+      } else {
+        const r = getDateRangeFromFilter(val);
+        if (r.from) newFilters.date_from = r.from.toISOString();
+        if (r.to) newFilters.date_to = r.to.toISOString();
+      }
+    }
+    
+    // Update both hooks if needed, or only the active one
+    if (activeTab === "overview") {
+      setSummaryFilters(newFilters);
+    } else {
+      setListFilters(newFilters);
+    }
+  };
+
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range);
+    handleDateFilterChange("custom", range);
+  };
+
   return (
     <div className="space-y-6">
       <ExpenseHeader
         onAddExpense={() => setIsFormDialogOpen(true)}
-        isRefreshing={isLoading}
+        isRefreshing={isListLoading || isStatsLoading}
         onRefresh={refreshExpenses}
         onAddBulkExpense={() => setIsBulkEntryOpen(true)}
         onImportExpenses={() => setIsCSVUploadOpen(true)}
@@ -204,19 +239,24 @@ const ExpensesClient = ({
 
             <ExpensesDateFilter
               dateFilter={dateFilter}
-              dateRange={customDateRange}
-              onDateFilterChange={setDateFilter}
-              onDateRangeChange={setCustomDateRange}
+              dateRange={dateRange}
+              onDateFilterChange={handleDateFilterChange}
+              onDateRangeChange={handleDateRangeChange}
             />
 
             <ExpenseContent
-              filteredExpenses={filteredExpenses}
-              expenseStats={expenseStats}
-              formatCurrency={formatCurrency}
-              dateFilter={dateFilter}
+              filteredExpenses={stats?.recent_expenses || []}
+              expenseStats={{
+                totalExpenses: stats?.total_expenses,
+                thisMonthExpenses: stats?.this_month_expenses,
+                transactionCount: stats?.transaction_count || 0
+              }}
+              formatCurrency={formatCurrency as any}
+              dateFilter={"all"}
               onUpdateExpense={updateExpense}
               onDeleteExpense={deleteExpense}
               showOnlyOverview={true}
+              backendStats={stats}
             />
           </TabsContent>
 
@@ -225,19 +265,25 @@ const ExpensesClient = ({
             className="space-y-6 animate-in fade-in-50 duration-300">
             <ExpensesDateFilter
               dateFilter={dateFilter}
-              dateRange={customDateRange}
-              onDateFilterChange={setDateFilter}
-              onDateRangeChange={setCustomDateRange}
+              dateRange={dateRange}
+              onDateFilterChange={handleDateFilterChange}
+              onDateRangeChange={handleDateRangeChange}
             />
 
             <ExpenseContent
-              filteredExpenses={filteredExpenses}
-              expenseStats={expenseStats}
-              formatCurrency={formatCurrency}
-              dateFilter={dateFilter}
+              filteredExpenses={expenses}
+              expenseStats={{
+                totalExpenses: stats?.total_expenses,
+                thisMonthExpenses: stats?.this_month_expenses,
+                transactionCount: stats?.transaction_count || 0
+              }}
+              formatCurrency={formatCurrency as any}
+              dateFilter={"all"}
               onUpdateExpense={updateExpense}
               onDeleteExpense={deleteExpense}
               showOnlyList={true}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
             />
           </TabsContent>
         </Tabs>

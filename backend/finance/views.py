@@ -20,17 +20,16 @@ from .serializers import (
 from sales.models import Sale, SaleItem
 from inventory.models import ProductHistory
 from django.utils.dateparse import parse_datetime, parse_date
-from django.db.models import Sum, Q, F, DecimalField, OuterRef, Subquery
+from django.db.models import Sum, Q, F, DecimalField, OuterRef, Subquery, Count
 from django.db.models.functions import Coalesce
 import uuid
-from .pesapal_utils import submit_pesapal_order, get_pesapal_transaction_status
+from .pesapal_utils import submit_pesapal_order, get_pesapal_transaction_status, register_pesapal_ipn
 from django.conf import settings
-
-def to_decimal(val):
-    try:
-        return Decimal(str(val))
-    except (TypeError, ValueError):
-        return Decimal('0.0')
+from django.http import HttpResponse
+from .logic.reports import get_account_summary, get_live_balance
+from .logic.expenses import get_expense_stats
+from .logic.import_export import generate_expense_template, process_expense_import
+from core.utils import gen_tx_id, to_decimal
 
 class CashAccountViewSet(viewsets.ModelViewSet):
     queryset = CashAccount.objects.all()
@@ -38,10 +37,24 @@ class CashAccountViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
         branch_id = self.request.query_params.get('branchId')
-        if branch_id:
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('-is_default', 'name')
 
     @action(detail=True, methods=['delete'])
@@ -74,24 +87,20 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         except CashAccount.DoesNotExist:
             return Response({"error": "Account not found"}, status=404)
             
-        aggregates = account.transactions.values('transaction_type').annotate(total=Sum('amount'))
-        balance = account.initial_balance
-        
-        for agg in aggregates:
-            total = agg['total'] or Decimal('0')
-            ttype = agg['transaction_type']
-            if ttype in ['cash_in', 'transfer_in']:
-                balance += total
-            elif ttype in ['cash_out', 'transfer_out']:
-                balance -= total
+        # 🚀 PERFORMANCE: Use unified modular logic
+        balance = get_live_balance(account)
                 
-        return Response({"balance": balance})
+        return Response({"balance": float(balance)})
 
     @action(detail=True, methods=['get'])
     def summary(self, request, pk=None):
-        branch_id = request.query_params.get('branchId')
-        start_date_str = request.query_params.get('startDate')
-        end_date_str = request.query_params.get('endDate')
+        branch_id = (
+            self.request.query_params.get('branchId') or 
+            self.request.query_params.get('branch_id') or 
+            self.request.user.branch_id
+        )
+        start_date_str = self.request.query_params.get('date_from') or self.request.query_params.get('startDate')
+        end_date_str = self.request.query_params.get('date_to') or self.request.query_params.get('endDate')
 
         if not all([start_date_str, end_date_str]):
             return Response({"error": "Missing dates"}, status=400)
@@ -107,44 +116,11 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         except CashAccount.DoesNotExist:
             return Response({"error": "Account not found"}, status=404)
 
-        # Opening Balance: initial_balance + Sum(transactions < start_date)
-        pre_aggregates = account.transactions.filter(date__lt=start_date).values('transaction_type').annotate(total=Sum('amount'))
-        opening_balance = account.initial_balance
-        for agg in pre_aggregates:
-            total = agg['total'] or Decimal('0')
-            if agg['transaction_type'] in ['cash_in', 'transfer_in']:
-                opening_balance += total
-            else:
-                opening_balance -= total
-
-        # Period aggregates
-        period_txs = account.transactions.filter(date__range=[start_date, end_date])
-        period_aggregates = period_txs.values('transaction_type').annotate(total=Sum('amount'))
+        # 🚀 REFACTORED: Unified logic from reports.py
+        data = get_account_summary(account, start_date, end_date)
+        data["date"] = start_date.date()
         
-        cash_in = Decimal('0')
-        cash_out = Decimal('0')
-        transfers_in = Decimal('0')
-        transfers_out = Decimal('0')
-
-        for agg in period_aggregates:
-            total = agg['total'] or Decimal('0')
-            ttype = agg['transaction_type']
-            if ttype == 'cash_in': cash_in += total
-            elif ttype == 'cash_out': cash_out += total
-            elif ttype == 'transfer_in': transfers_in += total
-            elif ttype == 'transfer_out': transfers_out += total
-
-        closing_balance = opening_balance + cash_in + transfers_in - cash_out - transfers_out
-
-        return Response({
-            "date": start_date.date(),
-            "openingBalance": opening_balance,
-            "cashIn": cash_in,
-            "cashOut": cash_out,
-            "transfersIn": transfers_in,
-            "transfersOut": transfers_out,
-            "closingBalance": closing_balance
-        })
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def profit_loss(self, request):
@@ -152,6 +128,7 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         start_date_str = request.query_params.get('startDate')
         end_date_str = request.query_params.get('endDate')
         tax_perc = to_decimal(request.query_params.get('taxPercentage', 0))
+        basis = request.query_params.get('basis', 'accrual')
 
         if not all([branch_id, start_date_str, end_date_str]):
             return Response({"error": "Missing parameters"}, status=400)
@@ -162,66 +139,12 @@ class CashAccountViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response({"error": "Invalid dates"}, status=400)
 
-        # 1. Sales metrics
-        sales_qs = Sale.objects.filter(branch_id=branch_id, date__range=[start_date, end_date]).exclude(status='QUOTE')
-        sales_totals = sales_qs.aggregate(
-            totalSales=Sum('total_amount'),
-            taxAmount=Sum('tax_amount'),
-            discountAmount=Sum('discount_amount')
-        )
-        total_sales = to_decimal(sales_totals['totalSales'])
+        # 🚀 REFACTORED: Use definitive high-precision ProfitLossEngine
+        from .logic.profit_loss_engine import ProfitLossEngine
+        engine = ProfitLossEngine(branch_id, start_date, end_date)
+        data = engine.get_full_report(tax_perc, basis=basis)
         
-        # 2. COGS (SaleItem cost price * quantity)
-        sale_items = SaleItem.objects.filter(sale__in=sales_qs)
-        total_cost_sales = to_decimal(sale_items.aggregate(cost=Sum(F('cost_price') * F('quantity')))['cost'])
-
-        # 3. Expenses
-        expenses_qs = Expense.objects.filter(branch_id=branch_id, date__range=[start_date, end_date])
-        total_expenses = to_decimal(expenses_qs.aggregate(total=Sum('amount'))['total'])
-        expenses_by_cat = expenses_qs.values('category').annotate(amount=Sum('amount')).order_by('-amount')
-        expenses_dict = {e['category']: float(e['amount']) for e in expenses_by_cat}
-
-        # 4. Carriage Inwards
-        carriage_qs = CarriageInward.objects.filter(branch_id=branch_id, date__range=[start_date, end_date])
-        total_carriage = to_decimal(carriage_qs.aggregate(total=Sum('amount'))['total'])
-
-        # 5. Inventory Metrics (Opening/Closing Stock) - using raw SQL or complex aggregation for accuracy
-        # For simplicity in this first iteration, we'll use a slightly simplified model or reuse the logic from summary_report
-        # Let's use the logic from ProductHistory
-        
-        from inventory.views import ProductViewSet # Reusing logic might be tricky without refactoring
-        
-        # For a truly comprehensive P&L, we would iterate over all products or use a single optimized query
-        # Let's calculate Stock Returns (Return In)
-        returns_in_qs = ProductHistory.objects.filter(branch_id=branch_id, created_at__range=[start_date, end_date], type='RETURN_IN')
-        # We need the selling price of return ins... this is complex because return in might not have it.
-        # Sale returns in the React hook used `item.returnIn * item.sellingPrice`.
-        # In Django, we'll sum up the value of RETURN_IN entries. 
-        total_sales_returns = to_decimal(returns_in_qs.aggregate(val=Sum(F('quantity_change') * F('product__selling_price')))['val'])
-
-        net_sales = total_sales - total_sales_returns
-        total_cogs = total_cost_sales + total_carriage
-        gross_profit = net_sales - total_cogs
-        net_profit_loss = gross_profit - total_expenses
-        
-        tax_amount = (net_profit_loss * tax_perc / Decimal('100')) if net_profit_loss > 0 else Decimal('0')
-        final_profit = net_profit_loss - tax_amount
-
-        return Response({
-            "sales": total_sales,
-            "salesReturns": total_sales_returns,
-            "netSales": net_sales,
-            "carriageInwards": total_carriage,
-            "totalCostSales": total_cost_sales,
-            "totalCOGS": total_cogs,
-            "grossProfit": gross_profit,
-            "expensesByCategory": expenses_dict,
-            "totalExpenses": total_expenses,
-            "netProfitLoss": net_profit_loss,
-            "taxPercentage": tax_perc,
-            "taxAmount": tax_amount,
-            "finalProfitAfterTax": final_profit
-        })
+        return Response(data)
 
 
 class CashTransactionViewSet(viewsets.ModelViewSet):
@@ -235,91 +158,72 @@ class CashTransactionViewSet(viewsets.ModelViewSet):
     search_fields = ['description', 'person_in_charge']
 
     def get_queryset(self):
-        return super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId') or self.request.query_params.get('branch_id')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
         is_bulk = isinstance(data, list)
-        
-        if is_bulk:
-            created = []
-            for item in data:
-                ttype = item.get('transactionType')
-                amount = to_decimal(item.get('amount', 0))
-                date_val = item.get('date') or datetime.now()
-                
-                if ttype == 'transfer' and item.get('toAccountId'):
-                    tx_out = CashTransaction.objects.create(
-                        user_id=item.get('userId') or request.user.id,
-                        branch_id=item.get('locationId'),
-                        account_id=item.get('accountId'),
-                        amount=amount,
-                        transaction_type='transfer_out',
-                        description=item.get('description', ''),
-                        date=date_val,
-                        category=item.get('category', 'Transfer')
-                    )
-                    tx_in = CashTransaction.objects.create(
-                        user_id=item.get('userId') or request.user.id,
-                        branch_id=item.get('locationId'),
-                        account_id=item.get('toAccountId'),
-                        amount=amount,
-                        transaction_type='transfer_in',
-                        description=item.get('description', ''),
-                        date=date_val,
-                        category=item.get('category', 'Transfer')
-                    )
-                    created.extend([tx_out, tx_in])
-                else:
-                    tx = CashTransaction.objects.create(
-                        user_id=item.get('userId') or request.user.id,
-                        branch_id=item.get('locationId'),
-                        account_id=item.get('accountId'),
-                        amount=amount,
-                        transaction_type=ttype,
-                        category=item.get('category'),
-                        description=item.get('description'),
-                        person_in_charge=item.get('personInCharge'),
-                        tags=item.get('tags', []),
-                        date=date_val,
-                        payment_method=item.get('paymentMethod'),
-                        receipt_image=item.get('receiptImage')
-                    )
-                    created.append(tx)
-            return Response(self.get_serializer(created, many=True).data, status=status.HTTP_201_CREATED)
-        else:
-            ttype = data.get('transactionType')
-            amount = to_decimal(data.get('amount', 0))
-            date_val = data.get('date') or datetime.now()
+        items = data if is_bulk else [data]
+        created_transactions = []
+
+        for item in items:
+            ttype = item.get('transactionType')
+            amount = to_decimal(item.get('amount', 0))
+            date_val = item.get('date') or datetime.now()
             
-            if ttype == 'transfer' and data.get('toAccountId'):
-                tx_out = CashTransaction.objects.create(
-                    user_id=data.get('userId') or request.user.id,
-                    branch_id=data.get('locationId'),
-                    account_id=data.get('accountId'),
+            # Common fields for both regular and transfer transactions
+            common_data = {
+                'user_id': item.get('userId') or request.user.id,
+                'branch_id': item.get('locationId'),
+                'description': item.get('description', ''),
+                'date': date_val,
+                'category': item.get('category', 'General')
+            }
+
+            if ttype == 'transfer' and item.get('toAccountId'):
+                # 🚀 REFACTORED: Use Model Manager for atomic transfer
+                tx_out, tx_in = CashTransaction.objects.create_transfer(
+                    from_account_id=item.get('accountId'),
+                    to_account_id=item.get('toAccountId'),
                     amount=amount,
-                    transaction_type='transfer_out',
-                    description=data.get('description', ''),
-                    date=date_val,
-                    category=data.get('category', 'Transfer')
+                    **common_data
                 )
-                tx_in = CashTransaction.objects.create(
-                    user_id=data.get('userId') or request.user.id,
-                    branch_id=data.get('locationId'),
-                    account_id=data.get('toAccountId'),
-                    amount=amount,
-                    transaction_type='transfer_in',
-                    description=data.get('description', ''),
-                    date=date_val,
-                    category=data.get('category', 'Transfer')
-                )
-                return Response(self.get_serializer([tx_out, tx_in], many=True).data, status=status.HTTP_201_CREATED)
+                created_transactions.extend([tx_out, tx_in])
             else:
-                serializer = self.get_serializer(data=data)
-                serializer.is_valid(raise_exception=True)
-                self.perform_create(serializer)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                # Regular transaction
+                tx = CashTransaction.objects.create(
+                    account_id=item.get('accountId'),
+                    amount=amount,
+                    transaction_type=ttype,
+                    person_in_charge=item.get('personInCharge'),
+                    tags=item.get('tags', []),
+                    payment_method=item.get('paymentMethod'),
+                    receipt_image=item.get('receiptImage'),
+                    **common_data
+                )
+                created_transactions.append(tx)
+
+        serializer = self.get_serializer(created_transactions, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
@@ -336,10 +240,24 @@ class ExpenseCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
         branch_id = self.request.query_params.get('branchId')
-        if branch_id:
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('-is_default', 'name')
 
     @action(detail=False, methods=['post'])
@@ -367,7 +285,112 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     search_fields = ['description']
 
     def get_queryset(self):
-        return super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
+        branch_id = self.request.query_params.get('branchId')
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
+            qs = qs.filter(branch_id=branch_id)
+            
+        return qs.order_by('-date', '-created_at')
+
+    @action(detail=False, methods=['get'])
+    def download_template(self, request):
+        branch_id = request.query_params.get('branchId') or request.user.branch_id
+        content = generate_expense_template(branch_id)
+        response = HttpResponse(
+            content,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=expense_template.xlsx'
+        return response
+
+    @action(detail=False, methods=['post'])
+    def import_data(self, request):
+        branch_id = request.query_params.get('branchId') or request.user.branch_id
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            results = process_expense_import(file_obj, request.user, branch_id)
+            return Response(results)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    @transaction.atomic
+    def bulk_create(self, request):
+        data = request.data
+        if not isinstance(data, list):
+            return Response({"error": "Expected a list of expenses"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        created_expenses = []
+        for item in data:
+            link_to_cash = item.pop('linkToCash', False)
+            cash_account_id = item.get('cashAccountId')
+            date_val = item.get('date') or datetime.now()
+            amount = to_decimal(item.get('amount', 0))
+            
+            serializer = self.get_serializer(data=item)
+            serializer.is_valid(raise_exception=True)
+            
+            # 🛡️ SECURITY: Explicitly assign branch, agency, and user
+            expense = serializer.save(
+                date=date_val, 
+                amount=amount,
+                branch_id=item.get('branchId') or request.user.branch_id,
+                agency_id=request.user.agency_id,
+                user_id=request.user.id
+            )
+            
+            if link_to_cash and cash_account_id:
+                cash_tx = CashTransaction.objects.create(
+                    user_id=expense.user_id,
+                    branch_id=expense.branch_id,
+                    account_id=cash_account_id,
+                    amount=amount,
+                    transaction_type='cash_out',
+                    category=expense.category or 'Expense',
+                    description=f"Expense: {expense.description}",
+                    date=expense.date,
+                    payment_method=expense.payment_method,
+                    receipt_image=expense.receipt_image,
+                    reference_id=expense.id,
+                    reference_type='EXPENSE'
+                )
+                expense.cash_transaction = cash_tx
+                expense.save(update_fields=['cash_transaction'])
+            created_expenses.append(expense)
+            
+        return Response(self.get_serializer(created_expenses, many=True).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        queryset = self.get_queryset()
+        
+        start_date = request.query_params.get('startDate') or request.query_params.get('dateFrom')
+        end_date = request.query_params.get('endDate') or request.query_params.get('dateTo')
+        
+        if start_date:
+            queryset = queryset.filter(date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date__lte=end_date)
+
+        # 🚀 REFACTORED: Use modular logic
+        data = get_expense_stats(queryset, request.user)
+        return Response(data)
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -379,7 +402,15 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        expense = serializer.save(date=date_val, amount=amount)
+        
+        # 🛡️ SECURITY: Explicitly assign branch, agency, and user
+        expense = serializer.save(
+            date=date_val, 
+            amount=amount,
+            branch_id=data.get('branchId') or request.user.branch_id,
+            agency_id=request.user.agency_id,
+            user_id=request.user.id
+        )
         
         if link_to_cash and cash_account_id:
             cash_tx = CashTransaction.objects.create(
@@ -393,7 +424,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
                 person_in_charge=expense.person_in_charge,
                 date=expense.date,
                 payment_method=expense.payment_method,
-                receipt_image=expense.receipt_image
+                receipt_image=expense.receipt_image,
+                reference_id=expense.id,
+                reference_type='EXPENSE'
             )
             expense.cash_transaction = cash_tx
             expense.save(update_fields=['cash_transaction'])
@@ -426,7 +459,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
                 person_in_charge=expense.person_in_charge,
                 date=expense.date,
                 payment_method=expense.payment_method,
-                receipt_image=expense.receipt_image
+                receipt_image=expense.receipt_image,
+                reference_id=expense.id,
+                reference_type='EXPENSE'
             )
             expense.cash_transaction = cash_tx
             expense.save(update_fields=['cash_transaction'])
@@ -441,6 +476,9 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             cash_tx.date = expense.date
             cash_tx.payment_method = expense.payment_method
             cash_tx.receipt_image = expense.receipt_image
+            # Ensure reference is set if it was missing
+            cash_tx.reference_id = expense.id
+            cash_tx.reference_type = 'EXPENSE'
             cash_tx.save()
             
         elif not should_link and was_linked:
@@ -464,30 +502,56 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['post'])
+    def register_ipn(self, request):
+        """
+        🚀 IPN REGISTRATION UTILITY
+        Calls Pesapal's API to register the IPN listener and persists the ID.
+        """
+        try:
+            result = register_pesapal_ipn()
+            ipn_id = result.get('ipn_id')
+            
+            if ipn_id:
+                from core_app.models import SystemConfig
+                SystemConfig.objects.update_or_create(
+                    key='PESAPAL_IPN_ID',
+                    defaults={'value': {'id': ipn_id}}
+                )
+                
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=False, methods=['post'])
     def initiate_payment(self, request):
         try:
             user = request.user
+            
             amount = to_decimal(request.data.get('amount'))
             description = request.data.get('description', 'Payment')
             ttype = request.data.get('type', 'topup')
-            agency_id = request.data.get('agency_id')
-            package_id = request.data.get('package_id')
+            
+            # 🛡️ FIX: Ensure empty strings from frontend don't cause FK failures
+            agency_id = request.data.get('agency_id') or None
+            package_id = request.data.get('package_id') or None
             billing_cycle = request.data.get('billing_cycle')
+            credits_amount = int(request.data.get('credits_amount', 0))
             
             # Use current branch/location if possible, or just link via user
             branch_id = request.data.get('branch_id')
 
-            reference = f"TX-{uuid.uuid4().hex[:10].upper()}"
+            reference = f"TX-{gen_tx_id().split('-')[-1].upper()}"
             
             with transaction.atomic():
                 tx = Transaction.objects.create(
-                    id=f"tx_{uuid.uuid4().hex[:12]}",
+                    id=gen_tx_id(),
                     user=user,
                     amount=amount,
                     type=ttype,
                     agency_id=agency_id,
                     package_id=package_id,
                     billing_cycle=billing_cycle,
+                    credits_amount=credits_amount,
                     description=description,
                     pesapal_merchant_reference=reference,
                     status='pending'
@@ -520,7 +584,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 tx.save(update_fields=['pesapal_order_tracking_id'])
 
                 return Response({
-                    "success": true,
+                    "success": True,
+
                     "order_tracking_id": tx.pesapal_order_tracking_id,
                     "merchant_reference": reference,
                     "redirect_url": result.get('redirect_url')
@@ -547,19 +612,23 @@ class TransactionViewSet(viewsets.ModelViewSet):
             status_data = get_pesapal_transaction_status(tracking_id)
             status_code = status_data.get('status_code')
             
-            # Update status
-            # 1 = Completed, 0 = Failed, 2 = Pending
+            # Pesapal V3 Status Codes: 1 = Completed, 2 = Failed, 0 = Invalid, 3 = Reversed
             if str(status_code) == '1':
-                # Call existing logic to process success
-                # Since we are in the same viewset, we can call the detail action or helper
-                # Let's call a private method to keep it DRY
                 return self._finalize_success(tx, status_data.get('amount'))
-            elif str(status_code) == '0':
+            elif str(status_code) in ['0', '2']:
                 tx.status = 'failed'
                 tx.save(update_fields=['status', 'updated_at'])
-                return Response({"status": "failed"})
+                return Response({
+                    "status": "failed", 
+                    "success": False, 
+                    "status_code": status_code
+                })
             
-            return Response({"status": "pending"})
+            return Response({
+                "status": "pending", 
+                "success": False, 
+                "status_code": status_code
+            })
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
@@ -584,12 +653,20 @@ class TransactionViewSet(viewsets.ModelViewSet):
             
             if str(status_code) == '1':
                 return self._finalize_success(tx, status_data.get('amount'))
-            elif str(status_code) == '0':
+            elif str(status_code) in ['0', '2']:
                 tx.status = 'failed'
                 tx.save(update_fields=['status', 'updated_at'])
-                return Response({"status": "failed", "success": False})
+                return Response({
+                    "status": "failed", 
+                    "success": False, 
+                    "status_code": status_code
+                })
             
-            return Response({"status": "pending", "success": False})
+            return Response({
+                "status": "pending", 
+                "success": False, 
+                "status_code": status_code
+            })
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
@@ -613,6 +690,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 tx.status = 'completed'
                 tx.save(update_fields=['status', 'updated_at'])
 
+                if tx.type == 'topup' and tx.credits_amount > 0:
+                    # 🚀 TOP-UP LOGIC: Increment user credits
+                    user = tx.user
+                    user.credits = F('credits') + tx.credits_amount
+                    user.save(update_fields=['credits'])
+                    return Response({
+                        "success": True,
+
+                        "status": "completed", 
+                        "is_subscription": False, 
+                        "value_added": tx.credits_amount
+                    })
+
                 if tx.type == 'subscription' and tx.agency_id:
                     from core_app.models import Agency
                     from django.utils.timezone import now
@@ -626,21 +716,32 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         if agency.subscription_expiry and agency.subscription_expiry > current_time:
                             new_expiry = agency.subscription_expiry
 
+                        days_added = 0
                         if tx.billing_cycle and tx.billing_cycle.lower() == 'yearly':
                             new_expiry += relativedelta(years=1)
+                            days_added = 365
                         else:
                             new_expiry += relativedelta(months=1)
+                            days_added = 30
 
                         agency.subscription_status = 'active'
                         agency.subscription_expiry = new_expiry
                         if tx.package_id:
                             agency.package_id = tx.package_id
                         agency.save()
+                        
+                        return Response({
+                            "success": True,
+
+                            "status": "completed", 
+                            "is_subscription": True, 
+                            "value_added": days_added
+                        })
 
                     except Agency.DoesNotExist:
                         pass
 
-                return Response({"success": True, "status": "completed"})
+                return Response({"success": True, "status": "completed", "is_subscription": False, "value_added": 0})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -662,14 +763,30 @@ class CarriageInwardViewSet(viewsets.ModelViewSet):
                 transaction_type='cash_out',
                 category='Inventory',
                 description=f"Carriage Inward: {instance.supplier_name} - {instance.details}",
-                date=instance.date
+                date=instance.date,
+                reference_id=instance.id,
+                reference_type='CARRIAGE_INWARD'
             )
             instance.cash_transaction = cash_tx
             instance.save(update_fields=['cash_transaction'])
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        # 🛡️ SECURITY: Multi-tenant isolation with legacy support
+        qs = super().get_queryset().select_related('branch', 'user')
+        
+        user = self.request.user
+        agency_id = getattr(user, 'agency_id', None)
         branch_id = self.request.query_params.get('branchId')
-        if branch_id:
+
+        if agency_id:
+            if branch_id:
+                # Show if (matches agency OR is orphan) AND matches branch
+                qs = qs.filter(Q(agency_id=agency_id) | Q(agency_id__isnull=True), branch_id=branch_id)
+            else:
+                # Global view: only show agency data
+                qs = qs.filter(agency_id=agency_id)
+        elif branch_id:
+            # Fallback for users without agency_id (if any)
             qs = qs.filter(branch_id=branch_id)
+            
         return qs.order_by('-date', '-created_at')

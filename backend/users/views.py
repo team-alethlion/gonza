@@ -40,6 +40,11 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         # 🚀 OPTIMIZATION: One query to get everything (User + Agency + Package)
         user = User.objects.select_related('agency', 'agency__package').get(id=request.user.id)
+        
+        # 🛡️ SELF-HEALING: Sync agency status if it exists
+        if user.agency:
+            user.agency.sync_status()
+            
         serializer = self.get_serializer(user)
         return Response(serializer.data)
 
@@ -69,20 +74,36 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(user).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
-        user = self.get_object()
-        data = request.data
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        # Handle name splitting if provided
         if 'name' in data:
             parts = data['name'].split(' ', 1)
-            user.first_name = parts[0]
-            if len(parts) > 1:
-                user.last_name = parts[1]
-                
-        if 'email' in data: user.email = data['email']
-        if 'pin' in data: user.pin = data['pin']
-        if 'status' in data: user.status = data['status']
-        if 'roleId' in data: user.role_id = data['roleId']
-        user.save()
-        return Response(self.get_serializer(user).data)
+            instance.first_name = parts[0]
+            instance.last_name = parts[1] if len(parts) > 1 else ""
+            # No need to save here, serializer.save() will handle it if we pass data correctly
+            # or we can just let the serializer handle existing first_name/last_name fields
+        
+        # Mapping frontend 'roleId' to backend 'role'
+        if 'roleId' in data:
+            data['role'] = data.pop('roleId')
+        
+        # Mapping frontend 'branchId' to backend 'branch'
+        if 'branchId' in data:
+            data['branch'] = data.pop('branchId')
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
     def request_deletion(self, request):
@@ -222,12 +243,9 @@ class UserViewSet(viewsets.ModelViewSet):
                     type='MAIN'
                 )
 
-                # Create branch-specific admin role
-                role = Role.objects.create(
-                    name='admin', 
-                    description='Agency Admin',
-                    branch=branch
-                )
+                # 🚀 INITIALIZE: Setup roles, permissions and settings
+                from core_app.logic.branches import initialize_branch
+                role = initialize_branch(branch, user)
                 
                 # Update user with branch and role
                 user.branch = branch
@@ -241,6 +259,49 @@ class UserViewSet(viewsets.ModelViewSet):
                 })
         except EmailVerification.DoesNotExist:
             return Response({"error": "No verification found for this email"}, status=400)
+
+    @action(detail=False, methods=['post'])
+    def invite_manager(self, request):
+        """
+        Admins use this to invite a new manager to a specific branch.
+        """
+        email = request.data.get('email')
+        branch_id = request.data.get('branchId')
+        
+        from core_app.models import Branch
+        try:
+            branch = Branch.objects.get(id=branch_id)
+            # Verify the requester is allowed to invite to this branch
+            if request.user.agency_id != branch.agency_id:
+                return Response({"error": "Unauthorized"}, status=403)
+                
+            from users.logic.invitations import create_manager_invitation
+            create_manager_invitation(branch, email, request.user)
+            
+            return Response({"status": "invitation_sent"})
+        except Branch.DoesNotExist:
+            return Response({"error": "Branch not found"}, status=404)
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_invitation(self, request):
+        """
+        Managers use this to complete their registration.
+        """
+        email = request.data.get('email')
+        code = request.data.get('code')
+        password = request.data.get('password')
+        name = request.data.get('name')
+        
+        from users.logic.invitations import verify_and_accept_invitation
+        user, error = verify_and_accept_invitation(email, code, password, name)
+        
+        if error:
+            return Response({"error": error}, status=400)
+            
+        return Response({
+            "status": "success",
+            "user": {"id": user.id, "email": user.email, "name": user.name, "role": "manager"}
+        })
 
     @action(detail=True, methods=['post'])
     def update_branch(self, request, pk=None):
@@ -261,22 +322,38 @@ class RoleViewSet(viewsets.ModelViewSet):
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated]
 
+    def destroy(self, request, *args, **kwargs):
+        role = self.get_object()
+        if role.is_system_role:
+            return Response(
+                {"error": f"The '{role.name}' role is a protected system role and cannot be deleted."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     def get_queryset(self):
         qs = super().get_queryset()
-        branch_id = self.request.query_params.get('branchId')
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id) | qs.filter(branch__isnull=True)
+        agency_id = self.request.user.agency_id
+        if agency_id:
+            qs = qs.filter(agency_id=agency_id) | qs.filter(agency__isnull=True)
         return qs
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data
-        branch_id = data.get('branchId')
+        agency_id = data.get('agencyId') or request.user.agency_id
         name = data.get('name')
         description = data.get('description', '')
+        pin_required = data.get('pinRequired', True)
         permissions_data = data.get('permissions', [])
-        
-        role = Role.objects.create(name=name, description=description, branch_id=branch_id)
+
+        role = Role.objects.create(
+            agency_id=agency_id,
+            name=name,
+            description=description,
+            pin_required=pin_required
+        )
+
         
         for perm_name in permissions_data:
             perm, _ = Permission.objects.get_or_create(name=perm_name)
@@ -290,6 +367,7 @@ class RoleViewSet(viewsets.ModelViewSet):
         data = request.data
         if 'name' in data: role.name = data['name']
         if 'description' in data: role.description = data['description']
+        if 'pinRequired' in data: role.pin_required = data['pinRequired']
         
         if 'permissions' in data:
             permissions_data = data.get('permissions', [])

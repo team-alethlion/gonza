@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { verifyBranchAccess, verifyUserAccess } from "@/lib/auth-guard";
 import { djangoFetch } from "@/lib/django-client";
 
-export async function getBusinessLocationsAction(userId: string) {
+export async function getBusinessLocationsAction(userId: string, session?: any) {
   try {
-    const sessionUser = await verifyUserAccess(userId);
+    const sessionUser = await verifyUserAccess(userId, session);
     const sessionBranchId = (sessionUser as any).branchId;
 
-    const branches = await djangoFetch('core/branches/');
+    const branches = await djangoFetch('core/branches/', {
+        accessToken: session?.accessToken
+    });
     const list = Array.isArray(branches) ? branches : (branches.results || []);
 
     return list.map((b: any, index: number) => ({
@@ -21,9 +23,14 @@ export async function getBusinessLocationsAction(userId: string) {
       created_at: b.created_at,
       updated_at: b.updated_at,
       switch_password_hash: b.access_password,
+      managers: b.managers || [],
     }));
-  } catch (error) {
-    console.error("Error fetching business locations:", error);
+  } catch (error: any) {
+    if (error.message?.includes("Session stale")) {
+      console.warn(`[BusinessAction] Request blocked: Session is orphaned (Redirection expected).`);
+    } else {
+      console.error("Error fetching business locations:", error.message || error);
+    }
     return [];
   }
 }
@@ -160,5 +167,45 @@ export async function removeBusinessPasswordAction(businessId: string) {
   } catch (error: any) {
     console.error("Error removing business password:", error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Invites a new manager to a specific branch.
+ * Creates a pending invitation and sends a verification email.
+ */
+export async function inviteManagerAction(email: string, branchId: string) {
+  try {
+    // 🛡️ SECURITY: verifyBranchAccess ensures the current user is authorized for this branch
+    await verifyBranchAccess(branchId);
+
+    const result = await djangoFetch('users/users/invite_manager/', {
+      method: 'POST',
+      body: JSON.stringify({ email, branchId })
+    });
+
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error("Error inviting manager:", error);
+    return { success: false, error: error.message || "Failed to send invitation" };
+  }
+}
+
+/**
+ * Removes a manager's account.
+ */
+export async function removeManagerAction(managerId: string) {
+  try {
+    // 🛡️ SECURITY: verifyUserAccess ensures the requester is authenticated
+    await verifyUserAccess(managerId);
+
+    await djangoFetch(`users/users/${managerId}/`, {
+      method: 'DELETE'
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error removing manager:", error);
+    return { success: false, error: error.message || "Failed to remove manager" };
   }
 }

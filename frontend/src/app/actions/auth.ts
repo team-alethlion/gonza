@@ -99,3 +99,30 @@ export async function updateUserBranchAction(userId: string, branchId: string) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Verifies a manager invitation code and finalizes their account setup.
+ * This is a public-friendly action (AllowAny on backend).
+ */
+export async function verifyInvitationAction(data: {
+  email: string;
+  code: string;
+  password?: string;
+  name?: string;
+}) {
+  try {
+    const result = await djangoFetch('users/users/verify_invitation/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+
+    if (result && result.error) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true, user: result.user };
+  } catch (error: any) {
+    console.error("Error verifying invitation:", error);
+    return { success: false, error: error.message || "Failed to verify invitation" };
+  }
+}

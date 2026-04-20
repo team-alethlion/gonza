@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // hooks/useMessages.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { useProfiles } from '@/contexts/ProfileContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +11,9 @@ import {
   getMessageTemplatesAction,
   createMessageTemplateAction,
   updateMessageTemplateAction,
-  deleteMessageTemplateAction
+  deleteMessageTemplateAction,
+  getMessagingStatsAction,
+  bulkSendMessagesAction
 } from '@/app/actions/messaging';
 
 export interface Message {
@@ -75,9 +77,7 @@ const formatPhoneNumber = (phone: string) => {
 
 import { localDb } from '@/lib/dexie';
 
-export const useMessages = (userId?: string) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+export const useMessages = (userId?: string, initialMessages: Message[] = [], initialTemplates: MessageTemplate[] = []) => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [liveCredits, setLiveCredits] = useState<number>(0);
 
@@ -85,28 +85,60 @@ export const useMessages = (userId?: string) => {
   const { currentProfile } = useProfiles();
   const queryClient = useQueryClient();
 
-  // Load from Dexie cache on mount
-  useEffect(() => {
-    const loadFromCache = async () => {
-      if (currentBusiness?.id && messages.length === 0) {
-        const cached = await localDb.messages
-          .where('locationId')
-          .equals(currentBusiness.id)
-          .reverse()
-          .sortBy('createdAt');
+  const messagesQueryKey = useMemo(() => ['messages', userId, currentBusiness?.id], [userId, currentBusiness?.id]);
+  const templatesQueryKey = useMemo(() => ['message_templates', userId, currentBusiness?.id], [userId, currentBusiness?.id]);
+
+  const fetchMessages = useCallback(async (): Promise<Message[]> => {
+    if (!userId || !currentBusiness?.id) return [];
+    try {
+      const result = await getMessagesAction(userId, currentBusiness.id);
+      if (result.success && result.data) {
+        const fetchedMessages = result.data as Message[];
         
-        if (cached && cached.length > 0) {
-          console.log('[Messages] Loaded from Dexie cache');
-          setMessages(cached);
+        // Update Dexie cache in the background
+        if (fetchedMessages.length > 0) {
+          const cacheData = fetchedMessages.map(m => ({
+            ...m,
+            locationId: currentBusiness.id as string
+          }));
+          localDb.messages.where('locationId').equals(currentBusiness.id).delete().then(() => {
+             localDb.messages.bulkPut(cacheData as any);
+          });
         }
+        
+        return fetchedMessages;
       }
-    };
-    loadFromCache();
-  }, [currentBusiness?.id]);
+      return [];
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      return [];
+    }
+  }, [userId, currentBusiness?.id]);
+
+  const { data: queriedMessages, isLoading: messagesLoading } = useQuery({
+    queryKey: messagesQueryKey,
+    queryFn: fetchMessages,
+    enabled: !!userId && !!currentBusiness?.id,
+    staleTime: 60 * 1000, // 1 minute
+  });
+
+  const messages = queriedMessages || [];
+
+  const { data: queriedTemplates, isLoading: templatesLoading } = useQuery({
+    queryKey: templatesQueryKey,
+    queryFn: async () => {
+      if (!userId || !currentBusiness?.id) return [];
+      const result = await getMessageTemplatesAction(userId, currentBusiness.id);
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed');
+      return result.data;
+    },
+    enabled: !!userId && !!currentBusiness?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes is safer
+  });
+
+  const templates = queriedTemplates || [];
 
   const fetchLiveCredits = async () => {
-    // In our new system, credits might be on the user or profile model
-    // but for now we simplify by using currentProfile state if it's already refactored
     if (currentProfile?.sms_credits !== undefined) {
       setLiveCredits(currentProfile.sms_credits);
     }
@@ -127,7 +159,7 @@ export const useMessages = (userId?: string) => {
       });
 
       if (result.success && result.data) {
-        fetchTemplates();
+        queryClient.invalidateQueries({ queryKey: templatesQueryKey });
         return result.data;
       }
       throw new Error(result.error);
@@ -142,7 +174,7 @@ export const useMessages = (userId?: string) => {
     try {
       const result = await updateMessageTemplateAction(id, updates);
       if (result.success) {
-        fetchTemplates();
+        queryClient.invalidateQueries({ queryKey: templatesQueryKey });
       } else {
         throw new Error(result.error);
       }
@@ -156,7 +188,7 @@ export const useMessages = (userId?: string) => {
     try {
       const result = await deleteMessageTemplateAction(id);
       if (result.success) {
-        setTemplates(prev => prev.filter(t => t.id !== id));
+        queryClient.invalidateQueries({ queryKey: templatesQueryKey });
       } else {
         throw new Error(result.error);
       }
@@ -166,65 +198,17 @@ export const useMessages = (userId?: string) => {
     }
   };
 
-  const fetchMessages = useCallback(async (): Promise<Message[]> => {
-    if (!userId || !currentBusiness?.id) return [];
-    try {
-      const result = await getMessagesAction(userId, currentBusiness.id);
-      if (result.success && result.data) {
-        const fetchedMessages = result.data as Message[];
-        
-        // Update Dexie cache in the background
-        if (fetchedMessages.length > 0) {
-          const cacheData = fetchedMessages.map(m => ({
-            ...m,
-            locationId: currentBusiness.id as string
-          }));
-          await localDb.messages.where('locationId').equals(currentBusiness.id).delete();
-          await localDb.messages.bulkPut(cacheData as any);
-        }
-        
-        return fetchedMessages;
-      }
-      return [];
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      return [];
-    }
-  }, [userId, currentBusiness?.id]);
-
-  const messagesQueryKey = ['messages', userId, currentBusiness?.id];
-  const { data: queriedMessages, isLoading: messagesLoading } = useQuery({
-    queryKey: messagesQueryKey,
-    queryFn: fetchMessages,
-    enabled: !!userId && !!currentBusiness?.id,
-  });
-
-  useEffect(() => {
-    if (queriedMessages) setMessages(queriedMessages);
-  }, [queriedMessages]);
-
-  const fetchTemplates = async () => {
-    if (!userId || !currentBusiness?.id) return;
-    try {
-      const result = await getMessageTemplatesAction(userId, currentBusiness.id);
-      if (result.success && result.data) {
-        setTemplates(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    }
-  };
-
   const fetchPurchases = async () => {
     // Placeholder - implement when billing is migrated
     setPurchases([]);
   };
 
-  const createMessage = async (messageData: { phoneNumber: string; content: string; customerId?: string; templateId?: string; metadata?: any }) => {
+  const createMessage = async (messageData: { phoneNumber: string; content: string; customerId?: string; templateId?: string; channel?: 'sms' | 'whatsapp'; metadata?: any }) => {
     if (!userId || !currentBusiness?.id || !currentProfile) return null;
 
     const formattedPhone = formatPhoneNumber(messageData.phoneNumber);
     const creditsNeeded = Math.ceil(messageData.content.length / 160);
+    const channel = messageData.channel || 'sms';
 
     // Basic credit check before calling action
     if (currentProfile.sms_credits < creditsNeeded) {
@@ -242,34 +226,58 @@ export const useMessages = (userId?: string) => {
         content: messageData.content,
         templateId: messageData.templateId,
         smsCreditsUsed: creditsNeeded,
-        status: 'sent', // For now we assume successfully sent since we don't have gateway integration
+        channel: channel,
         metadata: messageData.metadata
       });
 
       if (result.success && result.data) {
-        const newMessage = { ...result.data, createdAt: result.data.createdAt.toISOString() } as any;
-        setMessages(prev => [newMessage, ...prev]);
-        queryClient.invalidateQueries({ queryKey: messagesQueryKey });
-        toast({ title: 'Success', description: 'Message sent successfully' });
-        return newMessage;
+        // Backend returns { success: bool, message: data, error: str }
+        const actualSuccess = result.data.success !== false;
+        const msgData = result.data.message || result.data;
+        
+        // No need to manually update state when using react-query for the source of truth
+        if (actualSuccess) {
+            queryClient.invalidateQueries({ queryKey: messagesQueryKey });
+            toast({ title: 'Success', description: 'Message sent successfully' });
+            return { success: 1, failed: 0, errors: [] };
+        } else {
+            const errorMsg = result.data.error || 'Gateway rejected message';
+            toast({ title: 'Gateway Error', description: errorMsg, variant: 'destructive' });
+            return { success: 0, failed: 1, errors: [errorMsg] };
+        }
       }
-      throw new Error(result.error);
+      throw new Error(result.error || 'API Error');
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
-      return null;
+      toast({ title: 'Error', description: error.message || 'Failed to send message', variant: 'destructive' });
+      return { success: 0, failed: 1, errors: [error.message] };
     }
   };
 
-  const createBulkMessages = async (messageData: { customerIds: string[]; content: string; templateId?: string; metadata?: any }) => {
-    // Simplified bulk implementation for now
-    let successCount = 0;
-    for (const customerId of messageData.customerIds) {
-      // In a real app we'd fetch the customer phone first
-      // But for this migration, we are just proving the Prisma works
-      successCount++;
+  const createBulkMessages = async (data: { customerIds: string[]; content?: string; templateId?: string; channel?: 'sms' | 'whatsapp' }) => {
+    if (!userId || !currentBusiness?.id) return { success: 0, failed: 0, errors: ['Context missing'] };
+
+    try {
+      const result = await bulkSendMessagesAction({
+        locationId: currentBusiness.id,
+        customerIds: data.customerIds,
+        content: data.content,
+        templateId: data.templateId,
+        channel: data.channel
+      });
+
+      if (result.success) {
+        toast({ title: 'Success', description: `Bulk message job queued for ${data.customerIds.length} customers` });
+        // Invalidate stats as they will change
+        queryClient.invalidateQueries({ queryKey: ['messages'] });
+        return { success: data.customerIds.length, failed: 0, errors: [] };
+      }
+      throw new Error(result.error);
+    } catch (error: any) {
+      console.error('Bulk send error:', error);
+      toast({ title: 'Error', description: 'Failed to start bulk messaging job', variant: 'destructive' });
+      return { success: 0, failed: data.customerIds.length, errors: [error.message] };
     }
-    return { success: successCount, failed: 0, errors: [] };
   };
 
   const initiateCreditPurchase = async (creditsAmount: number, phoneNumber: string) => {
@@ -279,15 +287,36 @@ export const useMessages = (userId?: string) => {
 
   useEffect(() => {
     if (userId && currentBusiness?.id) {
-      fetchTemplates();
       fetchPurchases();
       fetchLiveCredits();
     }
   }, [userId, currentBusiness?.id, currentProfile?.id]);
 
-  const isLoading = messagesLoading && !queriedMessages;
+  const isLoading = (messagesLoading && !queriedMessages) || (templatesLoading && !queriedTemplates);
+
+  const { data: statsData } = useQuery({
+    queryKey: ['messaging_stats', currentBusiness?.id],
+    queryFn: async () => {
+        if (!currentBusiness?.id) return null;
+        const result = await getMessagingStatsAction(currentBusiness.id);
+        return result.success ? result.data : null;
+    },
+    enabled: !!currentBusiness?.id,
+    staleTime: 30_000,
+  });
 
   const getMessageStats = () => {
+    if (statsData) {
+        return {
+            total: statsData.total || 0,
+            sent: statsData.sent || 0,
+            failed: statsData.failed || 0,
+            pending: statsData.pending || 0,
+            totalCreditsUsed: statsData.credits_used || 0,
+            creditsRemaining: statsData.credits_remaining || 0
+        };
+    }
+
     const total = messages.length;
     const sent = messages.filter(m => m.status === 'sent' || m.status === 'delivered').length;
     const failed = messages.filter(m => m.status === 'failed').length;
@@ -310,6 +339,11 @@ export const useMessages = (userId?: string) => {
     deleteTemplate,
     getMessageStats,
     initiateCreditPurchase,
-    refresh: () => { queryClient.invalidateQueries({ queryKey: messagesQueryKey }); fetchTemplates(); fetchPurchases(); fetchLiveCredits(); }
+    refresh: () => { 
+      queryClient.invalidateQueries({ queryKey: messagesQueryKey }); 
+      queryClient.invalidateQueries({ queryKey: templatesQueryKey }); 
+      fetchPurchases(); 
+      fetchLiveCredits(); 
+    }
   };
 };

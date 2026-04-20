@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Search, RefreshCw } from "lucide-react";
-import { ActivityFilters } from "@/app/(agency)/agency/history/page";
+import { ActivityFilters } from "@/types";
 import { ActivityType, ModuleType } from "@/hooks/useActivityLogger";
 
 interface HistoryFiltersProps {
@@ -30,6 +30,12 @@ export const HistoryFilters: React.FC<HistoryFiltersProps> = ({
   onFiltersChange,
   onRefresh,
 }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const updateFilter = (key: keyof ActivityFilters, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -47,8 +53,8 @@ export const HistoryFilters: React.FC<HistoryFiltersProps> = ({
                 <Button
                   variant="outline"
                   className="justify-start text-left font-normal">
-                  {filters.dateRange.from
-                    ? filters.dateRange.from.toLocaleDateString()
+                  {filters.dateRange.from && mounted
+                    ? filters.dateRange.from.toLocaleDateString("en-US")
                     : "From date"}
                 </Button>
               </PopoverTrigger>
@@ -71,8 +77,8 @@ export const HistoryFilters: React.FC<HistoryFiltersProps> = ({
                 <Button
                   variant="outline"
                   className="justify-start text-left font-normal">
-                  {filters.dateRange.to
-                    ? filters.dateRange.to.toLocaleDateString()
+                  {filters.dateRange.to && mounted
+                    ? filters.dateRange.to.toLocaleDateString("en-US")
                     : "To date"}
                 </Button>
               </PopoverTrigger>

@@ -92,3 +92,36 @@ def get_pesapal_transaction_status(tracking_id):
         raise Exception(f"Failed to fetch transaction status from Pesapal: {response.text}")
 
     return response.json()
+
+def register_pesapal_ipn():
+    """
+    Registers the IPN URL with Pesapal and returns the IPN ID.
+    The IPN ID must be used in all SubmitOrderRequests.
+    """
+    token = get_pesapal_token()
+    pesapal_url = getattr(settings, 'PESAPAL_BASE_URL', None)
+    
+    # We use the base API URL to build the IPN endpoint
+    # E.g. http://your-api.com/api/finance/transactions/ipn/
+    callback_base = getattr(settings, 'PESAPAL_CALLBACK_URL', '').split('/payment-callback')[0]
+    ipn_url = f"{callback_base}/api/finance/transactions/ipn/"
+
+    payload = {
+        "url": ipn_url,
+        "ipn_notification_type": "GET"
+    }
+
+    response = requests.post(
+        f"{pesapal_url}/api/URLSetup/RegisterIPN",
+        headers={
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f"Bearer {token}"
+        },
+        json=payload
+    )
+
+    if response.status_code != 200:
+        raise Exception(f"Failed to register IPN with Pesapal: {response.text}")
+
+    return response.json()

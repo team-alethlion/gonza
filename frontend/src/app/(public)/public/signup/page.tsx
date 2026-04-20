@@ -54,6 +54,7 @@ import {
   verifyAndCreateAccountAction,
 } from "@/app/actions/verification";
 import { signIn } from "next-auth/react";
+import Image from "next/image";
 
 const signUpSchema = z
   .object({
@@ -203,11 +204,15 @@ const SignUp = () => {
         backgroundImage: `radial-gradient(at 0% 0%, rgba(37, 40, 97, 0.05) 0, transparent 50%), radial-gradient(at 50% 0%, rgba(240, 90, 43, 0.05) 0, transparent 50%)`,
       }}>
       <div className="mb-8">
-        <img
-          src="/lovable-uploads/798d07d7-1db7-498c-92f3-6f6346827d59.png"
-          alt="Gonzo Systems"
-          className="h-12 md:h-16 object-contain"
-        />
+        <div className="relative h-12 w-auto md:h-16">
+          <Image
+            src="/lovable-uploads/798d07d7-1db7-498c-92f3-6f6346827d59.png"
+            alt="Gonzo Systems"
+            fill
+            className="object-contain"
+            priority // Good for logos at the top of the page
+          />
+        </div>
       </div>
 
       <Card className="w-full max-w-md border-primary/10 shadow-xl bg-white/95 backdrop-blur-sm">

@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Printer, Edit, Trash2, FileText, Heart, MessageSquare } from 'lucide-react';
+import { Printer, Edit, Trash2, FileText, Heart, MessageSquare, RotateCcw } from 'lucide-react';
 import { useProfiles } from '@/contexts/ProfileContext';
 import {
   Tooltip,
@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Sale } from '@/types';
 import { formatNumber } from '@/lib/utils';
-import { useCashAccounts } from '@/hooks/useCashAccounts';
-import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { canSendSMS } from '@/utils/smsUtils';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
@@ -26,29 +24,38 @@ interface SalesTableRowProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale, reason?: string) => void;
+  onProcessReturn?: (sale: Sale) => void;
   onSendPaymentReminder: (sale: Sale) => void;
   onSendThankYouNotice?: (sale: Sale) => void;
   onSendPaymentReminderSMS?: (sale: Sale) => void;
   onSendThankYouSMS?: (sale: Sale) => void;
+  // Hoisted props for performance
+  isMobile: boolean;
+  canViewCostPrice: boolean;
+  canViewProfit: boolean;
+  canEditSale: boolean;
+  canDeleteSale: boolean;
+  formatFinancial: (value: number | null | undefined, type: "cost" | "selling" | "profit") => string;
 }
 
-const SalesTableRow: React.FC<SalesTableRowProps> = ({
+const SalesTableRow: React.FC<SalesTableRowProps> = React.memo(({
   sale,
   currency,
   onViewReceipt,
   onEditSale,
   onDeleteSale,
+  onProcessReturn,
   onSendPaymentReminder,
   onSendThankYouNotice,
   onSendPaymentReminderSMS,
-  onSendThankYouSMS
+  onSendThankYouSMS,
+  isMobile,
+  canViewCostPrice,
+  canViewProfit,
+  canEditSale,
+  canDeleteSale,
+  formatFinancial
 }) => {
-  const { accounts } = useCashAccounts();
-  const { transactions } = useCashTransactions();
-  const isMobile = useIsMobile();
-  const { hasPermission } = useProfiles();
-  const { formatFinancial, canViewCostPrice, canViewProfit } = useFinancialVisibility();
-
   const totalQuantity = sale.totalQuantity ?? 0;
   const averagePrice = totalQuantity > 0 ? (sale.subtotal + sale.discount) / totalQuantity : 0;
 
@@ -57,46 +64,10 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
   const profit = sale.profit;
   const totalDiscount = sale.discount;
 
-  // Improved cash account name resolution with better logging
-  const getCashAccountName = () => {
-    if (!sale.cashTransactionId) {
-      console.log('No cash transaction ID for sale:', sale.id);
-      return null;
-    }
-
-    console.log('Looking for transaction with ID:', sale.cashTransactionId);
-    console.log('Available transactions count:', transactions.length);
-
-    // Find the transaction linked to this sale
-    const linkedTransaction = transactions.find(transaction => transaction.id === sale.cashTransactionId);
-    if (!linkedTransaction) {
-      console.log('No linked transaction found for sale:', sale.id, 'transaction ID:', sale.cashTransactionId);
-      console.log('All transaction IDs:', transactions.map(t => t.id));
-      return null;
-    }
-
-    console.log('Found linked transaction:', linkedTransaction);
-
-    if (!linkedTransaction.accountId) {
-      console.log('Linked transaction has no accountId:', linkedTransaction);
-      return null;
-    }
-
-    // Find the account linked to the transaction
-    const linkedAccount = accounts.find(account => account.id === linkedTransaction.accountId);
-    if (!linkedAccount) {
-      console.log('No linked account found for accountId:', linkedTransaction.accountId);
-      console.log('Available accounts:', accounts.map(a => ({ id: a.id, name: a.name })));
-      return null;
-    }
-
-    console.log('Successfully resolved cash account:', linkedAccount.name);
-    return linkedAccount.name;
-  };
-
   const itemsDescription = sale.itemDescription || "No items";
 
-  const cashAccountName = getCashAccountName();
+  // Use pre-resolved cash account name from backend
+  const cashAccountName = sale.cashAccountName;
 
   // Determine display status
   const getDisplayStatus = () => {
@@ -110,12 +81,18 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
   const getStatusStyling = () => {
     switch (sale.paymentStatus) {
       case 'Paid':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
       case 'Quote':
+      case 'QUOTE':
         return 'bg-purple-100 text-purple-800';
       case 'Installment Sale':
+      case 'INSTALLMENT':
         return 'bg-blue-100 text-blue-800';
+      case 'REFUNDED':
+        return 'bg-red-100 text-red-800';
       case 'NOT PAID':
+      case 'UNPAID':
       default:
         return 'bg-yellow-100 text-yellow-800';
     }
@@ -307,7 +284,23 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
             </Button>
           )}
 
-          {hasPermission('sales', 'edit') && (
+          {onProcessReturn && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onProcessReturn(sale);
+              }}
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              title="Process Return"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span className="sr-only">Process Return</span>
+            </Button>
+          )}
+
+          {canEditSale && (
             <Button
               variant="ghost"
               size="sm"
@@ -320,7 +313,7 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
               <span className="sr-only">Edit Sale</span>
             </Button>
           )}
-          {hasPermission('sales', 'delete') && (
+          {canDeleteSale && (
             <Button
               variant="ghost"
               size="sm"
@@ -337,6 +330,8 @@ const SalesTableRow: React.FC<SalesTableRowProps> = ({
       </TableCell>
     </TableRow>
   );
-};
+});
+
+SalesTableRow.displayName = 'SalesTableRow';
 
 export default SalesTableRow;

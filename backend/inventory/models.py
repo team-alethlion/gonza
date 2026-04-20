@@ -28,14 +28,13 @@ class Category(models.Model):
     description = models.TextField(null=True, blank=True)
 
     agency = models.ForeignKey('core_app.Agency', on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
-    branch = models.ForeignKey('core_app.Branch', on_delete=models.CASCADE, related_name='categories', null=True, blank=True)
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='categories')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('branch', 'name')
+        unique_together = ('agency', 'name')
         verbose_name_plural = "Categories"
 
     def __str__(self):
@@ -55,9 +54,21 @@ class Product(models.Model):
     min_stock = models.IntegerField(default=0)
     stock = models.IntegerField(default=0)
     
+    # 🛡️ SIGNAL CONTEXT: Non-DB attributes to pass info to post_save signal
+    _history_user_id = None
+    _history_type = None
+    _history_reason = None
+    _history_reference_id = None
+    _history_reference_type = None
+    _history_created_at = None
+    _original_stock = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_stock = self.stock
+    
     barcode = models.CharField(max_length=100, null=True, blank=True)
     sku = models.CharField(max_length=100, null=True, blank=True)
-    image = models.URLField(max_length=500, null=True, blank=True)
     image_url = models.URLField(max_length=500, null=True, blank=True)
     manufacturer_barcode = models.CharField(max_length=100, null=True, blank=True)
     tags = models.JSONField(default=list, blank=True)
@@ -82,6 +93,17 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug and self.name:
             self.slug = slugify(self.name)
+        
+        # 🛡️ DATA INTEGRITY: Ensure empty strings are saved as NULL (None)
+        # This prevents "unique_together" constraint violations for multiple products
+        # with empty barcodes or SKUs within the same branch.
+        if self.barcode == "":
+            self.barcode = None
+        if self.sku == "":
+            self.sku = None
+        if self.manufacturer_barcode == "":
+            self.manufacturer_barcode = None
+            
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -131,7 +153,8 @@ class ProductHistory(models.Model):
         ('ADJUSTMENT', 'Adjustment'), ('PRICE_CHANGE', 'Price Change'), 
         ('COST_CHANGE', 'Cost Change'), ('CREATED', 'Created'), 
         ('STOCK_TAKE', 'Stock Take'), ('TRANSFER_IN', 'Transfer In'),
-        ('TRANSFER_OUT', 'Transfer Out'), ('RETURN_OUT', 'Return Out')
+        ('TRANSFER_OUT', 'Transfer Out'), ('RETURN_OUT', 'Return Out'),
+        ('STOCK_REVERSAL', 'Stock Reversal')
     )
 
     id = models.CharField(max_length=30, primary_key=True, default=gen_ph_id)
@@ -226,6 +249,7 @@ class RequisitionItem(models.Model):
     product_name = models.CharField(max_length=200)
     sku = models.CharField(max_length=100, null=True, blank=True)
     quantity = models.IntegerField(default=0)
+    urgent_item = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

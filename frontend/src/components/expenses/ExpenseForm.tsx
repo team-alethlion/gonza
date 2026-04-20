@@ -1,23 +1,39 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarIcon, Upload, X, Plus, Tag, FileText } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useCashAccounts } from '@/hooks/useCashAccounts';
-import { useExpenseCategories } from '@/hooks/useExpenseCategories';
-import { useToast } from '@/hooks/use-toast';
-import ExpenseCategoriesManager from './ExpenseCategoriesManager';
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CalendarIcon, Upload, X, Plus, Tag, FileText } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useCashAccounts } from "@/hooks/useCashAccounts";
+import { useExpenseCategories } from "@/hooks/useExpenseCategories";
+import { useToast } from "@/hooks/use-toast";
+import ExpenseCategoriesManager from "./ExpenseCategoriesManager";
 
 interface ExpenseFormProps {
   open: boolean;
@@ -27,28 +43,29 @@ interface ExpenseFormProps {
   title?: string;
 }
 
-import { useExpenseDraft } from '@/hooks/useExpenseDraft';
+import { useExpenseDraft } from "@/hooks/useExpenseDraft";
+import Image from "next/image";
 
 const ExpenseForm: React.FC<ExpenseFormProps> = ({
   open,
   onOpenChange,
   onSubmit,
   initialData,
-  title = "Add New Expense"
+  title = "Add New Expense",
 }) => {
   const { hasDraft, saveDraft, loadDraft, clearDraft } = useExpenseDraft();
   const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout>();
 
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [date, setDate] = useState<Date>(new Date());
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [personInCharge, setPersonInCharge] = useState('');
-  const [receiptImage, setReceiptImage] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [personInCharge, setPersonInCharge] = useState("");
+  const [receiptImage, setReceiptImage] = useState("");
   const [linkToCash, setLinkToCash] = useState(false);
-  const [cashAccountId, setCashAccountId] = useState('');
+  const [cashAccountId, setCashAccountId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -60,14 +77,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     if (open && !initialData && hasDraft) {
       const draft = loadDraft();
       if (draft) {
-        setAmount(draft.formData.amount || '');
-        setDescription(draft.formData.description || '');
-        setCategory(draft.formData.category || '');
+        setAmount(draft.formData.amount || "");
+        setDescription(draft.formData.description || "");
+        setCategory(draft.formData.category || "");
         setDate(new Date(draft.formData.date));
-        setPaymentMethod(draft.formData.paymentMethod || '');
-        setPersonInCharge(draft.formData.personInCharge || '');
+        setPaymentMethod(draft.formData.paymentMethod || "");
+        setPersonInCharge(draft.formData.personInCharge || "");
         setLinkToCash(draft.formData.linkToCash || false);
-        setCashAccountId(draft.formData.cashAccountId || '');
+        setCashAccountId(draft.formData.cashAccountId || "");
         toast({
           title: "Draft Restored",
           description: "We've restored your unsaved expense details.",
@@ -88,25 +105,42 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       paymentMethod,
       personInCharge,
       linkToCash,
-      cashAccountId
+      cashAccountId,
     };
 
-    const hasData = amount || description || category || paymentMethod || personInCharge;
+    const hasData =
+      amount || description || category || paymentMethod || personInCharge;
 
     if (hasData) {
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-      
+
       // Fast session save
       saveDraft(data, false);
 
       // Debounced persistent save
-      autoSaveTimeoutRef.current = setTimeout(() => saveDraft(data, true), 2000);
+      autoSaveTimeoutRef.current = setTimeout(
+        () => saveDraft(data, true),
+        2000,
+      );
     }
 
     return () => {
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
     };
-  }, [amount, description, category, date, paymentMethod, personInCharge, linkToCash, cashAccountId, open, initialData, isSubmitting, saveDraft]);
+  }, [
+    amount,
+    description,
+    category,
+    date,
+    paymentMethod,
+    personInCharge,
+    linkToCash,
+    cashAccountId,
+    open,
+    initialData,
+    isSubmitting,
+    saveDraft,
+  ]);
 
   const { accounts } = useCashAccounts();
   const { categories, createCategory } = useExpenseCategories();
@@ -118,27 +152,27 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   // Reset form when dialog opens/closes or initialData changes
   useEffect(() => {
     if (open && initialData) {
-      setAmount(initialData.amount?.toString() || '');
-      setDescription(initialData.description || '');
-      setCategory(initialData.category || '');
+      setAmount(initialData.amount?.toString() || "");
+      setDescription(initialData.description || "");
+      setCategory(initialData.category || "");
       setDate(initialData.date || new Date());
-      setPaymentMethod(initialData.paymentMethod || '');
-      setPersonInCharge(initialData.personInCharge || '');
-      setReceiptImage(initialData.receiptImage || '');
+      setPaymentMethod(initialData.paymentMethod || "");
+      setPersonInCharge(initialData.personInCharge || "");
+      setReceiptImage(initialData.receiptImage || "");
       setLinkToCash(initialData.linkToCash || false);
-      setCashAccountId(initialData.cashAccountId || '');
+      setCashAccountId(initialData.cashAccountId || "");
       setReceiptFile(null);
     } else if (open && !initialData) {
       // Reset form for new expense
-      setAmount('');
-      setDescription('');
-      setCategory('');
+      setAmount("");
+      setDescription("");
+      setCategory("");
       setDate(new Date());
-      setPaymentMethod('');
-      setPersonInCharge('');
-      setReceiptImage('');
+      setPaymentMethod("");
+      setPersonInCharge("");
+      setReceiptImage("");
       setLinkToCash(false);
-      setCashAccountId('');
+      setCashAccountId("");
       setReceiptFile(null);
     }
   }, [open, initialData]);
@@ -150,7 +184,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       toast({
         title: "Error",
         description: "Amount and description are required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -159,7 +193,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       toast({
         title: "Error",
         description: "Please select a cash account when linking to cash",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -167,14 +201,21 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      console.log('ExpenseForm: Submitting expense with linkToCash:', linkToCash, 'cashAccountId:', cashAccountId);
+      console.log(
+        "ExpenseForm: Submitting expense with linkToCash:",
+        linkToCash,
+        "cashAccountId:",
+        cashAccountId,
+      );
 
       const finalReceiptUrl = receiptImage;
 
       // Receipt file upload – storage backend not yet wired; skip for now
       if (receiptFile) {
         // TODO: wire up a server action for file uploads once a storage solution is in place.
-        console.warn('Receipt file upload skipped – no storage backend configured.');
+        console.warn(
+          "Receipt file upload skipped – no storage backend configured.",
+        );
       }
 
       const expenseData = {
@@ -186,20 +227,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
         personInCharge: personInCharge || undefined,
         receiptImage: finalReceiptUrl || undefined,
         linkToCash,
-        cashAccountId: linkToCash ? cashAccountId : undefined
+        cashAccountId: linkToCash ? cashAccountId : undefined,
       };
 
-      console.log('ExpenseForm: Final expense data:', expenseData);
+      console.log("ExpenseForm: Final expense data:", expenseData);
       await onSubmit(expenseData);
-      
+
       // Clear draft after successful submission
       if (!initialData) {
         clearDraft();
       }
-      
+
       onOpenChange(false);
     } catch (error) {
-      console.error('Error submitting expense:', error);
+      console.error("Error submitting expense:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -209,14 +250,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       // Check file type
-      const isImage = file.type.startsWith('image/');
-      const isPDF = file.type === 'application/pdf';
+      const isImage = file.type.startsWith("image/");
+      const isPDF = file.type === "application/pdf";
 
       if (!isImage && !isPDF) {
         toast({
           title: "Error",
           description: "Please select an image or PDF file",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
@@ -231,12 +272,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   };
 
   const removeImage = () => {
-    setReceiptImage('');
+    setReceiptImage("");
   };
 
   const isReceiptPDF = (url: string) => {
     // Check if the file is a PDF based on the URL or stored file type
-    return url && url.includes('pdf');
+    return url && url.includes("pdf");
   };
 
   const handleCategorySelect = (selectedCategory: string) => {
@@ -249,7 +290,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       toast({
         title: "Error",
         description: "Please enter a category name",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -259,14 +300,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       const newCategory = await createCategory(newCategoryName.trim());
       if (newCategory) {
         setCategory(newCategory.name);
-        setNewCategoryName('');
+        setNewCategoryName("");
         toast({
           title: "Success",
           description: "Category created successfully",
         });
       }
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.error("Error creating category:", error);
     } finally {
       setIsCreatingCategory(false);
     }
@@ -290,9 +331,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    document.getElementById('description')?.focus();
+                    document.getElementById("description")?.focus();
                   }
                 }}
                 placeholder="0.00"
@@ -307,15 +348,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     // Try to focus the category button
-                    const categoryButton = document.querySelector('button[data-category-select="true"]') as HTMLElement;
+                    const categoryButton = document.querySelector(
+                      'button[data-category-select="true"]',
+                    ) as HTMLElement;
                     if (categoryButton) {
                       categoryButton.focus();
                     } else {
                       // Skip to new category input
-                      document.getElementById('newCategory')?.focus();
+                      document.getElementById("newCategory")?.focus();
                     }
                   }
                 }}
@@ -334,13 +377,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   onClick={() => setShowCategoryDialog(true)}
                   data-category-select="true"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       e.preventDefault();
-                      document.getElementById('newCategory')?.focus();
+                      document.getElementById("newCategory")?.focus();
                     }
                   }}
-                  disabled={isSubmitting}
-                >
+                  disabled={isSubmitting}>
                   <Tag className="mr-2 h-4 w-4" />
                   {category || "Select Category"}
                 </Button>
@@ -354,10 +396,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         // Focus the date picker button
-                        const datePickerButton = document.querySelector('button[data-date-picker="true"]') as HTMLElement;
+                        const datePickerButton = document.querySelector(
+                          'button[data-date-picker="true"]',
+                        ) as HTMLElement;
                         datePickerButton?.focus();
                       }
                     }}
@@ -367,9 +411,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   <Button
                     type="button"
                     onClick={handleCreateNewCategory}
-                    disabled={!newCategoryName.trim() || isSubmitting || isCreatingCategory}
-                    size="sm"
-                  >
+                    disabled={
+                      !newCategoryName.trim() ||
+                      isSubmitting ||
+                      isCreatingCategory
+                    }
+                    size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -384,17 +431,16 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
+                      !date && "text-muted-foreground",
                     )}
                     data-date-picker="true"
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        document.getElementById('paymentMethod')?.focus();
+                        document.getElementById("paymentMethod")?.focus();
                       }
                     }}
-                    disabled={isSubmitting}
-                  >
+                    disabled={isSubmitting}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PPP") : <span>Pick a date</span>}
                   </Button>
@@ -417,9 +463,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    document.getElementById('personInCharge')?.focus();
+                    document.getElementById("personInCharge")?.focus();
                   }
                 }}
                 placeholder="Enter payment method (e.g., Cash, Credit Card, etc.)"
@@ -434,9 +480,9 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 value={personInCharge}
                 onChange={(e) => setPersonInCharge(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    document.getElementById('receipt')?.focus();
+                    document.getElementById("receipt")?.focus();
                   }
                 }}
                 placeholder="Enter person responsible"
@@ -466,16 +512,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                           size="sm"
                           className="ml-auto h-6 w-6 rounded-full p-0"
                           onClick={removeImage}
-                          disabled={isSubmitting}
-                        >
+                          disabled={isSubmitting}>
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <img
+                        <Image
                           src={receiptImage}
                           alt="Receipt"
+                          width={80} // 20 * 4px = 80px
+                          height={80} // 20 * 4px = 80px
                           className="w-20 h-20 object-cover rounded border"
                         />
                         <Button
@@ -484,8 +531,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                           size="sm"
                           className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
                           onClick={removeImage}
-                          disabled={isSubmitting}
-                        >
+                          disabled={isSubmitting}>
                           <X className="h-3 w-3" />
                         </Button>
                       </>
@@ -508,24 +554,30 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             {linkToCash && (
               <div>
                 <Label htmlFor="cashAccount">Cash Account</Label>
-                <Select value={cashAccountId} onValueChange={(value) => {
-                  setCashAccountId(value);
-                  setTimeout(() => {
-                    const submitButton = document.querySelector('button[type="submit"]') as HTMLElement;
-                    submitButton?.focus();
-                  }, 100);
-                }} disabled={isSubmitting}>
+                <Select
+                  value={cashAccountId}
+                  onValueChange={(value) => {
+                    setCashAccountId(value);
+                    setTimeout(() => {
+                      const submitButton = document.querySelector(
+                        'button[type="submit"]',
+                      ) as HTMLElement;
+                      submitButton?.focus();
+                    }, 100);
+                  }}
+                  disabled={isSubmitting}>
                   <SelectTrigger
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         setTimeout(() => {
-                          const submitButton = document.querySelector('button[type="submit"]') as HTMLElement;
+                          const submitButton = document.querySelector(
+                            'button[type="submit"]',
+                          ) as HTMLElement;
                           submitButton?.focus();
                         }, 100);
                       }
-                    }}
-                  >
+                    }}>
                     <SelectValue placeholder="Select cash account" />
                   </SelectTrigger>
                   <SelectContent>
@@ -544,12 +596,11 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
+                disabled={isSubmitting}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save Expense'}
+                {isSubmitting ? "Saving..." : "Save Expense"}
               </Button>
             </div>
           </form>
@@ -571,8 +622,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                     key={cat.id}
                     variant="ghost"
                     className="w-full justify-start"
-                    onClick={() => handleCategorySelect(cat.name)}
-                  >
+                    onClick={() => handleCategorySelect(cat.name)}>
                     <Tag className="mr-2 h-4 w-4" />
                     {cat.name}
                   </Button>
@@ -585,8 +635,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <div className="flex justify-end">
               <Button
                 variant="outline"
-                onClick={() => setShowCategoryDialog(false)}
-              >
+                onClick={() => setShowCategoryDialog(false)}>
                 Cancel
               </Button>
             </div>

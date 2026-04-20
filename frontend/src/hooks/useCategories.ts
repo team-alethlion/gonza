@@ -12,7 +12,7 @@ import {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCategories = (userId: string | undefined) => {
+export const useCategories = (userId: string | undefined, initialData?: ProductCategory[]) => {
   const { toast } = useToast();
   const { currentBusiness } = useBusiness();
   const queryClient = useQueryClient();
@@ -53,6 +53,7 @@ export const useCategories = (userId: string | undefined) => {
     },
     enabled: !!currentBusiness?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData: initialData,
   });
 
   const createCategory = async (name: string) => {

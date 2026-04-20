@@ -7,6 +7,7 @@ import { upsertSaleAction } from "@/app/actions/sales";
 import { queueOfflineSale } from "@/hooks/useOfflineSync";
 import { updateSaleCashTransactionAction } from "@/app/actions/products";
 import { localDb } from "@/lib/dexie";
+import { cachePreviewSaleToSession } from "./previewSessionHelper";
 
 interface UseSaleSubmitProps {
   initialData?: Sale;
@@ -86,6 +87,11 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ⚡️ FROZEN DRAFT SNAPSHOT PATTERN ⚡️
+    // Deep clone the component state strictly at the moment of submission
+    // to insulate it entirely against asynchronous React state purges.
+    const frozenDraftState = JSON.parse(JSON.stringify(props.formData));
     const totalAmount = props.calculateTotalAmount(props.formData.items);
     const taxAmount = props.calculateTaxAmount(totalAmount);
     const grandTotal = totalAmount + taxAmount;
@@ -135,36 +141,20 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
           m.generateReceiptNumber(props.currentBusiness?.id || ""),
         ));
       const profit = calculateTotalProfit(props.formData.items);
-      let finalCashTransactionId = props.cashTransactionId;
 
-      if (props.initialData) {
-        finalCashTransactionId = await props.updateCashTransactionForSale(
-          {
-            id: props.initialData.id,
-            customerName: props.formData.customerName,
-            receiptNumber: props.initialData.receiptNumber,
-            items: props.formData.items,
-          },
-          grandTotal,
-          props.cashTransactionId,
-          props.originalPaymentStatus,
-          props.formData.paymentStatus,
-          props.linkToCash,
-          props.selectedCashAccountId,
+      const saleDbData = {
+        ...mapSaleToDbSale(
+          props.formData,
           props.selectedDate,
-        );
-        props.setCashTransactionId(finalCashTransactionId);
-      }
-
-      const saleDbData = mapSaleToDbSale(
-        props.formData,
-        props.selectedDate,
-        profit,
-        receiptNumber || "",
-        props.user?.id || "",
-        props.currentBusiness?.id || "",
-        finalCashTransactionId,
-      );
+          profit,
+          receiptNumber || "",
+          props.user?.id || "",
+          props.currentBusiness?.id || "",
+          props.cashTransactionId,
+        ),
+        linkToCash: props.linkToCash,
+        cashAccountId: props.selectedCashAccountId,
+      };
 
       const {
         success,
@@ -240,37 +230,22 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
             props.selectedDate,
           );
       } else {
-        const newCashId = await props.createCashTransactionForSale(
-          sale,
-          grandTotal,
-          props.linkToCash,
-          props.selectedCashAccountId,
-          props.selectedDate,
-          props.formData.paymentStatus,
-        );
-        if (newCashId) {
-          await updateSaleCashTransactionAction(sale.id, newCashId);
-          sale.cashTransactionId = newCashId;
-        }
-        if (
-          props.formData.paymentStatus === "Installment Sale" &&
-          props.formData.amountPaid
-        ) {
-          await props.createInstallmentPaymentWithCash(
-            sale.id,
-            props.formData.amountPaid,
-            sale.items.map((i) => i.description).join(", "),
-            props.linkToCash,
-            props.selectedCashAccountId,
-            props.currentBusiness?.id || "",
-            props.createInstallmentPayment,
-          );
-        }
+        // ⚡️ ARCHITECTURAL UPDATE: 
+        // We no longer manually create the initial Installment Payment over the network here!
+        // The Django Backend now intercepts the 'amountPaid' property sequentially during 'upsertSaleAction'
+        // and safely resolves the Installment Payment globally inside an @transaction.atomic block.
+        // This guarantees database integrity by entirely eliminating partial-commit orphaned data risks.
       }
+
+      // Load the isolated presentation helper strictly to overlay the transient amounts for the receipt!
+      // This leaves the core backend logic entirely untouched as requested.
+      const { injectFrozenDraftToReceipt } = await import("./frozenDraftHelper");
+      const presentationSale = injectFrozenDraftToReceipt(sale, frozenDraftState);
+      cachePreviewSaleToSession(null, props, result);
 
       if (props.onSaleComplete) {
         await props.onSaleComplete(
-          sale,
+          presentationSale,
           props.printAfterSave,
           props.includePaymentInfo,
           props.selectedCustomerCategoryId,
@@ -288,15 +263,15 @@ export const useSaleSubmit = (props: UseSaleSubmitProps) => {
 
       if (
         props.sendSMS &&
-        props.formData.customerContact &&
+        frozenDraftState.customerContact &&
         !props.initialData
       ) {
         try {
           await props.createMessage({
-            phoneNumber: props.formData.customerContact,
+            phoneNumber: frozenDraftState.customerContact,
             content: props.smsMessage,
             customerId: props.customers.find(
-              (c) => c.phoneNumber === props.formData.customerContact,
+              (c) => c.phoneNumber === frozenDraftState.customerContact,
             )?.id,
             metadata: {
               sale_id: sale.id,

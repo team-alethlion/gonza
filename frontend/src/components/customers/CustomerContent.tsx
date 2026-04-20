@@ -24,6 +24,9 @@ interface CustomerContentProps {
   filteredCustomers: Customer[];
   customers: Customer[];
   customerStats: {
+    totalCustomers: number;
+    newThisMonth: number;
+    birthdaysThisMonth: number;
     categoryBreakdown: Record<string, number>;
   };
   getCategoryName: (categoryId: string | null) => string;

@@ -4,6 +4,7 @@
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useReveal } from "@/hooks/useReveal";
+import Image from "next/image";
 
 const AppShowcase = ({ B }: { B: any }) => {
   const { ref, visible } = useReveal();
@@ -124,21 +125,17 @@ const AppShowcase = ({ B }: { B: any }) => {
                 filter: "blur(40px)",
               }}
             />
-            <img
-              src="/lovable-uploads/hand.png"
-              alt="Gonza app on iPhone"
-              className="lp-mockup-shadow lp-float"
-              style={{
-                width: "100%",
-                height: "auto",
-                position: "relative",
-                zIndex: 1,
-              }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  "/lovable-uploads/8e29fee9-be61-482c-b1e8-5288d0d66003.png";
-              }}
-            />
+            <div className="relative w-full overflow-visible">
+              <Image
+                src="/lovable-uploads/hand.png"
+                alt="Gonza app on iPhone"
+                width={4000}
+                height={3000}
+                className="w-full h-auto lp-mockup-shadow lp-float z-[1] relative"
+                priority
+                quality={90}
+              />
+            </div>
           </div>
         </div>
       </div>

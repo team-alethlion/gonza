@@ -1,5 +1,22 @@
 from rest_framework import serializers
-from .models import SalesGoal, SaleCategory, Sale, SaleItem, InstallmentPayment
+from .models import SalesGoal, SaleCategory, Sale, SaleItem, InstallmentPayment, SalesReturn, SalesReturnItem
+
+class SalesReturnItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    refund_amount = serializers.FloatField()
+    
+    class Meta:
+        model = SalesReturnItem
+        fields = '__all__'
+
+class SalesReturnSerializer(serializers.ModelSerializer):
+    items = SalesReturnItemSerializer(many=True, read_only=True)
+    sale_receipt_number = serializers.CharField(source='sale.receipt_number', read_only=True)
+    total_refund_amount = serializers.FloatField()
+    
+    class Meta:
+        model = SalesReturn
+        fields = '__all__'
 
 class SalesGoalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,6 +49,8 @@ class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, read_only=True)
     installments = InstallmentPaymentSerializer(many=True, read_only=True)
     receipt_url = serializers.SerializerMethodField()
+    
+    cash_account_name = serializers.CharField(source='cash_transaction.account.name', read_only=True, default=None)
     
     subtotal = serializers.FloatField()
     discount_amount = serializers.FloatField()

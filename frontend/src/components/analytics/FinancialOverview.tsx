@@ -148,7 +148,7 @@ const FinancialOverview: React.FC<FinancialOverviewProps> = ({ data, formatCurre
         {isMobile && (
           <div className="flex flex-wrap justify-center gap-3 mt-4 pt-3 border-t">
             {enhancedData.map((entry, index) => (
-              <div key={index} className="flex items-center gap-1">
+              <div key={`legend-${entry.name}-${index}`} className="flex items-center gap-1">
                 <div
                   className="w-3 h-3 rounded-sm"
                   style={{ backgroundColor: entry.fill }}

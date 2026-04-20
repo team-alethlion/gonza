@@ -45,11 +45,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: session, status, update } = useSession();
 
-  // Initialize user from session if available to avoid flicker
-  const [user, setUser] = useState<User | null>(() => {
-    if (status === "authenticated" && session?.user) {
+  // 🚀 INSTANT SYNC: We derive the user directly from the session instead of keeping separate state.
+  // This eliminates the one-tick delay caused by useEffect + setTimeout.
+  const user = React.useMemo(() => {
+    if (status === 'authenticated' && session?.user) {
       return {
-        id: session.user.id || "",
+        id: session.user.id || '',
         email: session.user.email || undefined,
         name: session.user.name || undefined,
         image: session.user.image || undefined,
@@ -62,53 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         subscriptionStatus: (session.user as any).subscriptionStatus,
         subscriptionExpiry: (session.user as any).subscriptionExpiry,
         trialEndDate: (session.user as any).trialEndDate,
-      };
+      } as User;
     }
     return null;
-  });
+  }, [session, status]);
 
-  const [loading, setLoading] = useState(status === "loading");
-
-  // Sync with next-auth session
-  useEffect(() => {
-    const syncUser = () => {
-      if (status === 'authenticated' && session?.user) {
-        const newUser = {
-          id: session.user.id || '',
-          email: session.user.email || undefined,
-          name: session.user.name || undefined,
-          image: session.user.image || undefined,
-          role: (session.user as any).role,
-          status: (session.user as any).status,
-          branchId: (session.user as any).branchId,
-          agencyId: (session.user as any).agencyId,
-          isOnboarded: (session.user as any).isOnboarded,
-          agencyOnboarded: (session.user as any).agencyOnboarded,
-          subscriptionStatus: (session.user as any).subscriptionStatus,
-          subscriptionExpiry: (session.user as any).subscriptionExpiry,
-          trialEndDate: (session.user as any).trialEndDate,
-        };
-
-        // Only update if data changed
-        if (JSON.stringify(user) !== JSON.stringify(newUser)) {
-          setUser(newUser);
-        }
-      } else if (status === 'unauthenticated') {
-        if (user !== null) {
-          setUser(null);
-        }
-      }
-
-      const isLoading = status === 'loading';
-      if (loading !== isLoading) {
-        setLoading(isLoading);
-      }
-    };
-
-    // Use setTimeout to move the setState out of the synchronous render/effect cycle
-    const timer = setTimeout(syncUser, 0);
-    return () => clearTimeout(timer);
-  }, [session, status, user, loading]);
+  const loading = status === "loading";
 
   const updateSession = React.useCallback(
     async (data?: any) => {

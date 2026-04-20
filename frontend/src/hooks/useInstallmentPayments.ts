@@ -93,7 +93,7 @@ export const useInstallmentPayments = (saleId?: string) => {
         description: "Failed to record payment",
         variant: "destructive"
       });
-      return null;
+      throw error; // Re-throw so upstream callers (like useSaleSubmit) halt execution
     }
   };
 

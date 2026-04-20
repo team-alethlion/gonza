@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useCallback } from "react";
@@ -7,110 +8,113 @@ import {
   useMessages,
   Message,
   MessageTemplate,
-  Purchase,
 } from "@/hooks/useMessages";
-import { useCustomers } from "@/hooks/useCustomers";
 import { useProfiles } from "@/contexts/ProfileContext";
+import { useCustomers } from "@/hooks/useCustomers";
 import MessageHeader from "@/components/messages/MessageHeader";
 import MessageStatsCards from "@/components/messages/MessageStatsCards";
 import MessageContent from "@/components/messages/MessageContent";
 import NewMessageDialog from "@/components/messages/NewMessageDialog";
 import MessageTemplateDialog from "@/components/messages/MessageTemplateDialog";
-import TopUpCreditsDialog from "@/components/messages/TopUpCreditsDialog";
+import TopUpDialog from "@/components/messages/TopUpDialog";
 import BulkMessageDialog from "@/components/messages/BulkMessageDialog";
+import WhatsAppConnection from "@/components/messages/WhatsAppConnection";
 import PurchaseHistoryTable from "@/components/messages/PurchaseHistoryTable";
 import UsageHistoryTable from "@/components/messages/UsageHistoryTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 const Messages = () => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
-  const {
-    currentProfile,
-    hasPermission,
-    isLoading: profilesLoading,
-  } = useProfiles();
+  const { currentProfile, isLoading: profilesLoading } = useProfiles();
   const router = useRouter();
 
-  // Permissions
-  const canView = hasPermission("messages", "view");
-  const canCreate = hasPermission("messages", "create");
-  const canEdit = hasPermission("messages", "edit");
-  const canDelete = hasPermission("messages", "delete");
   const {
     messages,
     templates,
     purchases,
+    liveCredits,
     isLoading,
     createMessage,
     createBulkMessages,
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    initiateCreditPurchase,
     getMessageStats,
+    refresh,
   } = useMessages(user?.id);
 
   const { customers } = useCustomers();
 
+  const [activeTab, setActiveTab] = useState("messages");
   const [newMessageOpen, setNewMessageOpen] = useState(false);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
-  const [bulkMessageOpen, setBulkMessageOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [bulkMessageOpen, setBulkMessageOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<
     MessageTemplate | undefined
   >(undefined);
-  const [activeTab, setActiveTab] = useState("messages");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const stats = getMessageStats();
 
-  const handleSendMessage = async (messageData: {
-    phoneNumber: string;
-    content: string;
-    customerId?: string;
-    templateId?: string;
-  }) => {
-    try {
-      await createMessage(messageData);
-      return { success: 1, failed: 0, errors: [] };
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      return {
-        success: 0,
-        failed: 1,
-        errors: [error instanceof Error ? error.message : "Unknown error"],
-      };
-    }
+  // Safely get role name from either string or object
+  const getRoleName = () => {
+    if (!currentProfile) return "";
+    if (currentProfile.business_role?.name) return currentProfile.business_role.name.toLowerCase();
+    if (typeof currentProfile.role === 'object') return (currentProfile.role as any)?.name?.toLowerCase() || "";
+    return String(currentProfile.role).toLowerCase();
   };
 
-  const handleBulkSend = useCallback(
+  const roleName = getRoleName();
+  const canCreate = roleName !== "staff";
+  const canEdit = roleName === "admin" || roleName === "owner";
+  const canDelete = roleName === "admin" || roleName === "owner";
+
+  const handleSendMessage = useCallback(
+    async (messageData: { 
+      phoneNumber: string; 
+      content: string; 
+      customerId?: string; 
+      templateId?: string; 
+      channel: any 
+    }) => {
+      const result = await createMessage(messageData);
+      if (result && result.success > 0) {
+        setNewMessageOpen(false);
+        refresh();
+      }
+      return result || { success: 0, failed: 1, errors: ["Failed to send"] };
+    },
+    [createMessage, refresh],
+  );
+
+  const handleSendBulkMessages = useCallback(
     async (data: {
       customerIds: string[];
       content: string;
       templateId?: string;
+      channel: "sms" | "whatsapp";
     }) => {
       try {
         const result = await createBulkMessages(data);
+        refresh();
         return result;
       } catch (error) {
         console.error("Failed to send bulk messages:", error);
-        alert(
-          error instanceof Error ? error.message : "Failed to send messages",
-        );
         return {
           success: 0,
-          failed: 0,
-          errors: [error instanceof Error ? error.message : "Unknown error"],
+          failed: data.customerIds.length,
+          errors: [error instanceof Error ? error.message : "Failed to send"],
         };
       }
     },
-    [createBulkMessages],
+    [createBulkMessages, refresh],
   );
 
   const handleSaveTemplate = useCallback(
@@ -146,30 +150,6 @@ const Messages = () => {
     [deleteTemplate],
   );
 
-  const handleTopUpCredits = useCallback(
-    async (credits: number, phoneNumber: string) => {
-      try {
-        const result = (await initiateCreditPurchase(
-          credits,
-          phoneNumber,
-        )) as unknown as { redirectUrl?: string };
-        if (result?.redirectUrl) {
-          // Redirect to payment page
-          window.open(result.redirectUrl, "_blank");
-        }
-        setTopUpOpen(false);
-        return true;
-      } catch (error) {
-        console.error("Failed to initiate top-up:", error);
-        alert(
-          error instanceof Error ? error.message : "Failed to initiate payment",
-        );
-        return false;
-      }
-    },
-    [initiateCreditPurchase],
-  );
-
   if (businessLoading || !currentBusiness || isLoading || profilesLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -178,43 +158,19 @@ const Messages = () => {
     );
   }
 
-  if (!canView) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
-          <AlertDescription>
-            You do not have permission to view the messaging module. Please
-            contact your administrator if you believe this is an error.
-          </AlertDescription>
-        </Alert>
-        <div className="mt-4">
-          <Button
-            onClick={() => router.push("/")}
-            variant="outline"
-            className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const filteredMessages = messages.filter((msg) => {
-    const phone = msg.phoneNumber || "";
-    const text = msg.content || "";
-    const matchesSearch =
-      phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      text.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || msg.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   return (
-    <div className="space-y-8">
-      {/* Header Section */}
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="hover:bg-gray-100">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        </Button>
+      </div>
+
       <MessageHeader
         onNewMessage={() => setNewMessageOpen(true)}
         onNewTemplate={() => {
@@ -223,7 +179,7 @@ const Messages = () => {
         }}
         onTopUp={() => setTopUpOpen(true)}
         onBulkMessage={() => setBulkMessageOpen(true)}
-        smsCredits={currentProfile?.sms_credits || 0}
+        smsCredits={liveCredits}
         canCreate={canCreate}
       />
 
@@ -232,15 +188,16 @@ const Messages = () => {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="messages" className="space-y-4 mt-6">
           <MessageContent
-            messages={filteredMessages}
+            messages={messages}
             customers={customers}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -251,8 +208,7 @@ const Messages = () => {
 
         <TabsContent value="templates" className="space-y-4 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((template) => (
-              <div
+            {templates.map((template: MessageTemplate) => (              <div
                 key={template.id}
                 className="bg-white p-4 rounded-lg shadow border hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
@@ -298,6 +254,10 @@ const Messages = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="whatsapp" className="space-y-4 mt-6">
+          <WhatsAppConnection />
+        </TabsContent>
+
         <TabsContent value="history" className="space-y-6 mt-6">
           <PurchaseHistoryTable purchases={purchases} />
           <UsageHistoryTable messages={messages} />
@@ -305,7 +265,6 @@ const Messages = () => {
       </Tabs>
 
       {/* Dialogs */}
-
       <MessageTemplateDialog
         open={newTemplateOpen}
         onClose={() => {
@@ -316,10 +275,9 @@ const Messages = () => {
         initialData={selectedTemplate}
       />
 
-      <TopUpCreditsDialog
+      <TopUpDialog
         open={topUpOpen}
         onClose={() => setTopUpOpen(false)}
-        onTopUp={handleTopUpCredits}
       />
 
       <NewMessageDialog
@@ -333,11 +291,8 @@ const Messages = () => {
       <BulkMessageDialog
         open={bulkMessageOpen}
         onClose={() => setBulkMessageOpen(false)}
-        onSend={handleBulkSend}
-        customers={customers}
+        onSend={handleSendBulkMessages}
         templates={templates}
-        searchTerm={searchTerm} // reuse parent searchTerm
-        setSearchTerm={setSearchTerm} // reuse parent setter
       />
     </div>
   );

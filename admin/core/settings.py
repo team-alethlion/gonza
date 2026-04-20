@@ -1,8 +1,14 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-admin-project-key'
+
+# Load .env from project root or admin dir
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-gonza-default-key-for-dev-only')
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
@@ -35,6 +41,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'users.middleware.UserActivityMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -58,26 +65,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 import dj_database_url
-from dotenv import load_dotenv
-
-# Load .env from project root or admin dir
-load_dotenv(BASE_DIR / '.env')
-load_dotenv(BASE_DIR.parent / '.env')
 
 db_url = os.environ.get('DATABASE_URL', 'postgres://a7e4d5d28715a731de0fb1b564139f0cca5c4a21d4995598be8c079ef627589c:sk_PaMCHF_TjeZVhlvS8hR0l@db.prisma.io:5432/postgres?sslmode=verify-full')
+
+# Support for non-SSL connections (e.g. local development)
+ssl_require = True
+if db_url:
+    if db_url.startswith('sqlite') or 'localhost' in db_url or '127.0.0.1' in db_url or 'sslmode=disable' in db_url:
+        ssl_require = False
 
 DATABASES = {
     'default': dj_database_url.config(
         default=db_url,
         conn_max_age=0,
-        ssl_require=False if db_url.startswith('sqlite') else True
+        ssl_require=ssl_require
     )
 }
 
 AUTH_USER_MODEL = 'users.User'
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.environ.get('TIME_ZONE', 'UTC')
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
@@ -88,10 +96,11 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 UNFOLD = {
-    "SITE_TITLE": "Professional Admin Panel",
-    "SITE_HEADER": "Gonza Systems | Database Management",
+    "SITE_TITLE": "Gonza Admin Panel",
+    "SITE_HEADER": "Gonza Systems | Management",
     "SITE_ICON": lambda request: "/static/icon.png", 
     "SITE_FAVICON": lambda request: "/static/favicon.ico",
+    "SITE_SYMBOL": "speed", # material symbols name
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
     "SIDEBAR": {

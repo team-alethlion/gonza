@@ -9,15 +9,18 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Q, Sum, Count, F, DecimalField
 from django.db.models.functions import Cast
 from inventory.utils import get_inventory_stats
+from core_app.logic.branches import initialize_branch
+from core_app.logic.analytics import get_analytics_summary
+from inventory.logic.requisitions import calculate_requisition_total
+from inventory.models import Requisition, StockTransfer
+from finance.models import CashTransaction, Expense
 
 from .models import (
-    Agency, Branch, BranchSettings, Package, SubscriptionTransaction,
-    Task, TaskCategory, ActivityHistory
+    Agency, Branch, BranchSettings, Package, SubscriptionTransaction
 )
 from .serializers import (
     AgencySerializer, BranchSerializer,
-    BranchSettingsSerializer, PackageSerializer,
-    TaskSerializer, TaskCategorySerializer, ActivityHistorySerializer
+    BranchSettingsSerializer, PackageSerializer
 )
 from rest_framework import serializers
 
@@ -42,69 +45,7 @@ class AnalyticsViewSet(viewsets.ViewSet):
         if not branch_id:
             return Response({"error": "branchId required"}, status=400)
 
-        # 🚀 CACHE: Use unique key based on params
-        from django.core.cache import cache
-        cache_key = f"analytics_summary_{branch_id}_{start_date}_{end_date}"
-        cached_data = cache.get(cache_key)
-        
-        if cached_data:
-            return Response(cached_data)
-
-        from sales.models import Sale, SaleItem
-        from finance.models import Expense
-        from django.db.models import Sum, F
-        
-        sales_qs = Sale.objects.filter(branch_id=branch_id).exclude(status='QUOTE')
-        if start_date:
-            sales_qs = sales_qs.filter(date__gte=start_date)
-        if end_date:
-            sales_qs = sales_qs.filter(date__lte=end_date)
-            
-        sales_totals = sales_qs.aggregate(
-            total=Sum('total_amount'),
-            tax=Sum('tax_amount'),
-            discount=Sum('discount_amount')
-        )
-        
-        # Calculate approximate total cost from items
-        item_stats = SaleItem.objects.filter(sale__in=sales_qs).aggregate(
-            total_cost=Sum(F('cost_price') * F('quantity'))
-        )
-        
-        total_sales = sales_totals['total'] or 0
-        total_cost = item_stats['total_cost'] or 0
-        total_profit = total_sales - total_cost
-        
-        counts = sales_qs.values('status').annotate(count=Count('id'))
-        count_dict = {item['status']: item['count'] for item in counts}
-        
-        expenses_qs = Expense.objects.filter(branch_id=branch_id)
-        if start_date:
-            expenses_qs = expenses_qs.filter(date__gte=start_date)
-        if end_date:
-            expenses_qs = expenses_qs.filter(date__lte=end_date)
-            
-        expenses_stats = expenses_qs.aggregate(total=Sum('amount'))
-        
-        paid_count = count_dict.get('COMPLETED', 0)
-        pending_count = count_dict.get('PENDING', 0) + count_dict.get('PARTIAL', 0)
-        
-        # Recent Sales (last 5)
-        recent_sales = sales_qs.order_by('-date')[:5]
-        from sales.serializers import SaleSerializer
-        
-        data = {
-            "totalSales": total_sales,
-            "totalCost": total_cost,
-            "totalProfit": total_profit,
-            "paidSalesCount": paid_count,
-            "pendingSalesCount": pending_count,
-            "totalExpenses": expenses_stats['total'] or 0,
-            "recentSales": SaleSerializer(recent_sales, many=True).data
-        }
-
-        # Cache for 5 minutes
-        cache.set(cache_key, data, 300)
+        data = get_analytics_summary(branch_id, start_date, end_date)
         
         return Response(data)
 
@@ -133,7 +74,17 @@ class PackageViewSet(viewsets.ModelViewSet):
 class AgencyViewSet(viewsets.ModelViewSet):
     queryset = Agency.objects.all()
     serializer_class = AgencySerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action == 'retrieve':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_object(self):
+        obj = super().get_object()
+        # Automatically sync status on retrieval to ensure DB integrity
+        obj.sync_status()
+        return obj
 
     @action(detail=True, methods=['post'])
     def activate_trial(self, request, pk=None):
@@ -188,6 +139,7 @@ class BranchViewSet(viewsets.ModelViewSet):
             Q(admin=user) | Q(users__id=user.id)
         ).distinct().order_by('type', 'created_at')
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         name = request.data.get('name')
         branch = Branch.objects.create(
@@ -196,6 +148,10 @@ class BranchViewSet(viewsets.ModelViewSet):
             admin=request.user,
             agency_id=request.user.agency_id
         )
+        
+        # 🚀 INITIALIZE: Setup roles, permissions and settings
+        initialize_branch(branch, request.user)
+        
         return Response(self.get_serializer(branch).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
@@ -206,10 +162,19 @@ class BranchViewSet(viewsets.ModelViewSet):
             return Response({"error": "Only the admin can reset the business"}, status=status.HTTP_403_FORBIDDEN)
             
         with transaction.atomic():
+            # Inventory
             branch.product_history.all().delete()
             branch.sales.all().delete()
             branch.products.all().delete()
             branch.customers.all().delete()
+            
+            # Requisitions & Transfers
+            Requisition.objects.filter(branch=branch).delete()
+            StockTransfer.objects.filter(branch=branch).delete()
+            
+            # Finance
+            CashTransaction.objects.filter(branch_id=branch.id).delete()
+            Expense.objects.filter(branch_id=branch.id).delete()
             
         return Response({"status": "reset"})
 
@@ -249,6 +214,16 @@ class BranchViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             target_agency_id = data.get('agencyId') or user.agency_id
             
+            # 🛡️ SECURITY: Prevent hijacking of other agencies
+            if target_agency_id:
+                try:
+                    agency = Agency.objects.get(id=target_agency_id)
+                    # Only allow onboarding if agency has no name (new) or user is already linked
+                    if agency.name and user.agency_id and user.agency_id != target_agency_id:
+                        return Response({"error": "Unauthorized to onboard this agency."}, status=403)
+                except Agency.DoesNotExist:
+                    target_agency_id = None # Fallback to creation
+            
             if not target_agency_id:
                 unique_id = str(uuid.uuid4())[:6]
                 agency = Agency.objects.create(
@@ -264,10 +239,19 @@ class BranchViewSet(viewsets.ModelViewSet):
                 agency.is_onboarded = True
                 if data.get('packageId'): agency.package_id = data.get('packageId')
                 if data.get('subscriptionStatus'): agency.subscription_status = data.get('subscriptionStatus')
-                # Date fields omitted for brevity but can be added
                 agency.save()
 
             target_branch_id = data.get('branchId')
+            
+            # 🛡️ SECURITY: Prevent hijacking of other branches
+            if target_branch_id:
+                try:
+                    branch = Branch.objects.get(id=target_branch_id)
+                    if branch.agency_id != target_agency_id:
+                         return Response({"error": "Unauthorized to onboard this branch."}, status=403)
+                except Branch.DoesNotExist:
+                    target_branch_id = None
+
             if not target_branch_id:
                 branch = Branch.objects.filter(agency_id=target_agency_id).first()
                 if branch:
@@ -280,6 +264,10 @@ class BranchViewSet(viewsets.ModelViewSet):
                         admin=user
                     )
                     target_branch_id = branch.id
+                    
+                    # 🚀 INITIALIZE: Setup roles, permissions and settings
+                    from core_app.logic.branches import initialize_branch
+                    initialize_branch(branch, user)
             
             branch = Branch.objects.get(id=target_branch_id)
             if data.get('businessName'): branch.name = data.get('businessName')
@@ -341,132 +329,6 @@ class BranchSettingsViewSet(viewsets.ModelViewSet):
             qs = qs.filter(branch_id=branch_id)
         return qs
 
-class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        from dateutil.relativedelta import relativedelta
-        task = serializer.save()
-        
-        if task.is_recurring and task.recurrence_type and task.recurrence_end_date:
-            current_date = task.due_date
-            end_date = task.recurrence_end_date
-            count = 1
-            
-            delta = None
-            if task.recurrence_type == 'daily':
-                delta = relativedelta(days=1)
-            elif task.recurrence_type == 'weekly':
-                delta = relativedelta(weeks=1)
-            elif task.recurrence_type == 'monthly':
-                delta = relativedelta(months=1)
-                
-            if delta:
-                while count < 365:
-                    current_date += delta
-                    if current_date > end_date:
-                        break
-                        
-                    Task.objects.create(
-                        id=f"ts_{uuid.uuid4().hex[:12]}",
-                        created_by=task.created_by,
-                        branch=task.branch,
-                        title=task.title,
-                        description=task.description,
-                        priority=task.priority,
-                        due_date=current_date,
-                        category=task.category,
-                        reminder_enabled=task.reminder_enabled,
-                        reminder_time=task.reminder_time,
-                        is_recurring=False,
-                        parent_task_id=task.id,
-                        recurrence_count=count
-                    )
-                    count += 1
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user_id = self.request.query_params.get('userId')
-        branch_id = self.request.query_params.get('locationId')
-        if user_id:
-            qs = qs.filter(created_by_id=user_id)
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-        return qs.order_by('due_date')
-
-class TaskCategoryViewSet(viewsets.ModelViewSet):
-    queryset = TaskCategory.objects.all()
-    serializer_class = TaskCategorySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user_id = self.request.query_params.get('userId')
-        branch_id = self.request.query_params.get('locationId')
-        if user_id and user_id != 'ALL':
-            qs = qs.filter(user_id=user_id)
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-        return qs.order_by('name')
-
-    def perform_create(self, serializer):
-        # Allow manual passing of user and branch from frontend
-        user_id = self.request.data.get('user')
-        branch_id = self.request.data.get('branch')
-        
-        serializer.save(
-            user_id=user_id or self.request.user.id,
-            branch_id=branch_id
-        )
-
-class ActivityHistoryViewSet(viewsets.ModelViewSet):
-    queryset = ActivityHistory.objects.all()
-    serializer_class = ActivityHistorySerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        branch_id = self.request.query_params.get('locationId')
-        if branch_id:
-            qs = qs.filter(branch_id=branch_id)
-            
-        user_id = self.request.query_params.get('userId')
-        if user_id and user_id != 'ALL':
-            qs = qs.filter(user_id=user_id)
-            
-        activity_type = self.request.query_params.get('activityType')
-        if activity_type and activity_type != 'ALL':
-            qs = qs.filter(activity_type=activity_type)
-            
-        module = self.request.query_params.get('module')
-        if module and module != 'ALL':
-            qs = qs.filter(module=module)
-            
-        search = self.request.query_params.get('search')
-        if search:
-            qs = qs.filter(
-                Q(description__icontains=search) | 
-                Q(entity_name__icontains=search) |
-                Q(profile_name__icontains=search)
-            )
-            
-        entity_ids = self.request.query_params.get('entityIds')
-        if entity_ids:
-            id_list = entity_ids.split(',')
-            qs = qs.filter(entity_id__in=id_list)
-            
-        start_date = self.request.query_params.get('startDate') or self.request.query_params.get('dateFrom')
-        if start_date:
-            qs = qs.filter(created_at__gte=start_date)
-            
-        end_date = self.request.query_params.get('endDate') or self.request.query_params.get('dateTo')
-        if end_date:
-            qs = qs.filter(created_at__lte=end_date)
-            
-        return qs.order_by('-created_at')
-
 class CronJobViewSet(viewsets.ViewSet):
     permission_classes = [AllowAny]
     
@@ -500,18 +362,6 @@ class CronJobViewSet(viewsets.ViewSet):
             "success": True, 
             "message": f"Updated {expired_count} subs and {expired_trials} trials."
         })
-
-    @action(detail=False, methods=['post'])
-    def activity_cleanup(self, request):
-        if not self.verify_cron(request):
-            return Response({"error": "Unauthorized"}, status=401)
-            
-        from django.utils.timezone import now
-        from dateutil.relativedelta import relativedelta
-        cutoff_date = now() - relativedelta(days=90)
-        
-        deleted, _ = ActivityHistory.objects.filter(created_at__lt=cutoff_date).delete()
-        return Response({"success": True, "message": f"Deleted {deleted} old activities."})
 
     @action(detail=False, methods=['post'])
     def orphaned_account_cleanup(self, request):

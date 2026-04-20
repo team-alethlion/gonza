@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { bulkAdjustStockAction, recordStockAuditAction } from '@/app/actions/inventory';
+import { bulkAdjustStockAction, recordStockAuditAction, saveStockAuditDraftAction, getStockAuditDraftAction } from '@/app/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useProducts } from '@/hooks/useProducts';
 import { toast } from 'sonner';
 import { useBusiness } from '@/contexts/BusinessContext';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Product } from '@/types';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { exportStockCountToCSV, exportStockCountToPDF } from '@/utils/exportStockCount';
 import {
@@ -141,19 +143,15 @@ const StockCountTab = () => {
     const { user } = useAuth();
     const userId = user?.id;
     const { currentBusiness } = useBusiness();
-    const { products, loadProducts } = useProducts(userId, 10000);
+    const { products: pagedProducts, loadProducts } = useProducts(userId); // Normal paged load
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('quick');
     const [lastScannedId, setLastScannedId] = useState<string | null>(null);
     const [showCommitDialog, setShowCommitDialog] = useState(false);
     const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
-    const [auditorName, setAuditorName] = useState('');
-    const [contactPerson, setContactPerson] = useState('');
-    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-    const [deleteDialogSession, setDeleteDialogSession] = useState<typeof auditSessions[0] | null>(null);
 
-    const { stockHistory, isLoading: isLoadingHistory, loadStockHistory } = useStockHistory(userId);
+    const [isSyncingDraft, setIsSyncingDraft] = useState(false);
 
     // Local counts database: productId -> actualCount
     const [counts, setCounts] = useState<Record<string, number>>(() => {
@@ -165,13 +163,124 @@ const StockCountTab = () => {
         }
     });
 
-    // Persist counts
+    // 🚀 PERFORMANCE: Use Dexie to only load products we are actually auditing
+    // instead of keeping 10,000 products in React memory.
+    const localAuditProducts = useLiveQuery(async () => {
+        if (!currentBusiness?.id) return [];
+        const { localDb } = await import('@/lib/dexie');
+        const { matchProductSearch } = await import('@/utils/searchUtils');
+
+        // If searching, find matches in local DB
+        if (searchTerm.trim()) {
+            const matches = await localDb.products
+                .where('locationId')
+                .equals(currentBusiness.id)
+                .toArray();
+            return matches.filter(p => matchProductSearch(p as any, searchTerm)).slice(0, 50);
+        }
+
+        // Otherwise, only show products that have a count recorded
+        const countedIds = Object.keys(counts);
+        if (countedIds.length === 0) return [];
+
+        return await localDb.products
+            .where('id')
+            .anyOf(countedIds)
+            .toArray();
+    }, [searchTerm, currentBusiness?.id, counts]);
+
+    const products = localAuditProducts || [];
+
+    // 🔄 SERVER SYNC: Save draft to server periodically
+    const syncDraftToServer = useCallback(async (currentCounts: Record<string, number>) => {
+        if (!userId || !currentBusiness?.id) return;
+        
+        setIsSyncingDraft(true);
+        try {
+            const auditItems = Object.entries(currentCounts).map(([id, val]) => {
+                const product = products.find(p => p.id === id);
+                return {
+                    productId: id,
+                    productName: product?.name || 'Unknown',
+                    sku: product?.itemNumber || '',
+                    expected_qty: product?.quantity || 0,
+                    counted_qty: val,
+                    variance: val - (product?.quantity || 0),
+                    status: 'Pending'
+                };
+            });
+
+            await saveStockAuditDraftAction({
+                branch: currentBusiness.id,
+                user: userId,
+                items: auditItems
+            });
+        } catch (error) {
+            console.error("Draft sync error:", error);
+        } finally {
+            setIsSyncingDraft(false);
+        }
+    }, [userId, currentBusiness?.id, products]);
+
+    // 📥 SERVER RECOVERY: Load draft from server if local is empty
+    useEffect(() => {
+        const loadDraftFromServer = async () => {
+            if (!currentBusiness?.id || !products.length) return;
+            
+            // If local storage is empty, try server
+            const savedLocal = localStorage.getItem(STORAGE_KEY);
+            if (!savedLocal || savedLocal === '{}') {
+                try {
+                    const result = await getStockAuditDraftAction(currentBusiness.id);
+                    if (result.success && result.data && result.data.items) {
+                        const serverCounts: Record<string, number> = {};
+                        result.data.items.forEach((item: any) => {
+                            // Backend returns ID of the product
+                            serverCounts[item.product] = item.counted_qty;
+                        });
+                        
+                        if (Object.keys(serverCounts).length > 0) {
+                            setCounts(serverCounts);
+                            toast.info("Audit progress recovered from server.");
+                        }
+                    }
+                } catch (error) {
+                    console.warn("Failed to load server draft:", error);
+                }
+            }
+        };
+
+        loadDraftFromServer();
+    }, [currentBusiness?.id, products.length]);
+
+    // Persist counts to localStorage AND sync to server (debounced)
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(counts));
-    }, [counts]);
+        
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        
+        // Only sync to server if there's actual data
+        if (Object.keys(counts).length > 0) {
+            syncTimeoutRef.current = setTimeout(() => {
+                syncDraftToServer(counts);
+            }, 5000); // 5s debounce for server sync
+        }
+
+        return () => {
+            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        };
+    }, [counts, syncDraftToServer]);
 
     // Generate a unique session ID for the audit (proper UUID for database)
     const generateSessionId = () => crypto.randomUUID();
+
+    const [auditorName, setAuditorName] = useState('');
+    const [contactPerson, setContactPerson] = useState('');
+    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+    const [deleteDialogSession, setDeleteDialogSession] = useState<any | null>(null);
+
+    const { stockHistory, isLoading: isLoadingHistory, loadStockHistory } = useStockHistory(userId);
 
     // Shared function to update or add a count
     const handleCountUpdate = useCallback((product: Product, value: number, isRelative: boolean = true) => {
@@ -378,11 +487,11 @@ const StockCountTab = () => {
                     const product = products.find(p => p.id === id);
                     if (!product) return null;
                     const newValue = counts[id];
-                    const delta = newValue - product.quantity;
+                    
                     return {
                         productId: id,
                         sku: product.itemNumber,
-                        quantity: delta,
+                        absoluteQuantity: newValue, // 🛡️ DATA INTEGRITY: Send actual count to backend
                         type: 'ADJUSTMENT',
                         reason: finalReason,
                         createdAt: new Date().toISOString()
@@ -433,6 +542,17 @@ const StockCountTab = () => {
                 toast.success(`Audit completed and cleared (Inventory not changed).`);
             }
 
+            // 🛡️ DATA INTEGRITY: Clear server draft after successful commit
+            try {
+                await saveStockAuditDraftAction({
+                    branch: currentBusiness?.id,
+                    user: userId,
+                    items: []
+                });
+            } catch (e) {
+                console.warn("Failed to clear server draft after commit:", e);
+            }
+
             setCounts({});
             setAuditorName('');
             setContactPerson('');
@@ -471,11 +591,25 @@ const StockCountTab = () => {
         });
     };
 
-    const clearAll = () => {
+    const clearAll = async () => {
         if (Object.keys(counts).length === 0) return;
         if (window.confirm("Clear all recorded counts? progress will be lost.")) {
             setCounts({});
             localStorage.removeItem(STORAGE_KEY);
+            
+            // Also clear server-side draft
+            if (currentBusiness?.id) {
+                try {
+                    await saveStockAuditDraftAction({
+                        branch: currentBusiness.id,
+                        user: userId,
+                        items: [] // Sending empty items clears the draft items
+                    });
+                } catch (e) {
+                    console.error("Failed to clear server draft:", e);
+                }
+            }
+            
             toast.info("Progress cleared.");
         }
     };
@@ -624,12 +758,22 @@ const StockCountTab = () => {
                 <CardHeader className="pb-3 px-4 md:px-6 bg-muted/20">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <CardTitle className="text-xl flex items-center gap-2">
-                                <ScanBarcode className="h-6 w-6 text-sales-primary" />
-                                Inventory Audit
-                            </CardTitle>
+                            <div className="flex items-center gap-3">
+                                <CardTitle className="text-xl flex items-center gap-2">
+                                    <ScanBarcode className="h-6 w-6 text-sales-primary" />
+                                    Inventory Audit
+                                </CardTitle>
+                                {Object.keys(counts).length > 0 && (
+                                    <Badge variant="outline" className={cn(
+                                        "h-5 text-[10px] uppercase tracking-wider font-bold border-none transition-colors",
+                                        isSyncingDraft ? "bg-amber-100 text-amber-700 animate-pulse" : "bg-green-100 text-green-700"
+                                    )}>
+                                        {isSyncingDraft ? 'Syncing...' : 'Synced to Server'}
+                                    </Badge>
+                                )}
+                            </div>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Counts are saved locally. Click &quot;Complete Audit&quot; to update the system.
+                                Counts are saved locally and synced to server. Click &quot;Complete Audit&quot; to update the system.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">

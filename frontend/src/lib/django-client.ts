@@ -8,10 +8,29 @@ const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://127.0.0
  * Automatically injects the JWT access token from the active session.
  */
 export async function djangoFetch<T = any>(endpoint: string, options: RequestInit & { accessToken?: string } = {}): Promise<T> {
-  const token = options.accessToken || (await auth() as any)?.accessToken;
+  // If accessToken is provided in options, use it. 
+  // ONLY call auth() if no token was provided.
+  const session = (await auth() as any);
+  const token = options.accessToken || session?.accessToken;
+  const isTokenDead = session?.authError === "RefreshAccessTokenError";
 
-  if (!token && !endpoint.includes('auth/token')) {
-    console.warn(`[djangoFetch] No accessToken found in session for endpoint: ${endpoint}`);
+  // List of endpoints that are allowed to be accessed without a token (Public-Friendly)
+  const isPublicFriendly = endpoint.includes('core/packages/') || 
+                           endpoint.includes('core/agencies/') ||
+                           endpoint.includes('users/users/me/') ||
+                           endpoint.includes('finance/transactions/') ||
+                           endpoint.includes('auth/token') || 
+                           endpoint.includes('public/');
+
+  if (!token && !isPublicFriendly) {
+    console.warn(`[djangoFetch] No accessToken found in session for protected endpoint: ${endpoint}`);
+  }
+
+  // 🛡️ SESSION INTEGRITY CHECK:
+  // If we know the token is dead and this is a protected endpoint, 
+  // FAIL FAST to avoid triggering 401 logs on the backend.
+  if (isTokenDead && !isPublicFriendly) {
+    throw new Error(`401: Session stale (Orphaned). Skipping protected request to: ${endpoint}`);
   }
 
   const headers = new Headers(options.headers || {});
@@ -19,8 +38,13 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
     headers.set('Content-Type', 'application/json');
   }
 
-  if (token) {
+  // 🛡️ TOKEN POISONING PREVENTION:
+  // If the token is known to be dead, do NOT attach it to public-friendly requests.
+  // This allows the subscription page to load even if the session is orphaned.
+  if (token && (!isTokenDead || !isPublicFriendly)) {
     headers.set('Authorization', `Bearer ${token}`);
+  } else if (isTokenDead && isPublicFriendly) {
+    console.log(`[djangoFetch] Token dead. Accessing ${endpoint} anonymously.`);
   }
 
   const url = `${DJANGO_API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -40,7 +64,14 @@ export async function djangoFetch<T = any>(endpoint: string, options: RequestIni
         let errorMsg = `Django API Error: ${response.status} ${response.statusText}`;
         try {
           const errorData = await response.json();
-          errorMsg = `${response.status}: ${JSON.stringify(errorData)}`;
+          // 🚀 ENHANCED ERROR PARSING: Extract the most specific message possible
+          if (errorData.detail) {
+            errorMsg = `${response.status}: ${errorData.detail}`;
+          } else if (errorData.messages && Array.isArray(errorData.messages) && errorData.messages[0]?.message) {
+            errorMsg = `${response.status}: ${errorData.messages[0].message}`;
+          } else {
+            errorMsg = `${response.status}: ${JSON.stringify(errorData)}`;
+          }
         } catch {
           errorMsg = `${response.status}: ${response.statusText}`;
         }

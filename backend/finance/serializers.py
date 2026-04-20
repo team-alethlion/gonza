@@ -24,6 +24,17 @@ class ExpenseSerializer(serializers.ModelSerializer):
         model = Expense
         fields = '__all__'
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        
+        # 🛡️ SECURITY: Amount-level permission masking
+        if request and request.user and request.user.is_authenticated:
+            if not request.user.has_permission('dashboard.view_total_expenses'):
+                ret['amount'] = None
+                
+        return ret
+
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Agency, Branch, BranchSettings, Package, Task, TaskCategory, ActivityHistory
+    Agency, Branch, BranchSettings, Package
 )
 
 class PackageSerializer(serializers.ModelSerializer):
@@ -23,22 +23,20 @@ class BranchSettingsSerializer(serializers.ModelSerializer):
 class BranchSerializer(serializers.ModelSerializer):
     agency = AgencySerializer(read_only=True)
     settings = BranchSettingsSerializer(read_only=True)
+    managers = serializers.SerializerMethodField()
 
     class Meta:
         model = Branch
         fields = '__all__'
 
-class TaskSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Task
-        fields = '__all__'
+    def get_managers(self, obj):
+        from users.models import User
+        # Filter for users whose PRIMARY branch is this one
+        managers = User.objects.filter(primary_branch=obj).exclude(role__name__iexact='admin')
+        return [{
+            "id": m.id,
+            "name": m.name,
+            "email": m.email,
+            "status": m.status
+        } for m in managers]
 
-class TaskCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TaskCategory
-        fields = '__all__'
-
-class ActivityHistorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ActivityHistory
-        fields = '__all__'

@@ -22,7 +22,12 @@ import {
 
 import { localDb } from '@/lib/dexie';
 
-export const useCashTransactions = (accountId?: string, initialPageSize: number = 50) => {
+export const useCashTransactions = (
+  accountId?: string, 
+  initialPageSize: number = 50, 
+  initialData?: CashTransaction[],
+  dateRange?: { startDate: Date; endDate: Date }
+) => {
   const { user } = useAuth();
   const { currentBusiness } = useBusiness();
   const { toast } = useToast();
@@ -30,28 +35,7 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
   
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [totalCount, setTotalCount] = useState(0);
-  const [internalTransactions, setInternalTransactions] = useState<CashTransaction[]>([]);
-
-  // Load from Dexie cache on mount
-  useEffect(() => {
-    const loadFromCache = async () => {
-      if (currentBusiness?.id && internalTransactions.length === 0) {
-        const query = localDb.cashTransactions.where('locationId').equals(currentBusiness.id);
-        
-        if (accountId) {
-          // Note: Multi-index querying in Dexie is better with compound index, 
-          // but for now we filter in memory for specific account if needed or use simple filter
-          const cached = await query.and(t => t.accountId === accountId).reverse().sortBy('date');
-          setInternalTransactions(cached.map(t => ({...t, date: new Date(t.date), createdAt: new Date(t.createdAt), updatedAt: new Date(t.updatedAt)})));
-        } else {
-          const cached = await query.reverse().sortBy('date');
-          setInternalTransactions(cached.map(t => ({...t, date: new Date(t.date), createdAt: new Date(t.createdAt), updatedAt: new Date(t.updatedAt)})));
-        }
-      }
-    };
-    loadFromCache();
-  }, [currentBusiness?.id, accountId, internalTransactions.length]);
+  const [totalCount, setTotalCount] = useState(initialData?.length || 0);
 
   const loadTransactions = useCallback(async (): Promise<CashTransaction[]> => {
     try {
@@ -59,7 +43,13 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
         return [];
       }
 
-      const result = await getCashTransactionsAction(currentBusiness.id, accountId, page, pageSize);
+      const filters: any = {};
+      if (dateRange) {
+        filters.dateFrom = dateRange.startDate.toISOString();
+        filters.dateTo = dateRange.endDate.toISOString();
+      }
+
+      const result = await getCashTransactionsAction(currentBusiness.id, accountId, page, pageSize, filters);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch transactions');
@@ -72,12 +62,12 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
       // Sanitize: getCashTransactionsAction returns { data: { transactions: [] } }
       const rawTransactions = Array.isArray(result.data?.transactions) ? result.data.transactions : [];
 
-      // Format all transactions
+      // Format all transactions from RAW database objects
       const formattedTransactions = rawTransactions.map((item: any) => {
         const dbTransaction: DbCashTransaction = {
           id: item.id,
-          user_id: item.user_id,
-          account_id: item.account_id,
+          user_id: item.user,
+          account_id: item.account,
           amount: Number(item.amount),
           transaction_type: item.transaction_type,
           category: item.category,
@@ -114,25 +104,19 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
       return [];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, currentBusiness?.id, accountId, page, pageSize, toast]);
+  }, [user, currentBusiness?.id, accountId, page, pageSize, dateRange, toast]);
 
-  const queryKey = useMemo(() => ['cash_transactions', currentBusiness?.id, user?.id, accountId, page, pageSize], [currentBusiness?.id, user?.id, accountId, page, pageSize]);
+  const queryKey = useMemo(() => ['cash_transactions', currentBusiness?.id, user?.id, accountId, page, pageSize, dateRange], [currentBusiness?.id, user?.id, accountId, page, pageSize, dateRange]);
 
-  const { data: transactions = internalTransactions, isLoading: isQueryLoading } = useQuery({
+  const { data: queriedTransactions, isLoading: isQueryLoading } = useQuery({
     queryKey,
     queryFn: loadTransactions,
     enabled: !!user && !!currentBusiness?.id,
     staleTime: 30_000,
-    initialData: internalTransactions.length > 0 ? internalTransactions : undefined
+    initialData: (initialData?.length && page === 1 && !dateRange) ? initialData : undefined
   });
 
-  useEffect(() => {
-    if (transactions.length > 0) {
-      setInternalTransactions(transactions);
-    }
-  }, [transactions]);
-
-  const isLoading = isQueryLoading && transactions.length === 0;
+  const isLoading = isQueryLoading && !queriedTransactions;
 
   const createTransaction = useCallback(async (transactionData: CashTransactionFormData) => {
     try {
@@ -298,7 +282,7 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
   }, [queryClient, queryKey]);
 
   return useMemo(() => ({
-    transactions,
+    transactions: queriedTransactions || [],
     isLoading,
     createTransaction,
     createBulkTransactions,
@@ -307,10 +291,10 @@ export const useCashTransactions = (accountId?: string, initialPageSize: number 
     getDailySummary,
     getDateRangeSummary,
     refreshTransactions,
-    page,
+    currentPage: page,
     setPage,
     pageSize,
     setPageSize,
     totalCount
-  }), [transactions, isLoading, createTransaction, createBulkTransactions, updateTransaction, deleteTransaction, getDailySummary, getDateRangeSummary, refreshTransactions, page, pageSize, totalCount]);
+  }), [queriedTransactions, isLoading, createTransaction, createBulkTransactions, updateTransaction, deleteTransaction, getDailySummary, getDateRangeSummary, refreshTransactions, page, pageSize, totalCount]);
 };

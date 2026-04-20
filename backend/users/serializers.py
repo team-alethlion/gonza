@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Role, Permission
+from .models import User, Role, Permission, BranchInvitation
 from core_app.serializers import AgencySerializer, BranchSerializer
 
 class PermissionSerializer(serializers.ModelSerializer):
@@ -18,12 +18,18 @@ class UserSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
     agency = AgencySerializer(read_only=True)
     branch = BranchSerializer(read_only=True)
+    primary_branch = BranchSerializer(read_only=True)
     
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'phone', 
-            'status', 'image', 'role', 'agency', 'branch', 
+            'status', 'image', 'role', 'agency', 'branch', 'primary_branch',
             'credits', 'is_onboarded', 'last_seen'
         ]
         read_only_fields = ['id']
+
+class BranchInvitationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BranchInvitation
+        fields = '__all__'

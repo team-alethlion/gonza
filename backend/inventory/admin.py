@@ -21,8 +21,8 @@ class SupplierAdmin(ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(ModelAdmin):
-    list_display = ('name', 'branch', 'agency')
-    list_filter = ('branch', 'agency')
+    list_display = ('name', 'agency')
+    list_filter = ('agency',)
 
 @admin.register(Product)
 class ProductAdmin(ModelAdmin):

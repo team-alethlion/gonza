@@ -20,6 +20,7 @@ export async function initiatePesapalPayment(params: {
     agency_id?: string;
     package_id?: string;
     billing_cycle?: string;
+    credits_amount?: number;
 }) {
     const data = await djangoFetch('finance/transactions/initiate_payment/', {
         method: 'POST',
@@ -30,6 +31,7 @@ export async function initiatePesapalPayment(params: {
             agency_id: params.agency_id,
             package_id: params.package_id,
             billing_cycle: params.billing_cycle,
+            credits_amount: params.credits_amount,
             // phone and email will be handled by backend from user object, 
             // but we can pass them if the backend supports manual overrides
         }),

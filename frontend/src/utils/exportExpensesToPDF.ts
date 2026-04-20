@@ -100,7 +100,7 @@ export const exportExpensesToPDF = (
   yPosition += 10;
 
   // Calculate totals
-  const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalAmount = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
   // Draw table manually using pure jsPDF vector graphics
   const tableStartY = yPosition;
@@ -176,7 +176,7 @@ export const exportExpensesToPDF = (
       format(expense.date, 'MM/dd/yyyy'),
       expense.description.length > 30 ? expense.description.substring(0, 27) + '...' : expense.description,
       expense.category || '-',
-      formatCurrency(expense.amount),
+      formatCurrency(expense.amount || 0),
       expense.paymentMethod?.substring(0, 12) || '-',
       expense.personInCharge?.substring(0, 15) || '-',
       expense.cashAccountId ? 'Yes' : 'No',

@@ -56,17 +56,18 @@ export const useFormValidation = ({
     }
 
     if (formData.paymentStatus === 'Installment Sale' && !initialData) {
-      if (!formData.amountPaid || formData.amountPaid <= 0) {
-        (newErrors as any).amountPaid = 'Enter an initial payment greater than 0';
+      const initialPaid = Number(formData.amountPaid || 0);
+      if (initialPaid <= 0) {
+        (newErrors as any).amountPaid = 'Please enter an initial payment amount for the installment sale';
       }
-      if (formData.amountPaid && formData.amountPaid > grandTotal) {
-        (newErrors as any).amountPaid = 'Amount paid cannot exceed total';
+      if (initialPaid > grandTotal) {
+        (newErrors as any).amountPaid = `Initial payment (${initialPaid}) cannot exceed the total sale amount (${grandTotal})`;
       }
     }
 
     if (formData.paymentStatus === 'Installment Sale' && initialData && formData.amountPaid) {
       if (formData.amountPaid > grandTotal) {
-        (newErrors as any).amountPaid = 'Amount paid cannot exceed total';
+        (newErrors as any).amountPaid = 'Current payment amount cannot exceed the total sale amount';
       }
     }
     setErrors(newErrors);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useFormState } from "./sale-form/useFormState";
 import { useFormHandlers } from "./sale-form/useFormHandlers";
 import { useItemManagement } from "./sale-form/useItemManagement";
@@ -7,17 +7,21 @@ import { useCustomerSelection } from "./sale-form/useCustomerSelection";
 import { useFormValidation } from "./sale-form/useFormValidation";
 import { useFormCalculations } from "./sale-form/useFormCalculations";
 import { usePaymentOperations } from "./sale-form/usePaymentOperations";
+import { useBusinessSettings } from "./useBusinessSettings";
+import { SaleFormData } from "@/types";
 
 interface UseSaleFormLogicProps {
   initialData?: any;
   defaultPaymentStatus: string;
   cashAccounts: any[];
+  initialCategories?: any[];
 }
 
 export const useSaleFormLogic = ({
   initialData,
   defaultPaymentStatus,
   cashAccounts: _cashAccounts, // Prefix with underscore to mark as intentionally unused for now
+  initialCategories = [],
 }: UseSaleFormLogicProps) => {
   // Form state management
   const {
@@ -56,6 +60,8 @@ export const useSaleFormLogic = ({
     clearFormState,
   } = useFormState({ initialData, defaultPaymentStatus });
 
+  const { settings } = useBusinessSettings();
+
   // Alias for internal use
   const setLoading = setIsLoading;
 
@@ -86,6 +92,8 @@ export const useSaleFormLogic = ({
   const { handleSelectCustomer, handleCategoryChange } = useCustomerSelection({
     setFormData,
     setSelectedCustomerCategoryId,
+    formData,
+    settings
   });
 
   // Form validation
@@ -116,6 +124,83 @@ export const useSaleFormLogic = ({
     getModifiedPayments,
     processPendingPaymentChanges,
   } = usePaymentOperations({ initialDataId: initialData?.id });
+
+  // 🚀 DATA INTEGRITY: Pure helper to resolve financials based on current state
+  // This can be used by both state sync effects AND immediate previews to avoid race conditions.
+  const resolveFinancials = useCallback((items: any[], taxRate: number, status: string, paidInput?: number, totalHistoryPaid: number = 0) => {
+    const subtotal = calculateTotalAmount(items);
+    const taxAmount = calculateTaxAmount(subtotal);
+    const total = subtotal + taxAmount;
+
+    let resolvedPaid = paidInput ?? 0;
+    let resolvedDue = total;
+
+    // 🛡️ DATA INTEGRITY: Handle all status variations (Human-readable and Backend-enums)
+    const isPaid = status === 'Paid' || status === 'COMPLETED';
+    const isQuote = status === 'Quote' || status === 'QUOTE';
+    const isNotPaid = status === 'NOT PAID' || status === 'UNPAID' || status === 'PENDING';
+    const isInstallment = status === 'Installment Sale' || status === 'INSTALLMENT';
+
+    if (isPaid) {
+      resolvedPaid = total;
+      resolvedDue = 0;
+    } else if (isQuote) {
+      resolvedPaid = 0;
+      resolvedDue = 0;
+    } else if (isNotPaid) {
+      resolvedPaid = 0;
+      resolvedDue = total;
+    } else if (isInstallment) {
+      resolvedPaid = Math.min(paidInput ?? 0, Math.max(0, total - totalHistoryPaid));
+      resolvedDue = Math.max(0, total - (totalHistoryPaid + resolvedPaid));
+    }
+
+    return { total, subtotal, taxAmount, amountPaid: resolvedPaid, amountDue: resolvedDue };
+  }, [calculateTotalAmount, calculateTaxAmount]);
+
+  // 🚀 PERFORMANCE: Memoize totals to avoid heavy recalculations in hooks
+  const subtotal = useMemo(() => calculateTotalAmount(formData.items), [formData.items, calculateTotalAmount]);
+  const taxAmount = useMemo(() => calculateTaxAmount(subtotal), [subtotal, calculateTaxAmount]);
+  const grandTotal = useMemo(() => subtotal + taxAmount, [subtotal, taxAmount]);
+
+  // 🚀 DATA INTEGRITY: Centralized sync for amountPaid and amountDue
+  // This solves the "Item-Addition Blind Spot" by ensuring that when items, tax OR status changes,
+  // the financial fields in formData are recalculated based on the payment status.
+  useEffect(() => {
+    // We use the functional updater to avoid having formData in the dependency array
+    setFormData((prev: SaleFormData) => {
+      const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      
+      // Recalculate using the resolver with CURRENT values from state
+      const { amountPaid, amountDue } = resolveFinancials(
+        prev.items, 
+        prev.taxRate || 0, 
+        prev.paymentStatus, 
+        prev.amountPaid,
+        totalHistoryPaid
+      );
+
+      // 🛡️ INTELLIGENT AUTO-SWITCH: 
+      // If we are in 'NOT PAID' mode but a payment is detected, promote to Installment.
+      let finalStatus = prev.paymentStatus;
+      if ((prev.paymentStatus === 'NOT PAID' || prev.paymentStatus === 'UNPAID') && amountPaid > 0) {
+        finalStatus = 'Installment Sale';
+      }
+
+      // Avoid infinite loops by checking if values actually need to change
+      if (amountPaid === prev.amountPaid && amountDue === prev.amountDue && finalStatus === prev.paymentStatus) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        paymentStatus: finalStatus,
+        amountPaid,
+        amountDue
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grandTotal, formData.paymentStatus, resolveFinancials, payments, getModifiedPayments]); // Removed amountPaid from deps, it's accessed via updater
 
   // Enhanced payment date change handler
   const handlePaymentDateChangeEnhanced = useCallback(
@@ -235,7 +320,7 @@ export const useSaleFormLogic = ({
       if (formRecentlyCleared) {
         setFormRecentlyCleared(false);
       }
-      setFormData((prev) => ({ ...prev, categoryId }));
+      setFormData((prev: any) => ({ ...prev, categoryId }));
     },
     [formRecentlyCleared, setFormRecentlyCleared, setFormData],
   );
@@ -292,6 +377,7 @@ export const useSaleFormLogic = ({
     // Utils
     calculateTotalAmount,
     calculateTaxAmount,
+    resolveFinancials,
     validateForm,
     processPendingPaymentChanges,
 

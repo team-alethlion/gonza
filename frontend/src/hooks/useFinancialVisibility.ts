@@ -10,41 +10,32 @@ export const useFinancialVisibility = () => {
 
   // 🚀 INSTANT ACCESS: If user is Admin or Manager, grant full financial visibility immediately
   // This prevents the "•••" lag during initial dashboard load while profile data is fetching.
-  const userRole = user?.role?.toLowerCase() || "user";
+  const userRoleObj = user?.role as any;
+  const userRoleName = (typeof userRoleObj === 'string' ? userRoleObj : userRoleObj?.name || "user").toLowerCase();
   const isPowerUser =
-    userRole === "admin" || userRole === "manager" || userRole === "superadmin";
+    userRoleName === "admin" || userRoleName === "manager" || userRoleName === "superadmin" || userRoleName === "owner";
 
-  const canViewCostPrice =
-    isPowerUser || hasPermission("inventory", "view_cost_price");
-  const canViewProfit =
-    isPowerUser || hasPermission("inventory", "view_profit");
-  const canViewSellingPrice =
-    isPowerUser || hasPermission("inventory", "view_selling_price");
+  // 🚀 PERMISSION-DRIVEN ACCESS: Prioritize granular flags from the database
+  const canViewCostPrice = hasPermission("inventory", "view_cost_price") || isPowerUser;
+  const canViewProfit = hasPermission("inventory", "view_profit") || isPowerUser;
+  const canViewSellingPrice = hasPermission("inventory", "view_selling_price") || isPowerUser;
 
   // Dashboard-specific permissions
-  const canViewTotalSales =
-    isPowerUser || hasPermission("dashboard", "view_total_sales");
-  const canViewTotalGrossProfit =
-    isPowerUser || hasPermission("dashboard", "view_gross_profit");
-  const canViewTotalExpenses =
-    isPowerUser || hasPermission("dashboard", "view_total_expenses");
-  const canViewInventoryValue =
-    isPowerUser || hasPermission("dashboard", "view_inventory_value");
-  const canViewSalesTypes =
-    isPowerUser || hasPermission("dashboard", "view_sales_types");
-  const canViewAvgPrice =
-    isPowerUser || hasPermission("dashboard", "view_avg_price");
-  const canViewTotalAmount =
-    isPowerUser || hasPermission("dashboard", "view_total_amount");
+  const canViewTotalSales = hasPermission("dashboard", "view_total_sales") || isPowerUser;
+  const canViewTotalGrossProfit = hasPermission("dashboard", "view_gross_profit") || isPowerUser;
+  const canViewTotalExpenses = hasPermission("dashboard", "view_total_expenses") || isPowerUser;
+  const canViewInventoryValue = hasPermission("dashboard", "view_inventory_value") || isPowerUser;
+  const canViewSalesTypes = hasPermission("dashboard", "view_sales_types") || isPowerUser;
+  const canViewAvgPrice = hasPermission("dashboard", "view_avg_price") || isPowerUser;
+  const canViewTotalAmount = hasPermission("dashboard", "view_total_amount") || isPowerUser;
 
   // Finance and Expenses permissions
-  const canManageFinanceAccounts =
-    isPowerUser || hasPermission("finance", "manage_accounts");
-  const canViewFinance = isPowerUser || hasPermission("finance", "view");
-  const canViewExpenses = isPowerUser || hasPermission("expenses", "view");
-  const canCreateExpenses = isPowerUser || hasPermission("expenses", "create");
-  const canEditExpenses = isPowerUser || hasPermission("expenses", "edit");
-  const canDeleteExpenses = isPowerUser || hasPermission("expenses", "delete");
+  const canManageFinanceAccounts = hasPermission("finance", "manage_accounts") || isPowerUser;
+  const canViewFinance = hasPermission("finance", "view") || isPowerUser;
+  const canViewExpenses = hasPermission("expenses", "view") || isPowerUser;
+  const canCreateExpenses = hasPermission("expenses", "create") || isPowerUser;
+  const canEditExpenses = hasPermission("expenses", "edit") || isPowerUser;
+  const canDeleteExpenses = hasPermission("expenses", "delete") || isPowerUser;
 
   /**
    * Format a financial value or return a hidden indicator

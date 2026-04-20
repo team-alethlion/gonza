@@ -23,8 +23,6 @@ import { useSalesFilters } from "@/hooks/useSalesFilters";
 import { usePagination } from "@/hooks/usePagination";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProfiles } from "@/contexts/ProfileContext";
-import { useCashAccounts } from "@/hooks/useCashAccounts";
-import { useCashTransactions } from "@/hooks/useCashTransactions";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useToast } from "@/hooks/use-toast";
 import { useInstallmentPayments } from "@/hooks/useInstallmentPayments";
@@ -40,6 +38,7 @@ import {
   Quote,
   Heart,
   MessageCircle,
+  RotateCcw,
 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { generatePaymentReminderPDF } from "@/utils/generatePaymentReminderPDF";
@@ -56,6 +55,7 @@ interface SalesTableProps {
   onViewReceipt: (sale: Sale) => void;
   onEditSale: (sale: Sale) => void;
   onDeleteSale: (sale: Sale, reason?: string) => void;
+  onProcessReturn?: (sale: Sale) => void;
   currency?: string;
   onDateFilterChange?: (value: string) => void;
   onDateRangeChange?: (range: {
@@ -64,6 +64,7 @@ interface SalesTableProps {
   }) => void;
   isLoading?: boolean;
   mobileOptimized?: boolean;
+  initialCategories?: any[];
 }
 
 const DEFAULT_SETTINGS: BusinessSettings = {
@@ -83,27 +84,36 @@ const MobileCard = React.memo(
     onViewReceipt,
     onEditSale,
     onDeleteSale,
+    onProcessReturn,
     onSendPaymentReminder,
     onSendThankYouNotice,
     cashAccountName,
+    mounted,
+    canViewCostPrice,
+    canViewProfit,
+    canViewSellingPrice,
+    canViewTotalAmount,
+    canEditSale,
+    canDeleteSale
   }: {
     sale: Sale;
     settings: BusinessSettings;
     onViewReceipt: (sale: Sale) => void;
     onEditSale: (sale: Sale) => void;
     onDeleteSale: (sale: Sale, reason?: string) => void;
+    onProcessReturn?: (sale: Sale) => void;
     onSendPaymentReminder: (sale: Sale) => void;
     onSendThankYouNotice: (sale: Sale) => void;
     cashAccountName?: string | null;
+    mounted?: boolean;
+    canViewCostPrice: boolean;
+    canViewProfit: boolean;
+    canViewSellingPrice: boolean;
+    canViewTotalAmount: boolean;
+    canEditSale: boolean;
+    canDeleteSale: boolean;
   }) => {
     const { payments } = useInstallmentPayments(sale.id);
-    const { hasPermission } = useProfiles();
-    const {
-      canViewCostPrice,
-      canViewProfit,
-      canViewSellingPrice,
-      canViewTotalAmount,
-    } = useFinancialVisibility();
 
     const totalWithTax = sale.total;
     const totalCost = sale.totalCost;
@@ -184,7 +194,7 @@ const MobileCard = React.memo(
                 {sale.customerName}
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {new Date(sale.date).toLocaleDateString("en-GB")}
+                {mounted ? new Date(sale.date).toLocaleDateString("en-US") : "---"}
               </p>
               {sale.paymentStatus === "Installment Sale" &&
                 actualAmountDue > 0 && (
@@ -323,10 +333,21 @@ const MobileCard = React.memo(
                 <Heart className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Thanks</span>
               </Button>
+
+              {onProcessReturn && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcessReturn(sale)}
+                  className="flex items-center gap-1.5 text-xs h-8 border-orange-200 text-orange-600 hover:bg-orange-50 flex-1 min-w-0">
+                  <RotateCcw className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">Return</span>
+                </Button>
+              )}
             </div>
 
             <div className="flex justify-center gap-2">
-              {hasPermission("sales", "edit") && (
+              {canEditSale && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -336,7 +357,7 @@ const MobileCard = React.memo(
                   <span className="text-xs">Edit</span>
                 </Button>
               )}
-              {hasPermission("sales", "delete") && (
+              {canDeleteSale && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -361,16 +382,23 @@ const SalesTable: React.FC<SalesTableProps> = ({
   onViewReceipt,
   onEditSale,
   onDeleteSale,
+  onProcessReturn,
   currency = "USD",
   onDateFilterChange,
   onDateRangeChange,
   isLoading = false,
   mobileOptimized = false,
+  initialCategories
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<BusinessSettings>({
     ...DEFAULT_SETTINGS,
     currency,
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingSale, setIsDeletingSale] = useState(false);
@@ -381,11 +409,18 @@ const SalesTable: React.FC<SalesTableProps> = ({
     null,
   );
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
-  const { accounts } = useCashAccounts();
-  const { transactions } = useCashTransactions();
   const { settings: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const isMobileDevice = useIsMobile();
+  const { hasPermission } = useProfiles();
+  const financialVisibility = useFinancialVisibility();
+  
+  // Hoisted permission flags
+  const canEditSale = hasPermission('sales', 'edit');
+  const canDeleteSale = hasPermission('sales', 'delete');
+  
+  // 🛡️ Ensure isMobile respects the mobileOptimized prop
+  const isMobile = mobileOptimized || isMobileDevice;
 
   const {
     searchQuery,
@@ -445,33 +480,6 @@ const SalesTable: React.FC<SalesTableProps> = ({
     }
   }, [currency]);
 
-  // Create memoized lookup maps for O(1) access
-  const transactionMap = useMemo(() => {
-    const map = new Map<string, any>();
-    transactions.forEach((t) => map.set(t.id, t));
-    return map;
-  }, [transactions]);
-
-  const accountMap = useMemo(() => {
-    const map = new Map<string, any>();
-    accounts.forEach((a) => map.set(a.id, a));
-    return map;
-  }, [accounts]);
-
-  // Memoize cash account lookup using pre-built maps
-  const getCashAccountName = useCallback(
-    (sale: Sale) => {
-      if (!sale.cashTransactionId) return null;
-
-      const linkedTransaction = transactionMap.get(sale.cashTransactionId);
-      if (!linkedTransaction || !linkedTransaction.accountId) return null;
-
-      const linkedAccount = accountMap.get(linkedTransaction.accountId);
-      return linkedAccount ? linkedAccount.name : null;
-    },
-    [transactionMap, accountMap],
-  );
-
   const getReceiptButtonLabel = useCallback((paymentStatus: string) => {
     switch (paymentStatus) {
       case "Paid":
@@ -504,18 +512,21 @@ const SalesTable: React.FC<SalesTableProps> = ({
     setIsDeleteDialogOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async (reason: string) => {
-    if (saleToDelete && !isDeletingSale) {
-      setIsDeletingSale(true);
-      try {
-        await onDeleteSale(saleToDelete, reason);
-        setIsDeleteDialogOpen(false);
-        setSaleToDelete(null);
-      } finally {
-        setIsDeletingSale(false);
+  const handleConfirmDelete = useCallback(
+    async (reason: string) => {
+      if (saleToDelete && !isDeletingSale) {
+        setIsDeletingSale(true);
+        try {
+          await onDeleteSale(saleToDelete, reason);
+          setIsDeleteDialogOpen(false);
+          setSaleToDelete(null);
+        } finally {
+          setIsDeletingSale(false);
+        }
       }
-    }
-  }, [saleToDelete, onDeleteSale, isDeletingSale]);
+    },
+    [saleToDelete, onDeleteSale, isDeletingSale],
+  );
 
   const handleCancelDelete = useCallback(
     (open: boolean) => {
@@ -604,11 +615,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4">
-        <img
-          src="/lovable-uploads/7f7549a3-e9df-4762-b8b9-8e041e34f55d.png"
-          alt="Loading"
-          className="w-12 h-12 animate-spin"
-        />
+        <img src="/icon.png" alt="Loading" className="w-12 h-12 animate-spin" />
         <p className="text-muted-foreground text-sm">Loading sales...</p>
       </div>
     );
@@ -626,9 +633,17 @@ const SalesTable: React.FC<SalesTableProps> = ({
                     Sales Records
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {memoizedFilteredSales.length}{" "}
-                    {memoizedFilteredSales.length === 1 ? "record" : "records"}{" "}
-                    found
+                    {mounted ? (
+                      <>
+                        {memoizedFilteredSales.length}{" "}
+                        {memoizedFilteredSales.length === 1
+                          ? "record"
+                          : "records"}{" "}
+                        found
+                      </>
+                    ) : (
+                      "Loading records..."
+                    )}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -668,6 +683,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
               setSpecificDate={setSpecificDate}
               isCustomRange={isCustomRange}
               isSpecificDate={isSpecificDate}
+              initialCategories={initialCategories}
             />
 
             {memoizedFilteredSales.length > 0 ? (
@@ -682,9 +698,17 @@ const SalesTable: React.FC<SalesTableProps> = ({
                         onViewReceipt={onViewReceipt}
                         onEditSale={onEditSale}
                         onDeleteSale={handleDeleteSale}
+                        onProcessReturn={onProcessReturn}
                         onSendPaymentReminder={handleSendPaymentReminder}
                         onSendThankYouNotice={handleSendThankYouNotice}
-                        cashAccountName={getCashAccountName(sale)}
+                        cashAccountName={sale.cashAccountName}
+                        mounted={mounted}
+                        canViewCostPrice={financialVisibility.canViewCostPrice}
+                        canViewProfit={financialVisibility.canViewProfit}
+                        canViewSellingPrice={financialVisibility.canViewSellingPrice}
+                        canViewTotalAmount={financialVisibility.canViewTotalAmount}
+                        canEditSale={canEditSale}
+                        canDeleteSale={canDeleteSale}
                       />
                     ))}
                   </div>
@@ -722,8 +746,16 @@ const SalesTable: React.FC<SalesTableProps> = ({
                             onViewReceipt={onViewReceipt}
                             onEditSale={onEditSale}
                             onDeleteSale={handleDeleteSale}
+                            onProcessReturn={onProcessReturn}
                             onSendPaymentReminder={handleSendPaymentReminder}
+
                             onSendThankYouNotice={handleSendThankYouNotice}
+                            isMobile={isMobile}
+                            canViewCostPrice={financialVisibility.canViewCostPrice}
+                            canViewProfit={financialVisibility.canViewProfit}
+                            canEditSale={canEditSale}
+                            canDeleteSale={canDeleteSale}
+                            formatFinancial={financialVisibility.formatFinancial}
                           />
                         ))}
                       </TableBody>

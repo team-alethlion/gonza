@@ -35,10 +35,12 @@ interface SalePaymentSectionProps {
   hasPaidWithHistory: boolean;
   onLinkPaymentToCash?: (paymentId: string, accountId: string) => Promise<void>;
   onUpdatePayment?: (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => Promise<void>;
+  onDeletePayment?: (paymentId: string) => Promise<void>;
   notes?: string;
   onNotesChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   categoryId?: string;
   onCategoryChange?: (value: string) => void;
+  initialCategories?: any[];
 }
 
 const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
@@ -66,10 +68,12 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
   hasPaidWithHistory,
   onLinkPaymentToCash,
   onUpdatePayment,
+  onDeletePayment,
   notes = '',
   onNotesChange,
   categoryId = '',
   onCategoryChange,
+  initialCategories = [],
 }) => {
   return (
     <Card className="mb-6">
@@ -101,6 +105,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
             cashAccounts={cashAccounts}
             onLinkToCash={onLinkPaymentToCash}
             onUpdatePayment={onUpdatePayment}
+            onDeletePayment={onDeletePayment}
           />
         )}
 
@@ -120,6 +125,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
                 cashAccounts={cashAccounts}
                 onLinkToCash={onLinkPaymentToCash}
                 onUpdatePayment={onUpdatePayment}
+                onDeletePayment={onDeletePayment}
               />
             </CardContent>
           </Card>
@@ -138,6 +144,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
           <SaleCategorySelector
             value={categoryId}
             onChange={onCategoryChange}
+            initialCategories={initialCategories}
           />
         )}
 

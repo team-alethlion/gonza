@@ -1,5 +1,5 @@
 from django.db import models
-from core.utils import gen_pa_id, gen_ag_id, gen_br_id, gen_bc_id, gen_bs_id, gen_sc_id, gen_st_id, gen_tc_id, gen_ta_id, gen_ah_id
+from core.utils import gen_pa_id, gen_ag_id, gen_br_id, gen_bc_id, gen_bs_id, gen_sc_id, gen_st_id, gen_ta_id, gen_ah_id
 
 class Package(models.Model):
     id = models.CharField(max_length=30, primary_key=True, default=gen_pa_id)
@@ -40,19 +40,35 @@ class Package(models.Model):
         return self.name
 
 class Agency(models.Model):
+    SUBSCRIPTION_STATUS_CHOICES = [
+        ('trial', 'Trial'),
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('suspended', 'Suspended'),
+    ]
     id = models.CharField(max_length=30, primary_key=True, default=gen_ag_id)
     name = models.CharField(max_length=200)
-    subscription_status = models.CharField(max_length=20, default='expired')
+    subscription_status = models.CharField(
+        max_length=20, 
+        choices=SUBSCRIPTION_STATUS_CHOICES, 
+        default='expired'
+    )
     had_trial_before = models.BooleanField(default=False)
     trial_end_date = models.DateTimeField(null=True, blank=True)
     subscription_expiry = models.DateTimeField(null=True, blank=True)
     is_unlimited_usage = models.BooleanField(default=False)
     is_onboarded = models.BooleanField(default=False)
+    is_frozen = models.BooleanField(default=False, help_text="If true, all users in this agency are blocked from system access.")
 
     package = models.ForeignKey(Package, on_delete=models.SET_NULL, null=True, blank=True, related_name='agencies')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def sync_status(self):
+        """Triggers the modular subscription status check."""
+        from .logic.subscription import sync_agency_subscription_status
+        return sync_agency_subscription_status(self)
 
     class Meta:
         verbose_name_plural = "Agencies"
@@ -93,6 +109,7 @@ class BranchCounter(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='counters')
     type = models.CharField(max_length=50) # e.g. 'product', 'sale', 'expense'
     count = models.IntegerField(default=0)
+    last_reset_month = models.IntegerField(default=0)
     
     class Meta:
         unique_together = ('branch', 'type')
@@ -138,6 +155,19 @@ class SystemConfig(models.Model):
         return self.key
 
 class SubscriptionTransaction(models.Model):
+    """
+    ⚠️ DEPRECATED: Standardize on finance.Transaction for all Pesapal payments.
+    This model remains for legacy compatibility but should not be used for new transactions.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    BILLING_CYCLE_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+    ]
     id = models.CharField(max_length=100, primary_key=True, default=gen_st_id)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='subscription_transactions', null=True, blank=True)
     agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='subscription_transactions', null=True, blank=True)
@@ -145,8 +175,8 @@ class SubscriptionTransaction(models.Model):
     
     amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     type = models.CharField(max_length=50, default='subscription')
-    billing_cycle = models.CharField(max_length=50, default='monthly') 
-    status = models.CharField(max_length=50, default='pending')
+    billing_cycle = models.CharField(max_length=50, choices=BILLING_CYCLE_CHOICES, default='monthly') 
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
     
     pesapal_merchant_reference = models.CharField(max_length=100, null=True, blank=True)
     pesapal_order_tracking_id = models.CharField(max_length=100, null=True, blank=True)
@@ -158,63 +188,12 @@ class SubscriptionTransaction(models.Model):
     class Meta:
         verbose_name_plural = "Subscription Transactions"
 
-class TaskCategory(models.Model):
-    id = models.CharField(max_length=30, primary_key=True, default=gen_tc_id)
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='task_categories')
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='task_categories')
-    name = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
+class AgencyRoleDirectory(Agency):
+    """
+    Proxy model to provide a folder-like navigation for roles by agency.
+    Defined in core_app to avoid circular imports with users.
+    """
     class Meta:
-        unique_together = ('branch', 'name')
-        verbose_name_plural = "Task Categories"
-
-class Task(models.Model):
-    id = models.CharField(max_length=30, primary_key=True, default=gen_ta_id)
-    created_by = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='tasks_created')
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='tasks')
-    title = models.CharField(max_length=200)
-    description = models.TextField(null=True, blank=True)
-    priority = models.CharField(max_length=50, default='medium')
-    due_date = models.DateTimeField()
-    category = models.CharField(max_length=100, null=True, blank=True)
-    
-    completed = models.BooleanField(default=False)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    
-    reminder_enabled = models.BooleanField(default=False)
-    reminder_time = models.CharField(max_length=50, null=True, blank=True)
-    
-    is_recurring = models.BooleanField(default=False)
-    recurrence_type = models.CharField(max_length=50, null=True, blank=True)
-    recurrence_end_date = models.DateTimeField(null=True, blank=True)
-    parent_task_id = models.CharField(max_length=30, null=True, blank=True)
-    recurrence_count = models.IntegerField(default=0)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name_plural = "Tasks"
-
-class ActivityHistory(models.Model):
-    id = models.CharField(max_length=30, primary_key=True, default=gen_ah_id)
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='activity_logs')
-    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='activity_logs', null=True, blank=True)
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='activity_logs', null=True, blank=True)
-    
-    activity_type = models.CharField(max_length=100)
-    module = models.CharField(max_length=100)
-    
-    entity_type = models.CharField(max_length=100)
-    entity_id = models.CharField(max_length=100, null=True, blank=True)
-    entity_name = models.CharField(max_length=200)
-    description = models.TextField()
-    
-    metadata = models.JSONField(null=True, blank=True, default=dict)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name_plural = "Activity Histories"
+        proxy = True
+        verbose_name = "Agency Role Directory"
+        verbose_name_plural = "Roles by Agency"

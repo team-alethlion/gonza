@@ -40,8 +40,12 @@ export async function getSalesAction(businessId: string, page: number = 1, pageS
 
         // Return raw database objects to let mapDbSaleToSale handle mapping consistently
         return { success: true, data: { sales: results, count } };
-    } catch (error) {
-        console.error('Error fetching sales:', error);
+    } catch (error: any) {
+        if (error.message?.includes("Session stale")) {
+            console.log(`[SalesAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching sales:', error.message || error);
+        }
         return { success: false, data: { sales: [], count: 0 }, error: (error as Error).message };
     }
 }
@@ -62,17 +66,24 @@ export async function deleteSaleAction(id: string, businessId: string, reason?: 
     }
 }
 
+// 🛡️ LOGIC INTEGRITY: Standardized status mapping to prevent drift
+const mapFrontendStatusToBackend = (status: string) => {
+    switch (status) {
+        case 'NOT PAID': return 'UNPAID';
+        case 'Installment Sale': return 'INSTALLMENT';
+        case 'Paid': return 'COMPLETED';
+        case 'Quote': return 'QUOTE';
+        default: return status;
+    }
+};
+
 export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updateId?: string) {
     try {
         if (!saleDbData.location_id) throw new Error("Location ID is required");
         const sessionUser = await verifyBranchAccess(saleDbData.location_id);
         const userId = sessionUser.id;
 
-        let status = saleDbData.payment_status;
-        if (status === 'NOT PAID') status = 'UNPAID';
-        else if (status === 'Installment Sale') status = 'INSTALLMENT';
-        else if (status === 'Paid') status = 'COMPLETED';
-        else if (status === 'Quote') status = 'QUOTE';
+        const status = mapFrontendStatusToBackend(saleDbData.payment_status);
 
         const payload = {
             userId: userId,
@@ -93,7 +104,9 @@ export async function upsertSaleAction(saleDbData: any, isUpdate: boolean, updat
             notes: saleDbData.notes,
             shippingCost: saleDbData.shipping_cost,
             discountReason: saleDbData.discount_reason,
-            paymentReference: saleDbData.payment_reference
+            paymentReference: saleDbData.payment_reference,
+            linkToCash: saleDbData.linkToCash,
+            cashAccountId: saleDbData.cashAccountId
         };
 
         let result;
@@ -162,7 +175,9 @@ export async function createReceiptAction(saleData: {
             notes: saleData.notes,
             shippingCost: saleData.shippingCost,
             discountReason: saleData.discountReason,
-            paymentReference: saleData.paymentReference
+            paymentReference: saleData.paymentReference,
+            linkToCash: (saleData as any).linkToCash,
+            cashAccountId: (saleData as any).cashAccountId
         };
 
         const result = await djangoFetch(`sales/sales/`, {
@@ -320,6 +335,36 @@ export async function getSalesGoalAction(
     }
 }
 
+export async function getSalesGoalProgressAction(
+    branchId: string,
+    periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY',
+    startDate: Date,
+    endDate: Date
+) {
+    try {
+        await verifyBranchAccess(branchId);
+        
+        let periodId = '';
+        const dateStr = startDate.toISOString().split('T')[0];
+        if (periodType === 'DAILY') {
+            periodId = `DAILY-${dateStr}`;
+        } else if (periodType === 'WEEKLY') {
+            periodId = `WEEKLY-${dateStr}`;
+        } else {
+            periodId = `MONTHLY-${dateStr.substring(0, 7)}`;
+        }
+
+        const data = await djangoFetch(
+            `sales/goals/progress/?branchId=${branchId}&period_name=${periodId}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
+        );
+        
+        return { success: true, data };
+    } catch (error: unknown) {
+        const err = error as Error;
+        return { success: false, error: err.message };
+    }
+}
+
 export async function upsertSalesGoalAction(
     userId: string,
     branchId: string,
@@ -411,11 +456,37 @@ export async function getSalesCategorySummaryAction(branchId: string, startDate?
     }
 }
 
+export async function getPerformanceChartAction(
+    branchId: string,
+    timeframe: 'daily' | 'weekly' | 'monthly',
+    year?: string,
+    startDate?: string,
+    endDate?: string
+) {
+    try {
+        await verifyBranchAccess(branchId);
+        
+        let url = `sales/sales/performance_chart/?branchId=${branchId}&timeframe=${timeframe}`;
+        if (year) url += `&year=${year}`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+
+        const data = await djangoFetch<any>(url);
+        return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+        console.error('Error in getPerformanceChartAction:', error);
+        return [];
+    }
+}
+
 export async function bulkSyncSalesAction(sales: { localId: string, saleData: any, branchId: string, userId: string }[]) {
     if (sales.length === 0) return { success: true, processed: [], errors: [] };
     
     try {
         await verifyBranchAccess(sales[0].branchId);
+        
+        // 🔍 SERVER LOGGING: Identify sync request source
+        console.log(`[ServerAction] 📥 Received Bulk Sales Sync Request: Count=${sales.length} Branch=${sales[0].branchId}`);
         
         const payload = sales.map(s => ({
             ...s.saleData,
@@ -433,6 +504,44 @@ export async function bulkSyncSalesAction(sales: { localId: string, saleData: an
         return { success: true, ...result };
     } catch (error: any) {
         console.error('Error in bulkSyncSalesAction:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function processSalesReturnAction(returnPayload: {
+    sale_id: string;
+    items: {
+        sale_item_id: string;
+        quantity: number;
+        refund_amount: number;
+        restock_inventory: boolean;
+    }[];
+    refund_amount: number;
+    cash_account_id?: string;
+    reason?: string;
+    locationId: string;
+}) {
+    try {
+        await verifyBranchAccess(returnPayload.locationId);
+        const result = await djangoFetch<any>(`sales/returns/`, {
+            method: 'POST',
+            body: JSON.stringify(returnPayload)
+        });
+        revalidatePath('/sales');
+        revalidatePath('/inventory');
+        return { success: true, data: result };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getSalesReturnsAction(locationId: string, page: number = 1, pageSize: number = 50) {
+    try {
+        await verifyBranchAccess(locationId);
+        const offset = (page - 1) * pageSize;
+        const data = await djangoFetch<any>(`sales/returns/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`);
+        return { success: true, data: { returns: data.results || [], count: data.count || 0 } };
+    } catch (error: any) {
         return { success: false, error: error.message };
     }
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Clock, Repeat } from 'lucide-react';
 import { Task } from '@/types/task';
-import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns';
+import { format, isToday, isTomorrow, isPast, differenceInDays, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -36,7 +36,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   const getDueDateDisplay = (dueDate: string) => {
+    if (!dueDate) return 'No date';
     const date = new Date(dueDate);
+    if (!isValid(date)) return 'Invalid date';
 
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
@@ -54,7 +56,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   const getDueDateColor = (dueDate: string) => {
+    if (!dueDate) return 'text-gray-500';
     const date = new Date(dueDate);
+    if (!isValid(date)) return 'text-gray-500';
 
     if (task.completed) return 'text-gray-500';
     if (isPast(date) && !isToday(date)) return 'text-red-500';

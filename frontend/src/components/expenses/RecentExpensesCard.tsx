@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Expense } from '@/hooks/useExpenses';
+import { formatDate } from '@/lib/utils';
 
 interface RecentExpensesCardProps {
   filteredExpenses: Expense[];
@@ -23,17 +24,17 @@ const RecentExpensesCard: React.FC<RecentExpensesCardProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredExpenses.slice(0, 10).map((expense) => (
+            {filteredExpenses.slice(0, 5).map((expense) => (
               <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-1">
                   <div className="font-medium">{expense.description}</div>
                   <div className="text-sm text-muted-foreground">
-                    {expense.date.toLocaleDateString()} • {expense.category || 'Uncategorized'}
+                    {formatDate(expense.date)} • {expense.category || 'Uncategorized'}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-red-600">
-                    {formatCurrency(expense.amount)}
+                    {formatCurrency(expense.amount as any)}
                   </div>
                   {expense.cashAccountId && (
                     <div className="text-xs text-muted-foreground">

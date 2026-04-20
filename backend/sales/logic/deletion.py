@@ -2,7 +2,7 @@ from django.db import transaction
 from django.utils.timezone import now
 from sales.models import Sale
 from inventory.models import Product, ProductHistory
-from core_app.models import ActivityHistory
+from activities.models import ActivityHistory
 
 def process_sale_deletion(sale_id, user_id, deleted_reason=None):
     """
@@ -22,22 +22,16 @@ def process_sale_deletion(sale_id, user_id, deleted_reason=None):
         for item in sale.items.all():
             if item.product:
                 product = item.product
-                old_stock = product.stock
                 product.stock += item.quantity
-                product.save(update_fields=['stock'])
                 
-                ProductHistory.objects.create(
-                    user_id=user_id,
-                    branch_id=sale.branch_id,
-                    product=product,
-                    old_stock=old_stock,
-                    new_stock=product.stock,
-                    type='RETURN_IN',
-                    change_reason='SALE_CANCELLED',
-                    reason=f"Deleted Sale #{sale.receipt_number}. Reason: {deleted_reason or 'No reason provided'}",
-                    reference_id=sale.receipt_number,
-                    reference_type='SALE_CANCEL'
-                )
+                # 🛡️ SIGNAL CONTEXT
+                product._history_user_id = user_id
+                product._history_type = 'STOCK_REVERSAL'
+                product._history_reason = f"Deleted Sale #{sale.receipt_number}. Reason: {deleted_reason or 'No reason provided'}"
+                product._history_reference_id = sale.receipt_number
+                product._history_reference_type = 'SALE_CANCEL'
+
+                product.save()
 
         # 2. Create Activity Log
         # ... (rest of activity log logic remains the same)

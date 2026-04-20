@@ -27,11 +27,19 @@ export async function getGlobalInventoryStatsAction(businessId: string) {
                 totalCostValue: Number(result.totalCostValue || 0),
                 totalStockValue: Number(result.totalStockValue || 0),
                 outOfStockCount: Number(result.outOfStockCount || 0),
-                lowStockCount: Number(result.lowStockCount || 0)
+                lowStockCount: Number(result.lowStockCount || 0),
+                // 🚀 FIXED: Include chart aggregation fields from backend response
+                totalInStockQty: Number(result.totalInStockQty || 0),
+                totalLowStockQty: Number(result.totalLowStockQty || 0),
+                totalMinLevelQty: Number(result.totalMinLevelQty || 0)
             }
         };
     } catch (error: any) {
-        console.error('Error fetching global inventory stats:', error);
+        if (error.message?.includes("Session stale")) {
+            console.log(`[AnalyticsAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching global inventory stats:', error.message || error);
+        }
         return { success: false, error: error.message };
     }
 }
@@ -55,11 +63,17 @@ export async function getAnalyticsSummaryAction(branchId: string, startDate?: st
                 pendingSalesCount: Number(result.pendingSalesCount || 0),
                 totalExpenses: Number(result.totalExpenses || 0),
                 recentSales: (result.recentSales || []).map((s: any) => mapDbSaleToSale(s)),
-                topSellingProducts: result.topSellingProducts || []
+                topSellingProducts: result.topSellingProducts || [],
+                inventoryStats: result.inventoryStats || null,
+                activeGoal: result.activeGoal || null
             }
         };
     } catch (error: any) {
-        console.error('Error fetching analytics summary:', error);
+        if (error.message?.includes("Session stale")) {
+            console.log(`[AnalyticsAction] Request blocked: Session is orphaned (Redirection expected).`);
+        } else {
+            console.error('Error fetching analytics summary:', error.message || error);
+        }
         return { success: false, error: error.message };
     }
 }

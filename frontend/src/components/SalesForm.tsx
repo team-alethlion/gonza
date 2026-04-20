@@ -9,7 +9,6 @@ import {
   Customer,
 } from "@/types";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useCashAccounts } from "@/hooks/useCashAccounts";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { useSaleDraft } from "@/hooks/useSaleDraft";
@@ -24,12 +23,12 @@ import { useSaleDraftAutoSave } from "@/hooks/sale-form/useSaleDraftAutoSave";
 
 // Components
 import SaleFormHeader from "@/components/sales/SaleFormHeader";
-import CustomerInformation from "@/components/sales/CustomerInformation";
+
 import SaleItemsManager from "@/components/sales/SaleItemsManager";
 import SalePaymentSection from "@/components/sales/SalePaymentSection";
 import SalesFormActions from "@/components/sales/SalesFormActions";
 import SaleScannerSection from "@/components/sales/SaleScannerSection";
-import { SaleSMSSection } from "@/components/sales/SaleSMSSection";
+
 
 interface SalesFormProps {
   initialData?: Sale;
@@ -49,6 +48,13 @@ interface SalesFormProps {
   draftData?: any;
   onClearDraft?: () => void;
   isReceiptOpen?: boolean;
+  initialAccounts?: any[];
+  initialCustomerCategories?: any[];
+  initialCategories?: any[];
+  initialMessages?: any[];
+  initialTemplates?: any[];
+  initialStockHistory?: any[];
+  initialTransactions?: any[];
 }
 
 const SalesForm: React.FC<SalesFormProps> = ({
@@ -61,19 +67,29 @@ const SalesForm: React.FC<SalesFormProps> = ({
   draftData,
   onClearDraft,
   isReceiptOpen = false,
+  initialAccounts = [],
+  initialCustomerCategories = [],
+  initialCategories = [],
+  initialMessages = [],
+  initialTemplates = [],
+  initialStockHistory = [],
 }) => {
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  const { settings } = useBusinessSettings();
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
   const { user } = useAuth();
-  const { accounts: cashAccounts } = useCashAccounts();
+  const { accounts: cashAccounts } = useCashAccounts(initialAccounts);
   const { currentBusiness } = useBusiness();
 
   const { saveDraft } = useSaleDraft();
-  const { updateStockHistoryDatesBySaleId } = useStockHistory(user?.id);
+  const { updateStockHistoryDatesBySaleId } = useStockHistory(user?.id, undefined, initialStockHistory);
   const isClearingRef = useRef(false);
 
-  const { createMessage } = useMessages(user?.id);
+  const { createMessage } = useMessages(user?.id, initialMessages, initialTemplates);
   const [sendSMS, setSendSMS] = useState(true);
   const [smsMessage, setSMSMessage] = useState("");
 
@@ -109,11 +125,11 @@ const SalesForm: React.FC<SalesFormProps> = ({
     handleRemoveItem,
     handleSelectCustomer,
     handleCategoryChange,
-    handleSalesCategoryChange,
     handleAmountPaidChange,
     handlePaymentDateChange,
     calculateTotalAmount,
     calculateTaxAmount,
+    resolveFinancials,
     validateForm,
     processPendingPaymentChanges,
     createInstallmentPayment,
@@ -123,13 +139,15 @@ const SalesForm: React.FC<SalesFormProps> = ({
     selectedDate,
     setSelectedDate,
     isSubmitted,
-    isLoading: logicLoading,
-    setLoading
+    handleSalesCategoryChange,
+    refreshSaleData
   } = useSaleFormLogic({
     initialData,
     defaultPaymentStatus: initialData?.paymentStatus || "Paid",
     cashAccounts,
+    initialCategories,
   }) as any;
+
   const {
     createCashTransactionForSale,
     updateCashTransactionForSale,
@@ -140,6 +158,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const {
     linkPaymentToCashAccount,
     updatePayment: updatePaymentOriginal,
+    deletePayment: deletePaymentOriginal,
   } = useInstallmentPayments(initialData?.id);
 
   const { loading, handleSubmit } = useSaleSubmit({
@@ -205,9 +224,14 @@ const SalesForm: React.FC<SalesFormProps> = ({
     // ⚡️ PERSISTENCE: Save draft before preview to ensure latest changes are in storage
     saveDraft(formData, selectedDate, true);
 
-    const subtotal = calculateTotalAmount(formData.items);
-    const taxAmt = calculateTaxAmount(subtotal);
-    const total = subtotal + taxAmt;
+    const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    const { total, subtotal, taxAmount: taxAmt, amountPaid, amountDue } = resolveFinancials(
+      formData.items, 
+      formData.taxRate || 0, 
+      formData.paymentStatus, 
+      formData.amountPaid,
+      totalHistoryPaid
+    );
 
     const previewSale: Sale = {
       id: "preview",
@@ -231,14 +255,27 @@ const SalesForm: React.FC<SalesFormProps> = ({
       taxRate: formData.taxRate || 0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      amountPaid: formData.amountPaid,
-      amountDue: total - (formData.amountPaid || 0),
+      // 🚀 DATA INTEGRITY: Use resolved values to avoid race conditions
+      amountPaid,
+      amountDue,
     };
     onPreviewReceipt(previewSale);
   };
 
   const updatePayment = async (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => {
-    await updatePaymentOriginal(paymentId, updates);
+    const result = await updatePaymentOriginal(paymentId, updates);
+    if (result && refreshSaleData) {
+        // Trigger re-fetch of sale to update balance due on form
+        await refreshSaleData();
+    }
+  };
+
+  const deletePayment = async (paymentId: string) => {
+    const success = await deletePaymentOriginal(paymentId);
+    if (success && refreshSaleData) {
+        // Trigger re-fetch of sale to update balance due on form
+        await refreshSaleData();
+    }
   };
 
   const handleClearForm = () => {
@@ -267,6 +304,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         setTaxRateInput(draftData.formData.taxRate?.toString() || "");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftData, initialData, setFormData, setTaxRateInput, setSelectedDate]);
 
   useEffect(() => {
@@ -288,6 +326,16 @@ const SalesForm: React.FC<SalesFormProps> = ({
   const taxAmount = useMemo(() => calculateTaxAmount(totalAmount), [totalAmount, calculateTaxAmount]);
   const grandTotal = useMemo(() => totalAmount + taxAmount, [totalAmount, taxAmount]);
 
+  if (!mounted) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-64 bg-gray-100 rounded-lg"></div>
+        <div className="h-48 bg-gray-100 rounded-lg"></div>
+        <div className="h-24 bg-gray-100 rounded-lg"></div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <SaleFormHeader
@@ -307,6 +355,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onCategoryChange={handleCategoryChange}
         onClearForm={!initialData ? handleClearForm : undefined}
         onPreview={handlePreview}
+        initialCustomerCategories={initialCustomerCategories}
       />
 
       <SaleScannerSection 
@@ -340,7 +389,10 @@ const SalesForm: React.FC<SalesFormProps> = ({
         amountDue={formData.amountDue || 0}
         grandTotal={grandTotal}
         currency={currency}
-        onAmountPaidChange={(amount) => handleAmountPaidChange(amount, grandTotal)}
+        onAmountPaidChange={(amount) => {
+          const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+          handleAmountPaidChange(amount, grandTotal, totalHistoryPaid);
+        }}
         onPaymentDateChange={handlePaymentDateChange}
         paymentDate={paymentDate}
         saleId={initialData?.id}
@@ -356,11 +408,13 @@ const SalesForm: React.FC<SalesFormProps> = ({
         hasPaidWithHistory={formData.paymentStatus === "Paid" && payments.length > 0}
         onLinkPaymentToCash={(paymentId, accountId) => linkPaymentToCashAccount(paymentId, accountId)}
         onUpdatePayment={updatePayment}
+        onDeletePayment={deletePayment}
         onPaymentStatusChangeFromInstallment={async (newStatus) => handleSelectChange(newStatus)}
         notes={formData.notes}
         onNotesChange={handleChange}
         categoryId={formData.categoryId || ""}
         onCategoryChange={handleSalesCategoryChange}
+        initialCategories={initialCategories}
       />
 
       <SalesFormActions

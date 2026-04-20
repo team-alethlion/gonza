@@ -4,6 +4,9 @@
 import { revalidatePath } from 'next/cache';
 import { verifyBranchAccess, verifyUserAccess } from '@/lib/auth-guard';
 import { djangoFetch } from '@/lib/django-client';
+import { auth } from '@/auth';
+
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL || 'http://127.0.0.1:8000/api';
 
 const toSafeNumber = (val: any): number => {
     if (val === null || val === undefined) return 0;
@@ -30,16 +33,16 @@ export async function createExpenseAction(data: ExpenseInput, linkToCash: boolea
         await verifyBranchAccess(data.locationId);
         
         const payload = {
-            userId: data.userId,
-            branchId: data.locationId,
-            amount: data.amount,
+            user: data.userId,
+            branch: data.locationId,
+            amount: toSafeNumber(data.amount),
             description: data.description,
             category: data.category,
             date: data.date,
-            paymentMethod: data.paymentMethod,
-            personInCharge: data.personInCharge,
-            receiptImage: data.receiptImage,
-            cashAccountId: data.cashAccountId,
+            payment_method: data.paymentMethod,
+            person_in_charge: data.personInCharge,
+            receipt_image: data.receiptImage,
+            cash_account: data.cashAccountId,
             linkToCash: linkToCash
         };
 
@@ -60,7 +63,7 @@ export async function getExpensesAction(locationId: string, page: number = 1, pa
     try {
         await verifyBranchAccess(locationId);
         const offset = (page - 1) * pageSize;
-        let url = `finance/expenses/?branch_id=${locationId}&limit=${pageSize}&offset=${offset}`;
+        let url = `finance/expenses/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`;
         
         if (filters) {
             if (filters.category) url += `&category=${filters.category}`;
@@ -78,7 +81,8 @@ export async function getExpensesAction(locationId: string, page: number = 1, pa
             data: {
                 expenses: results.map((e: any) => ({
                     ...e,
-                    amount: toSafeNumber(e.amount),
+                    // 🛡️ SECURITY: Amount can be null if masked by backend
+                    amount: e.amount === null ? null : toSafeNumber(e.amount),
                     created_at: e.created_at,
                     updated_at: e.updated_at,
                     payment_method: e.payment_method,
@@ -96,11 +100,111 @@ export async function getExpensesAction(locationId: string, page: number = 1, pa
     }
 }
 
+export async function downloadExpenseTemplateAction(locationId: string) {
+    try {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+        
+        await verifyBranchAccess(locationId);
+        const url = `${DJANGO_API_URL}/finance/expenses/download_template/?branchId=${locationId}`;
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to download template');
+        
+        const blob = await response.blob();
+        return { success: true, data: blob };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function importExpensesAction(locationId: string, formData: FormData) {
+    try {
+        const session = await auth();
+        const token = (session?.user as any)?.accessToken;
+
+        await verifyBranchAccess(locationId);
+        
+        const response = await fetch(`${DJANGO_API_URL}/finance/expenses/import_data/?branchId=${locationId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) throw new Error(result.error || 'Import failed');
+        
+        revalidatePath('/finance');
+        return { success: true, data: result };
+    } catch (error: any) {
+        console.error('Error importing expenses:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getExpenseStatsAction(locationId: string, filters?: any) {
+    try {
+        await verifyBranchAccess(locationId);
+        let url = `finance/expenses/stats/?branchId=${locationId}`;
+        
+        if (filters) {
+            if (filters.dateFrom) url += `&dateFrom=${filters.dateFrom}`;
+            if (filters.dateTo) url += `&dateTo=${filters.dateTo}`;
+        }
+
+        const result = await djangoFetch<any>(url);
+        return { success: true, data: result };
+    } catch (error: any) {
+        console.error('Error fetching expense stats:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function createBulkExpensesAction(locationId: string, expenses: any[]) {
+    try {
+        await verifyBranchAccess(locationId);
+        
+        const mappedExpenses = expenses.map(e => ({
+            ...e,
+            amount: toSafeNumber(e.amount),
+            person_in_charge: e.personInCharge,
+            payment_method: e.paymentMethod,
+            receipt_image: e.receiptImage,
+            cash_account: e.cashAccountId,
+            branch: locationId,
+            user: e.userId
+        }));
+
+        const result = await djangoFetch('finance/expenses/bulk_create/', {
+            method: 'POST',
+            body: JSON.stringify(mappedExpenses)
+        });
+
+        revalidatePath('/finance');
+        return { success: true, data: result };
+    } catch (error: any) {
+        console.error('Error creating bulk expenses:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 export async function updateExpenseAction(id: string, branchId: string, updates: any) {
     try {
         await verifyBranchAccess(branchId);
         const payload = {
             ...updates,
+            amount: updates.amount !== undefined ? toSafeNumber(updates.amount) : undefined,
+            person_in_charge: updates.personInCharge,
+            payment_method: updates.paymentMethod,
+            receipt_image: updates.receiptImage,
+            cash_account: updates.cashAccountId,
             linkToCash: !!updates.cashAccountId
         };
 
@@ -161,7 +265,7 @@ export async function createInstallmentPaymentAction(data: any) {
             saleId: data.saleId,
             locationId: data.locationId,
             accountId: data.accountId,
-            amount: data.amount,
+            amount: toSafeNumber(data.amount),
             notes: data.notes,
             paymentDate: data.paymentDate
         };
@@ -179,9 +283,13 @@ export async function createInstallmentPaymentAction(data: any) {
 export async function updateInstallmentPaymentAction(id: string, branchId: string, updates: any) {
     try {
         await verifyBranchAccess(branchId);
+        const payload = {
+            ...updates,
+            amount: updates.amount !== undefined ? toSafeNumber(updates.amount) : undefined
+        };
         const result = await djangoFetch(`sales/installments/${id}/`, {
             method: 'PATCH',
-            body: JSON.stringify(updates)
+            body: JSON.stringify(payload)
         });
         revalidatePath('/finance');
         return { success: true, data: { ...result, amount: toSafeNumber(result.amount), paymentDate: result.payment_date } };
@@ -303,7 +411,7 @@ export async function createCashAccountAction(data: any) {
                 branch: data.locationId,
                 name: data.name,
                 description: data.description,
-                initial_balance: data.openingBalance,
+                initial_balance: toSafeNumber(data.openingBalance),
                 is_default: data.isDefault || false
             })
         });
@@ -319,7 +427,7 @@ export async function updateCashAccountAction(id: string, branchId: string, upda
         const payload: any = {};
         if (updates.name !== undefined) payload.name = updates.name;
         if (updates.description !== undefined) payload.description = updates.description;
-        if (updates.openingBalance !== undefined) payload.initial_balance = updates.openingBalance;
+        if (updates.openingBalance !== undefined) payload.initial_balance = toSafeNumber(updates.openingBalance);
         if (updates.isDefault !== undefined) payload.is_default = updates.isDefault;
 
         const result = await djangoFetch(`finance/accounts/${id}/`, {
@@ -375,7 +483,7 @@ export async function getCashTransactionsAction(locationId: string, accountId?: 
     try {
         await verifyBranchAccess(locationId);
         const offset = (page - 1) * pageSize;
-        let url = `finance/transactions/?branch_id=${locationId}&limit=${pageSize}&offset=${offset}`;
+        let url = `finance/cash-transactions/?branchId=${locationId}&limit=${pageSize}&offset=${offset}`;
         
         if (accountId) url += `&account=${accountId}`;
         if (filters) {
@@ -392,19 +500,7 @@ export async function getCashTransactionsAction(locationId: string, accountId?: 
         return {
             success: true,
             data: {
-                transactions: results.map((t: any) => ({
-                    ...t,
-                    amount: toSafeNumber(t.amount),
-                    created_at: t.created_at,
-                    updated_at: t.updated_at,
-                    user_id: t.user,
-                    account_id: t.account,
-                    location_id: t.branch,
-                    transaction_type: t.transaction_type,
-                    person_in_charge: t.person_in_charge,
-                    payment_method: t.payment_method,
-                    receipt_image: t.receipt_image
-                })),
+                transactions: results, // Return raw DB objects
                 count
             }
         };
@@ -414,9 +510,13 @@ export async function getCashTransactionsAction(locationId: string, accountId?: 
 export async function createCashTransactionAction(data: any) {
     try {
         await verifyBranchAccess(data.locationId);
-        const result = await djangoFetch('finance/transactions/', {
+        const payload = {
+            ...data,
+            amount: toSafeNumber(data.amount)
+        };
+        const result = await djangoFetch('finance/cash-transactions/', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
         revalidatePath('/finance');
         return { success: true, data: result };
@@ -426,9 +526,13 @@ export async function createCashTransactionAction(data: any) {
 export async function updateCashTransactionAction(id: string, branchId: string, updates: any) {
     try {
         await verifyBranchAccess(branchId);
-        const result = await djangoFetch(`finance/transactions/${id}/`, {
+        const payload = {
+            ...updates,
+            amount: updates.amount !== undefined ? toSafeNumber(updates.amount) : undefined
+        };
+        const result = await djangoFetch(`finance/cash-transactions/${id}/`, {
             method: 'PATCH',
-            body: JSON.stringify(updates)
+            body: JSON.stringify(payload)
         });
         revalidatePath('/finance');
         return { success: true, data: result };
@@ -438,7 +542,7 @@ export async function updateCashTransactionAction(id: string, branchId: string, 
 export async function findCashTransactionAction(id: string, branchId: string) {
     try {
         await verifyBranchAccess(branchId);
-        const data = await djangoFetch(`finance/transactions/${id}/?branchId=${branchId}`);
+        const data = await djangoFetch(`finance/cash-transactions/${id}/?branchId=${branchId}`);
         return { success: true, data: { accountId: data.account } };
     } catch (error: any) { return { success: false, error: error.message }; }
 }
@@ -446,7 +550,7 @@ export async function findCashTransactionAction(id: string, branchId: string) {
 export async function deleteCashTransactionAction(id: string, locationId: string) {
     try {
         await verifyBranchAccess(locationId);
-        await djangoFetch(`finance/transactions/${id}/`, { method: 'DELETE' });
+        await djangoFetch(`finance/cash-transactions/${id}/`, { method: 'DELETE' });
         revalidatePath('/finance');
         return { success: true };
     } catch (error: any) { return { success: false, error: error.message }; }
@@ -465,7 +569,7 @@ export async function getCashAccountSummaryAction(accountId: string, locationId:
         await verifyBranchAccess(locationId);
         const start = startDate.toISOString();
         const end = endDate.toISOString();
-        const data = await djangoFetch(`finance/accounts/${accountId}/summary/?branchId=${locationId}&startDate=${start}&endDate=${end}`);
+        const data = await djangoFetch(`finance/accounts/${accountId}/summary/?branchId=${locationId}&date_from=${start}&date_to=${end}`);
         return { 
             success: true, 
             data: {
@@ -481,27 +585,40 @@ export async function getCashAccountSummaryAction(accountId: string, locationId:
     } catch (error: any) { return { success: false, error: error.message }; }
 }
 
-export async function getProfitLossAction(locationId: string, startDate: Date, endDate: Date, taxPercentage: number = 0) {
+export async function getProfitLossAction(locationId: string, startDate: Date, endDate: Date, taxPercentage: number = 0, basis: string = 'accrual') {
     try {
         await verifyBranchAccess(locationId);
         const start = startDate.toISOString();
         const end = endDate.toISOString();
-        const data = await djangoFetch(`finance/accounts/profit_loss/?branchId=${locationId}&startDate=${start}&endDate=${end}&taxPercentage=${taxPercentage}`);
+        const raw = await djangoFetch(`finance/accounts/profit_loss/?branchId=${locationId}&startDate=${start}&endDate=${end}&taxPercentage=${taxPercentage}&basis=${basis}`);
+        
+        // Map the new structured response
         return { 
             success: true, 
             data: {
-                ...data,
-                sales: toSafeNumber(data.sales),
-                salesReturns: toSafeNumber(data.salesReturns),
-                netSales: toSafeNumber(data.netSales),
-                carriageInwards: toSafeNumber(data.carriageInwards),
-                totalCostSales: toSafeNumber(data.totalCostSales),
-                totalCOGS: toSafeNumber(data.totalCOGS),
-                grossProfit: toSafeNumber(data.grossProfit),
-                totalExpenses: toSafeNumber(data.totalExpenses),
-                netProfitLoss: toSafeNumber(data.netProfitLoss),
-                taxAmount: toSafeNumber(data.taxAmount),
-                finalProfitAfterTax: toSafeNumber(data.finalProfitAfterTax)
+                // Revenue
+                sales: toSafeNumber(raw.revenue.turnover),
+                salesReturns: toSafeNumber(raw.revenue.salesReturns),
+                netSales: toSafeNumber(raw.revenue.netSales),
+                
+                // COGS
+                totalCostSales: toSafeNumber(raw.cogs.grossCostSales),
+                costOfReturns: toSafeNumber(raw.cogs.costOfReturns),
+                carriageInwards: toSafeNumber(raw.cogs.carriageInwards),
+                totalCOGS: toSafeNumber(raw.cogs.totalCOGS),
+                
+                // Expenses
+                totalExpenses: toSafeNumber(raw.expenses.total),
+                expensesByCategory: raw.expenses.breakdown || {},
+                
+                // Profitability
+                grossProfit: toSafeNumber(raw.profitability.grossProfit),
+                netProfitLoss: toSafeNumber(raw.profitability.netProfitLoss),
+                taxAmount: toSafeNumber(raw.profitability.taxAmount),
+                finalProfitAfterTax: toSafeNumber(raw.profitability.finalProfitAfterTax),
+                grossMargin: toSafeNumber(raw.profitability.grossMargin),
+                netMargin: toSafeNumber(raw.profitability.netMargin),
+                taxPercentage: taxPercentage
             } 
         };
     } catch (error: any) { return { success: false, error: error.message }; }
@@ -515,7 +632,7 @@ export async function createBulkCashTransactionsAction(transactions: any[]) {
         const branchId = transactions[0].locationId;
         await verifyBranchAccess(branchId);
 
-        const result = await djangoFetch('finance/transactions/', {
+        const result = await djangoFetch('finance/cash-transactions/', {
             method: 'POST',
             body: JSON.stringify(transactions)
         });

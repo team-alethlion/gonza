@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, TaskFilters } from '@/types/task';
 import { useTaskCategories } from '@/hooks/useTaskCategories';
 import TaskFiltersComponent from './TaskFilters';
 import TaskItems from './TaskItems';
+import { useTasks } from '@/hooks/useTasks';
 
 interface TaskListProps {
   tasks: Task[];
@@ -12,8 +13,11 @@ interface TaskListProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onBulkComplete?: (taskIds: string[]) => void;
+  onBulkDelete?: (taskIds: string[]) => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  searchTerm?: string;
+  onSearchChange?: (val: string) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({
@@ -22,45 +26,31 @@ const TaskList: React.FC<TaskListProps> = ({
   onEdit,
   onDelete,
   onBulkComplete,
+  onBulkDelete,
   canEdit = true,
   canDelete = true,
+  searchTerm = '',
+  onSearchChange
 }) => {
-  const [filters, setFilters] = useState<TaskFilters>({
+  const { setFilters } = useTasks();
+  const [localFilters, setLocalFilters] = useState<TaskFilters>({
     status: 'all',
     priority: 'all',
     category: 'all',
-    search: '',
+    search: searchTerm,
   });
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const { categories } = useTaskCategories();
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      // Status filter
-      if (filters.status === 'pending' && task.completed) return false;
-      if (filters.status === 'completed' && !task.completed) return false;
-
-      // Priority filter
-      if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
-
-      // Category filter
-      if (filters.category !== 'all') {
-        if (filters.category === 'no-category' && task.category) return false;
-        if (filters.category !== 'no-category' && task.category !== filters.category) return false;
-      }
-
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        return (
-          task.title.toLowerCase().includes(searchLower) ||
-          (task.description && task.description.toLowerCase().includes(searchLower))
-        );
-      }
-
-      return true;
-    });
-  }, [tasks, filters]);
+  // Sync local filters to hook filters
+  useEffect(() => {
+    const hookFilters: any = {};
+    if (localFilters.status !== 'all') hookFilters.status = localFilters.status;
+    if (localFilters.priority !== 'all') hookFilters.priority = localFilters.priority;
+    if (localFilters.category !== 'all') hookFilters.category = localFilters.category;
+    
+    setFilters(hookFilters);
+  }, [localFilters, setFilters]);
 
   const handleBulkComplete = () => {
     if (onBulkComplete && selectedTasks.length > 0) {
@@ -69,23 +59,36 @@ const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
-  const taskCategories = [...new Set(tasks.map(task => task.category).filter(Boolean))];
+  const handleBulkDelete = () => {
+    if (onBulkDelete && selectedTasks.length > 0) {
+      if (window.confirm(`Are you sure you want to delete ${selectedTasks.length} tasks?`)) {
+        onBulkDelete(selectedTasks);
+        setSelectedTasks([]);
+      }
+    }
+  };
+
+  const taskCategories = categories.map(c => c.name);
 
   return (
     <div className="space-y-6">
       {/* Filters */}
       <TaskFiltersComponent
-        filters={filters}
-        onFiltersChange={setFilters}
-        taskCategories={taskCategories as string[]}
+        filters={localFilters}
+        onFiltersChange={setLocalFilters}
+        taskCategories={taskCategories}
         selectedTasks={selectedTasks}
         onBulkComplete={handleBulkComplete}
+        onBulkDelete={handleBulkDelete}
         canEdit={canEdit}
+        canDelete={canDelete}
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
       />
 
       {/* Task Items */}
       <TaskItems
-        tasks={filteredTasks}
+        tasks={tasks}
         onToggleComplete={onToggleComplete}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -93,9 +96,9 @@ const TaskList: React.FC<TaskListProps> = ({
         canDelete={canDelete}
       />
 
-      {filteredTasks.length === 0 && tasks.length > 0 && (
+      {tasks.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-500">No tasks match your current filters.</p>
+          <p className="text-gray-500">No tasks found.</p>
         </div>
       )}
     </div>

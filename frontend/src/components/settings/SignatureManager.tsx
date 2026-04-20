@@ -1,12 +1,13 @@
 "use client";
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Signature, Smartphone, X, PenTool } from 'lucide-react';
-import SignaturePadComponent from '@/components/signature/SignaturePad';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Signature, Smartphone, X, PenTool } from "lucide-react";
+import SignaturePadComponent from "@/components/signature/SignaturePad";
+import { useIsMobile } from "@/hooks/use-mobile";
+import Image from "next/image";
 
 interface SignatureManagerProps {
   signature: string | undefined | null;
@@ -15,10 +16,14 @@ interface SignatureManagerProps {
   onRemoveSignature: () => Promise<void>;
 }
 
-const SignatureUploader = ({ signature, onChange, onRemove }: { 
-  signature: string | undefined | null, 
-  onChange: (signature: string) => void,
-  onRemove: () => void
+const SignatureUploader = ({
+  signature,
+  onChange,
+  onRemove,
+}: {
+  signature: string | undefined | null;
+  onChange: (signature: string) => void;
+  onRemove: () => void;
 }) => {
   return (
     <div className="space-y-2">
@@ -26,17 +31,18 @@ const SignatureUploader = ({ signature, onChange, onRemove }: {
       <div className="flex items-center space-x-4">
         {signature && (
           <div className="relative border rounded bg-white p-2">
-            <img
+            <Image
+              height={64}
+              width={128}
               src={signature}
               alt="Business Signature"
               className="w-32 h-16 object-contain"
             />
-            <Button 
-              variant="destructive" 
-              size="icon" 
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full" 
-              onClick={onRemove}
-            >
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+              onClick={onRemove}>
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -60,16 +66,16 @@ const SignatureUploader = ({ signature, onChange, onRemove }: {
           />
           <Button
             variant="outline"
-            onClick={() => document.getElementById('signature')?.click()}
-            className="w-full"
-          >
+            onClick={() => document.getElementById("signature")?.click()}
+            className="w-full">
             <Signature className="mr-2 h-4 w-4" />
-            {signature ? 'Change Signature' : 'Upload Signature'}
+            {signature ? "Change Signature" : "Upload Signature"}
           </Button>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Upload an image of your signature to display on receipts and invoices, or remove it if you don't want to include it
+        Upload an image of your signature to display on receipts and invoices,
+        or remove it if you don&apos;t want to include it
       </p>
     </div>
   );
@@ -107,7 +113,7 @@ const SignatureManager: React.FC<SignatureManagerProps> = ({
             />
           </div>
         )}
-        
+
         {/* File Upload Option */}
         <div className="space-y-2">
           <SignatureUploader

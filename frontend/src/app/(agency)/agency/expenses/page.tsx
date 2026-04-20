@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
-import { getExpensesAction } from "@/app/actions/finance";
+import { getExpensesAction, getExpenseStatsAction } from "@/app/actions/finance";
 import { getBusinessLocationsAction } from "@/app/actions/business";
 import ExpensesClient from "./ExpensesClient";
 import { Expense } from "@/hooks/useExpenses";
@@ -11,6 +11,7 @@ export default async function ExpensesPage() {
   const branchId = (session?.user as any)?.branchId;
 
   let initialExpenses: Expense[] = [];
+  let initialStats: any = null;
 
   if (userId) {
     try {
@@ -26,10 +27,14 @@ export default async function ExpensesPage() {
       }
 
       if (activeBranchId) {
-        const result: any = await getExpensesAction(activeBranchId);
-        // getExpensesAction returns { success: true, data: { expenses: [], count: 0 } }
-        if (result && result.success && result.data?.expenses) {
-          const rawExpenses = Array.isArray(result.data.expenses) ? result.data.expenses : [];
+        // Parallel prefetch for performance
+        const [expensesResult, statsResult] = await Promise.all([
+          getExpensesAction(activeBranchId),
+          getExpenseStatsAction(activeBranchId)
+        ]);
+
+        if (expensesResult && expensesResult.success && expensesResult.data?.expenses) {
+          const rawExpenses = Array.isArray(expensesResult.data.expenses) ? expensesResult.data.expenses : [];
           
           initialExpenses = rawExpenses.map((item: any) => ({
             id: item.id,
@@ -45,11 +50,15 @@ export default async function ExpensesPage() {
             updatedAt: new Date(item.updated_at || item.updatedAt),
           }));
         }
+
+        if (statsResult && statsResult.success) {
+          initialStats = statsResult.data;
+        }
       }
     } catch (error) {
       console.error("Failed to prefetch expenses SSR:", error);
     }
   }
 
-  return <ExpensesClient initialExpenses={initialExpenses as any} />;
+  return <ExpensesClient initialExpenses={initialExpenses as any} initialStats={initialStats} />;
 }

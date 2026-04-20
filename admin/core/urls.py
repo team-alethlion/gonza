@@ -17,8 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.shortcuts import redirect
+from django.views.generic.base import RedirectView
+from django.conf import settings
 
 urlpatterns = [
     path('', lambda request: redirect('admin:index'), name='root_redirect'),
+    path('favicon.ico', RedirectView.as_view(url=settings.STATIC_URL + 'favicon.ico')),
     path('admin/', admin.site.urls),
 ]

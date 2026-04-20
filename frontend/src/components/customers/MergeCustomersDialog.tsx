@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -24,8 +25,14 @@ const MergeCustomersDialog: React.FC<MergeCustomersDialogProps> = ({
   customers,
   onMergeComplete
 }) => {
+  const queryClient = useQueryClient();
+  const [mounted, setMounted] = React.useState(false);
   const [primaryCustomerId, setPrimaryCustomerId] = useState<string>(customers[0]?.id || '');
   const [isMerging, setIsMerging] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleMerge = async () => {
     if (!primaryCustomerId || customers.length < 2) return;
@@ -45,6 +52,10 @@ const MergeCustomersDialog: React.FC<MergeCustomersDialogProps> = ({
       if (!result.success) {
         throw new Error(result.error);
       }
+
+      // 🚀 UI FIX: Invalidate queries to refresh data in background
+      queryClient.invalidateQueries({ queryKey: ['customers', primaryCustomer.branchId] });
+      queryClient.invalidateQueries({ queryKey: ['customer_stats', primaryCustomer.branchId] });
 
       toast.success(`Successfully merged ${duplicateIds.length} duplicate customer${duplicateIds.length > 1 ? 's' : ''} into ${primaryCustomer.fullName}`);
       onMergeComplete();
@@ -103,7 +114,7 @@ const MergeCustomersDialog: React.FC<MergeCustomersDialogProps> = ({
                                 {customer.location && (
                                   <div>Location: {customer.location}</div>
                                 )}
-                                <div>Created: {customer.createdAt.toLocaleDateString()}</div>
+                                <div>Created: {mounted ? customer.createdAt.toLocaleDateString("en-US") : "---"}</div>
                               </div>
                             </div>
                             {primaryCustomerId === customer.id && (

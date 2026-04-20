@@ -29,7 +29,7 @@ export interface Sale {
   customerContact?: string;
   customerId?: string;
   items: SaleItem[];
-  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale';
+  paymentStatus: 'Paid' | 'NOT PAID' | 'Quote' | 'Installment Sale' | 'COMPLETED' | 'UNPAID' | 'INSTALLMENT' | 'QUOTE' | 'PENDING' | 'REFUNDED' | 'PARTIAL_REFUND';
   profit: number;
   total: number;
   totalCost: number;
@@ -41,6 +41,7 @@ export interface Sale {
   date: Date;
   taxRate?: number;
   cashTransactionId?: string;
+  cashAccountName?: string | null;
   amountPaid?: number;
   amountDue?: number;
   notes?: string;
@@ -52,6 +53,50 @@ export interface Sale {
   payments?: any[]; // For pre-fetched installment history
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SalesReturnItem {
+  id: string;
+  salesReturnId: string;
+  saleItemId: string;
+  productName: string;
+  productId?: string;
+  quantity: number;
+  refundAmount: number;
+  restockInventory: boolean;
+  createdAt: Date;
+}
+
+export interface SalesReturn {
+  id: string;
+  saleId: string;
+  saleReceiptNumber: string;
+  returnNumber: string;
+  totalRefundAmount: number;
+  reason?: string;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  date: Date;
+  branchId: string;
+  userId: string;
+  cashAccountId?: string;
+  cashTransactionId?: string;
+  items: SalesReturnItem[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomerLedger {
+  id: string;
+  customer: string;
+  branch: string;
+  agency?: string;
+  user?: string;
+  amount: number;
+  type: 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT';
+  description: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Supabase database schema and Json type
@@ -87,6 +132,7 @@ export interface DbSale {
   created_at: string;
   updated_at: string;
   cash_transaction_id?: string | null;
+  cash_account_name?: string | null;
   amount_paid?: number | null;
   amount_due?: number | null;
   balance_due?: number | null;
@@ -137,7 +183,7 @@ export interface SaleFormData {
   customerContact: string;
   customerId?: string; // Added customerId field
   items: SaleItem[];
-  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale";
+  paymentStatus: "Paid" | "NOT PAID" | "Quote" | "Installment Sale" | "COMPLETED" | "UNPAID" | "INSTALLMENT" | "QUOTE" | "PENDING" | "REFUNDED" | "PARTIAL_REFUND";
   receiptNumber?: string;
   taxRate?: number | null;
   amountPaid?: number;
@@ -157,6 +203,24 @@ export interface AnalyticsData {
   pendingSalesCount: number;
   totalExpenses?: number;
   recentSales?: Sale[];
+  inventoryStats?: {
+    totalCount: number;
+    totalCostValue: number;
+    totalStockValue: number;
+    outOfStockCount: number;
+    lowStockCount: number;
+  } | null;
+  activeGoal?: {
+    id: string;
+    amountTarget: number;
+    currentAmount: number;
+    salesCountTarget: number;
+    currentSalesCount: number;
+    period: string;
+    periodName: string;
+    endDate: string;
+    progressPercentage: number;
+  } | null;
 }
 
 // Form validation errors
@@ -343,6 +407,7 @@ export interface Customer {
   branchId: string;
   lifetimeValue?: number;
   orderCount?: number;
+  creditLimit?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -419,30 +484,31 @@ export const mapDbSaleToSale = (dbSale: any): Sale => {
 
   return {
     id: dbSale.id,
-    receiptNumber: dbSale.receipt_number,
-    customerName: dbSale.customer_name,
-    customerAddress: dbSale.customer_address || '',
-    customerContact: dbSale.customer_phone || dbSale.customer_contact || '',
-    customerId: dbSale.customer || dbSale.customer_id || undefined,
+    receiptNumber: dbSale.receipt_number || dbSale.receiptNumber,
+    customerName: dbSale.customer_name || dbSale.customerName,
+    customerAddress: dbSale.customer_address || dbSale.customerAddress || '',
+    customerContact: dbSale.customer_phone || dbSale.customer_contact || dbSale.customerPhone || dbSale.customerContact || '',
+    customerId: dbSale.customer_id || dbSale.customer || dbSale.customerId || undefined,
     items,
-    paymentStatus: dbSale.payment_status || dbSale.status || 'Paid',
+    paymentStatus: dbSale.payment_status || dbSale.status || dbSale.paymentStatus || 'Paid',
     profit: Number(dbSale.profit) || 0,
     total: Number(dbSale.total_amount || dbSale.total || 0),
-    totalCost: Number(dbSale.total_cost || 0),
+    totalCost: Number(dbSale.total_cost || dbSale.totalCost || 0),
     subtotal: Number(dbSale.subtotal || 0),
     discount: Number(dbSale.discount_amount || dbSale.discount || 0),
-    taxAmount: Number(dbSale.tax_amount || 0),
+    taxAmount: Number(dbSale.tax_amount || dbSale.taxAmount || 0),
     totalQuantity,
     itemDescription,
-    date: new Date(dbSale.date),
-    taxRate: Number(dbSale.tax_rate) || 0,
-    cashTransactionId: dbSale.cash_transaction || dbSale.cash_transaction_id || undefined,
-    amountPaid: Number(dbSale.amount_paid) || 0,
-    amountDue: Number(dbSale.balance_due || dbSale.amount_due || 0),
+    date: dbSale.date ? new Date(dbSale.date) : new Date(),
+    taxRate: Number(dbSale.tax_rate || dbSale.taxRate || 0),
+    cashTransactionId: dbSale.cash_transaction || dbSale.cash_transaction_id || dbSale.cashTransactionId,
+    cashAccountName: dbSale.cash_account_name || dbSale.cashAccountName,
+    amountPaid: Number(dbSale.amount_paid || dbSale.amountPaid || 0),
+    amountDue: Number(dbSale.balance_due || dbSale.amount_due || dbSale.amountDue || 0),
     notes: dbSale.notes || '',
-    categoryId: dbSale.category || dbSale.category_id || undefined,
-    createdAt: new Date(dbSale.created_at),
-    updatedAt: new Date(dbSale.updated_at),
+    categoryId: dbSale.category || dbSale.category_id || dbSale.categoryId,
+    createdAt: dbSale.created_at ? new Date(dbSale.created_at) : new Date(),
+    updatedAt: dbSale.updated_at ? new Date(dbSale.updated_at) : new Date(),
   };
 };
 
@@ -467,6 +533,13 @@ export const mapSaleToDbSale = (
     discountAmount: item.discountAmount
   }));
 
+  // 🛡️ DATA INTEGRITY: Map frontend status to backend enum values
+  let status_val = saleData.paymentStatus;
+  if (status_val === 'Paid') status_val = 'COMPLETED';
+  if (status_val === 'NOT PAID') status_val = 'UNPAID';
+  if (status_val === 'Installment Sale') status_val = 'INSTALLMENT';
+  if (status_val === 'Quote') status_val = 'QUOTE';
+
   return {
     user_id: userId,
     location_id: locationId,
@@ -476,8 +549,7 @@ export const mapSaleToDbSale = (
     customer_contact: saleData.customerContact || null,
     customer_id: saleData.customerId || null, // Include customer_id
     items: (mappedItems as unknown) as Json,
-    payment_status: saleData.paymentStatus,
-    profit: profit,
+    payment_status: status_val,
     date: selectedDate.toISOString().split('T')[0],
     tax_rate: saleData.taxRate || 0,
     cash_transaction_id: cashTransactionId || null,
@@ -508,6 +580,7 @@ export const mapSaleToDbSale = (
       const itemSubtotal = item.price * item.quantity;
       return sum + (item.discountType === 'amount' ? (item.discountAmount || 0) : (itemSubtotal * (item.discountPercentage || 0)) / 100);
     }, 0),
+    profit: profit, // Trust the profit passed from the validated UI state
   };
 };
 
@@ -729,3 +802,42 @@ export const mapExpenseToDbExpense = (expense: Partial<Expense>, userId: string)
 
   return result;
 };
+
+export interface ActivityHistoryItem {
+  id: string;
+  user_id: string;
+  location_id: string;
+  activity_type: "CREATE" | "UPDATE" | "DELETE";
+  module:
+    | "SALES"
+    | "INVENTORY"
+    | "EXPENSES"
+    | "FINANCE"
+    | "CUSTOMERS"
+    | "TASKS";
+  entity_type: string;
+  entity_id: string | null;
+  entity_name: string;
+  description: string;
+  metadata: any;
+  created_at: string;
+  profile_id: string | null;
+  profile_name: string | null;
+}
+
+export interface ActivityFilters {
+  activityType: "ALL" | "CREATE" | "UPDATE" | "DELETE";
+  module:
+    | "ALL"
+    | "SALES"
+    | "INVENTORY"
+    | "EXPENSES"
+    | "FINANCE"
+    | "CUSTOMERS"
+    | "TASKS";
+  search: string;
+  dateRange: {
+    from: Date | undefined;
+    to: Date | undefined;
+  };
+}

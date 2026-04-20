@@ -1,14 +1,15 @@
 "use client";
 import React from 'react';
 import { HistoryList } from './HistoryList';
-import { HistoryStats } from './HistoryStats';
-import { ActivityHistoryItem } from '@/hooks/useActivityHistory';
+import HistoryStats from './HistoryStats';
+import { ActivityHistoryItem } from '@/types';
 
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface HistoryContentProps {
   activities: ActivityHistoryItem[];
   isLoading: boolean;
+  stats?: any;
   totalCount: number;
   currentPage: number;
   totalPages: number;
@@ -18,6 +19,7 @@ interface HistoryContentProps {
 export const HistoryContent: React.FC<HistoryContentProps> = ({
   activities,
   isLoading,
+  stats,
   totalCount,
   currentPage,
   totalPages,
@@ -33,7 +35,7 @@ export const HistoryContent: React.FC<HistoryContentProps> = ({
 
   return (
     <div className="space-y-6">
-      <HistoryStats activities={activities} totalCount={totalCount} />
+      <HistoryStats stats={stats} isLoading={isLoading} />
       
       <div className="bg-card border rounded-lg">
         <div className="p-4 md:p-6">

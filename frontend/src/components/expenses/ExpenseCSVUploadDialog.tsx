@@ -18,6 +18,9 @@ import {
 } from '@/components/ui/dialog';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useCashAccounts } from '@/hooks/useCashAccounts';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { useToast } from '@/hooks/use-toast';
+import { downloadExpenseTemplateAction, importExpensesAction } from '@/app/actions/finance';
 
 interface ExpenseCSVUploadDialogProps {
     open: boolean;
@@ -43,6 +46,8 @@ const ExpenseCSVUploadDialog: React.FC<ExpenseCSVUploadDialogProps> = ({
 }) => {
     const { createBulkExpenses } = useExpenses();
     const { accounts } = useCashAccounts();
+    const { currentBusiness } = useBusiness();
+    const { toast } = useToast();
     const [state, setState] = useState<UploadState>({
         step: 'select',
         file: null,
@@ -200,31 +205,60 @@ const ExpenseCSVUploadDialog: React.FC<ExpenseCSVUploadDialogProps> = ({
         });
     };
 
-    const handleConfirmUpload = async () => {
-        setState(prev => ({ ...prev, step: 'uploading', uploadProgress: 0 }));
+    const handleDownloadTemplate = async () => {
+        if (!currentBusiness) return;
+        try {
+            const result = await downloadExpenseTemplateAction(currentBusiness.id);
+            if (result.success && result.data) {
+                const url = window.URL.createObjectURL(result.data);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', 'expense_import_template.xlsx');
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: "Failed to download template: " + error.message,
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        if (!currentBusiness || !state.file) return;
+        setState(prev => ({ ...prev, step: 'uploading', uploadProgress: 10 }));
         setIsUploading(true);
 
-        const expenses = state.validRows.map(convertCSVRowToExpenseBody);
-
         try {
-            await createBulkExpenses(expenses);
+            const formData = new FormData();
+            formData.append('file', state.file);
+            
+            const result = await importExpensesAction(currentBusiness.id, formData);
+
+            if (!result.success) throw new Error(result.error);
+
             setState(prev => ({
                 ...prev,
                 step: 'complete',
                 uploadProgress: 100,
-                successCount: expenses.length,
-                failureCount: 0
+                successCount: result.data.success,
+                failureCount: result.data.errors?.length || 0
             }));
+            
             setTimeout(() => onUploadComplete(), 1500);
-        } catch (error) {
-            console.error('Bulk upload failed:', error);
-            setState(prev => ({
-                ...prev,
-                step: 'complete',
-                uploadProgress: 100,
-                successCount: 0,
-                failureCount: expenses.length
-            }));
+        } catch (error: any) {
+            console.error('Import failed:', error);
+            toast({
+                title: "Import Failed",
+                description: error.message,
+                variant: "destructive"
+            });
+            setState(prev => ({ ...prev, step: 'preview' }));
         } finally {
             setIsUploading(false);
         }
@@ -275,29 +309,49 @@ const ExpenseCSVUploadDialog: React.FC<ExpenseCSVUploadDialogProps> = ({
                                 <TableHead className="text-[10px] h-9">Date</TableHead>
                                 <TableHead className="text-[10px] h-9">Amount</TableHead>
                                 <TableHead className="text-[10px] h-9">Description</TableHead>
+                                <TableHead className="text-[10px] h-9">Category</TableHead>
+                                <TableHead className="text-[10px] h-9">Payment Method</TableHead>
+                                <TableHead className="text-[10px] h-9">Person In Charge</TableHead>
                                 <TableHead className="text-[10px] h-9">Link to Finance</TableHead>
                                 <TableHead className="text-[10px] h-9">Finance Account</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             <TableRow className="h-9 border-slate-100 dark:border-slate-800">
-                                <TableCell className="text-[11px] py-1.5 font-mono">22/12/2025</TableCell>
+                                <TableCell className="text-[11px] py-1.5 font-mono">2026-04-16</TableCell>
                                 <TableCell className="text-[11px] py-1.5 font-bold">450.00</TableCell>
-                                <TableCell className="text-[11px] py-1.5 truncate max-w-[120px]">Office Rent</TableCell>
-                                <TableCell className="text-[11px] py-1.5 text-red-600 font-bold italic">true</TableCell>
-                                <TableCell className="text-[11px] py-1.5 truncate max-w-[120px]">Company Wallet</TableCell>
+                                <TableCell className="text-[11px] py-1.5 truncate max-w-[100px]">Office Rent</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Rent</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Bank</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Admin</TableCell>
+                                <TableCell className="text-[11px] py-1.5 text-red-600 font-bold italic">TRUE</TableCell>
+                                <TableCell className="text-[11px] py-1.5 truncate max-w-[100px]">Company Wallet</TableCell>
                             </TableRow>
                             <TableRow className="h-9 border-none">
-                                <TableCell className="text-[11px] py-1.5 font-mono">23/12/2025</TableCell>
+                                <TableCell className="text-[11px] py-1.5 font-mono">2026-04-17</TableCell>
                                 <TableCell className="text-[11px] py-1.5 font-bold">120.00</TableCell>
-                                <TableCell className="text-[11px] py-1.5 truncate max-w-[120px]">Stationery</TableCell>
-                                <TableCell className="text-[11px] py-1.5 text-slate-400 font-bold italic">false</TableCell>
+                                <TableCell className="text-[11px] py-1.5 truncate max-w-[100px]">Stationery</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Supplies</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Cash</TableCell>
+                                <TableCell className="text-[11px] py-1.5">Manager</TableCell>
+                                <TableCell className="text-[11px] py-1.5 text-slate-400 font-bold italic">FALSE</TableCell>
                                 <TableCell className="text-[11px] py-1.5 text-slate-400 italic">Leave Empty</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
                 </div>
             </div>
+            
+            <div className="flex justify-center">
+                <Button 
+                    variant="outline" 
+                    onClick={handleDownloadTemplate}
+                    className="rounded-xl border-red-200 hover:bg-red-50 text-red-600 font-bold"
+                >
+                    <Download className="h-4 w-4 mr-2" /> Download Dynamic Template (.xlsx)
+                </Button>
+            </div>
+
             <input ref={fileInputRef} type="file" accept=".csv, .xlsx, .xls" onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])} className="hidden" />
         </div>
     );
@@ -354,7 +408,7 @@ const ExpenseCSVUploadDialog: React.FC<ExpenseCSVUploadDialogProps> = ({
 
             <Button
                 className="w-full h-14 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 shadow-xl font-black text-lg rounded-2xl"
-                onClick={handleConfirmUpload}
+                onClick={handleConfirmImport}
                 disabled={state.validRows.length === 0}
             >
                 Confirm Import of {state.validRows.length} Expenses

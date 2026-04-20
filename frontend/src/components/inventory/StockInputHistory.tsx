@@ -246,7 +246,7 @@ const StockInputHistory = () => {
             const invoiceMatch = entry.changeReason?.match(/Invoice: ([^|]+)/);
 
             groups[sessionId] = {
-              date: entry.createdAt,
+              date: new Date(entry.createdAt),
               sessionId,
               supplier: supplierMatch
                 ? supplierMatch[1].trim()
@@ -261,11 +261,11 @@ const StockInputHistory = () => {
         } catch {
           return groups;
         }
-      }, {} as Record<string, { date: Date; sessionId: string; supplier: string; invoice: string; entries: typeof bulkStockAdditions }>);
+      }, {} as Record<string, { date: Date; sessionId: string; supplier: string; invoice: string; entries: StockHistoryEntry[] }>);
 
-      Object.values(groupedBulkHistory).forEach((group) => {
+      (Object.values(groupedBulkHistory) as any[]).forEach((group) => {
         try {
-          group.entries.sort((a, b) => {
+          group.entries.sort((a: any, b: any) => {
             const seqA = a.changeReason?.match(/Seq: (\d+)/);
             const seqB = b.changeReason?.match(/Seq: (\d+)/);
 
@@ -287,7 +287,7 @@ const StockInputHistory = () => {
 
             if (!groups[dateKey]) {
               groups[dateKey] = {
-                date: entry.createdAt,
+                date: new Date(entry.createdAt),
                 entries: [],
               };
             }
@@ -300,28 +300,28 @@ const StockInputHistory = () => {
         },
         {} as Record<
           string,
-          { date: Date; entries: typeof regularStockAdditions }
+          { date: Date; entries: StockHistoryEntry[] }
         >,
       );
 
-      Object.values(groupedRegularHistory).forEach((group) => {
+      (Object.values(groupedRegularHistory) as any[]).forEach((group) => {
         try {
           group.entries.sort(
-            (a, b) =>
+            (a: any, b: any) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
         } catch {}
       });
 
-      const sortedBulkGroups = Object.values(groupedBulkHistory).sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      const sortedBulkGroups = (Object.values(groupedBulkHistory) as any[]).sort(
+        (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
-      const sortedRegularGroups = Object.values(groupedRegularHistory).sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      const sortedRegularGroups = (Object.values(groupedRegularHistory) as any[]).sort(
+        (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
 
-      const filteredBulkGroups = sortedBulkGroups.filter((group) => {
+      const filteredBulkGroups = sortedBulkGroups.filter((group: any) => {
         if (!debouncedSearchTerm.trim()) return true;
 
         try {
@@ -331,7 +331,7 @@ const StockInputHistory = () => {
           const matchesInvoice =
             group.invoice?.toLowerCase()?.includes(searchLower) || false;
 
-          const matchesProduct = group.entries.some((entry) => {
+          const matchesProduct = group.entries.some((entry: any) => {
             if (!entry?.productId) return false;
             try {
               const productDetails = getProductDetails(entry);
@@ -347,12 +347,12 @@ const StockInputHistory = () => {
         }
       });
 
-      const filteredRegularGroups = sortedRegularGroups.filter((group) => {
+      const filteredRegularGroups = sortedRegularGroups.filter((group: any) => {
         if (!debouncedSearchTerm.trim()) return true;
 
         try {
           const searchLower = debouncedSearchTerm.toLowerCase().trim();
-          return group.entries.some((entry) => {
+          return group.entries.some((entry: any) => {
             try {
               if (!entry?.productId) {
                 return (
@@ -726,7 +726,7 @@ const StockInputHistory = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {group.entries.map((entry) => {
+                                {group.entries.map((entry: any) => {
                                   const productDetails =
                                     getProductDetails(entry);
                                   const qtyAdded =
@@ -922,7 +922,7 @@ const StockInputHistory = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {group.entries.map((entry) => {
+                                {group.entries.map((entry: any) => {
                                   const productDetails =
                                     getProductDetails(entry);
                                   const qtyAdded =

@@ -65,7 +65,7 @@ export const useDeletedSales = () => {
                     amount,
                     totalQuantity,
                     deletedAt: log.created_at || log.createdAt,
-                    deletedBy: log.profileName || 'Admin',
+                    deletedBy: log.profile_name || log.profileName || 'Admin',
                     items,
                     fullMetadata: metadata
                 };

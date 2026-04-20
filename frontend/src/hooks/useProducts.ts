@@ -166,7 +166,8 @@ export const useProducts = (
     customChangeReason?: string,
     adjustmentDate?: Date,
     referenceId?: string,
-    receiptNumber?: string
+    receiptNumber?: string,
+    absoluteStock?: number | null
   ): Promise<{ success: boolean; data?: Product; error?: string }> => {
     try {
       if (!userId || !currentBusiness) {
@@ -184,7 +185,8 @@ export const useProducts = (
         userId,
         isFromSale,
         customChangeReason,
-        referenceId
+        referenceId,
+        absoluteStock
       } as any);
 
       if (!result.success || !result.data) {
@@ -200,6 +202,7 @@ export const useProducts = (
 
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
       clearInventoryCaches(queryClient);
+
       return { success: true, data: updatedProduct };
     } catch (error: any) {
       console.error('Error updating product:', error);

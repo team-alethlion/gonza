@@ -24,20 +24,28 @@ interface MobileProductCardProps {
   enableBulkActions?: boolean;
   isSelected?: boolean;
   onToggleSelection?: (productId: string) => void;
+  // Hoisted props for performance
+  currency: string;
+  canViewCostPrice: boolean;
+  canViewSellingPrice: boolean;
+  canViewProfit: boolean;
+  formatFinancial: (value: number | null | undefined, type: "cost" | "selling" | "profit") => string;
 }
 
-const MobileProductCard: React.FC<MobileProductCardProps> = ({
+const MobileProductCard: React.FC<MobileProductCardProps> = React.memo(({
   product,
   onView,
   onEdit,
   showAllFields = true,
   enableBulkActions = false,
   isSelected = false,
-  onToggleSelection
+  onToggleSelection,
+  currency,
+  canViewCostPrice,
+  canViewSellingPrice,
+  canViewProfit,
+  formatFinancial
 }) => {
-  const { settings } = useBusinessSettings();
-  const { formatFinancial, canViewCostPrice, canViewSellingPrice, canViewProfit } = useFinancialVisibility();
-
   // Calculate total cost
   const totalCost = product.quantity * product.costPrice;
 
@@ -102,12 +110,12 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
             <>
               <div className="text-muted-foreground font-medium">Cost Price:</div>
               <div className="font-medium tabular-nums">
-                {canViewCostPrice ? `${settings.currency} ${formatFinancial(product.costPrice, 'cost')}` : '•••'}
+                {canViewCostPrice ? `${currency} ${formatFinancial(product.costPrice, 'cost')}` : '•••'}
               </div>
 
               <div className="text-muted-foreground font-medium">Total Cost:</div>
               <div className="font-medium tabular-nums">
-                {canViewCostPrice ? `${settings.currency} ${formatNumber(totalCost)}` : '•••'}
+                {canViewCostPrice ? `${currency} ${formatNumber(totalCost)}` : '•••'}
               </div>
             </>
           )}
@@ -116,7 +124,7 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
             <>
               <div className="text-muted-foreground font-medium">Selling Price:</div>
               <div className="font-medium tabular-nums">
-                {canViewSellingPrice ? `${settings.currency} ${formatFinancial(product.sellingPrice, 'selling')}` : '•••'}
+                {canViewSellingPrice ? `${currency} ${formatFinancial(product.sellingPrice, 'selling')}` : '•••'}
               </div>
             </>
           )}
@@ -124,6 +132,8 @@ const MobileProductCard: React.FC<MobileProductCardProps> = ({
       </div>
     </TooltipProvider>
   );
-};
+});
+
+MobileProductCard.displayName = 'MobileProductCard';
 
 export default MobileProductCard;

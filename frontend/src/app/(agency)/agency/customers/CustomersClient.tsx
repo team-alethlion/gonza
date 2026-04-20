@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -6,10 +7,9 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { useCustomers, Customer } from "@/hooks/useCustomers";
 import { useCustomerCategories } from "@/hooks/useCustomerCategories";
 import { useCustomerData } from "@/hooks/useCustomerData";
+import { useCustomerStats } from "@/hooks/useCustomerStats";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
-import { useSalesData } from "@/hooks/useSalesData";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getCustomerStatsAction } from "@/app/actions/customers";
 import CustomerPageSkeleton from "@/components/customers/CustomerPageSkeleton";
 import CustomerHeader from "@/components/customers/CustomerHeader";
 import CustomerStatsCards from "@/components/customers/CustomerStatsCards";
@@ -36,9 +36,11 @@ import { AlertCircle, ArrowLeft } from "lucide-react";
 const CustomersClient = ({
   initialCustomers,
   initialCount,
+  initialSummary,
 }: {
   initialCustomers?: Customer[];
   initialCount?: number;
+  initialSummary?: any;
 }) => {
   const { user } = useAuth();
   const { currentBusiness, isLoading: businessLoading } = useBusiness();
@@ -57,11 +59,19 @@ const CustomersClient = ({
     customers: initialCustomers || [],
     count: initialCount || 0,
   });
-  const { categories } = useCustomerCategories();
+  const { categories } = useCustomerCategories(initialSummary?.categories);
   const { settings } = useBusinessSettings();
 
-  // We no longer need all sales on the client for lifetime stats
-  // const { getCustomerLifetimePurchases } = useSalesData(user?.id);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { hasPermission, isLoading: profilesLoading } = useProfiles();
+
+  // New React Query based stats hook
+  const { data: globalStats } = useCustomerStats(
+    user?.id,
+    currentBusiness?.id,
+    initialSummary?.stats,
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -78,9 +88,10 @@ const CustomersClient = ({
     undefined,
   );
   const [activeTab, setActiveTab] = useState("list");
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { hasPermission, isLoading: profilesLoading } = useProfiles();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Permissions
   const canView = hasPermission("customers", "view");
@@ -89,68 +100,13 @@ const CustomersClient = ({
   const canDelete = hasPermission("customers", "delete");
 
   // Duplicate detection
+  const [mounted, setMounted] = useState(false);
   const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<Customer[][]>([]);
   const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<
     Customer[] | null
   >(null);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
-
-  // Global customer stats
-  const [customersWithBirthdaysAll, setCustomersWithBirthdaysAll] = useState<
-    number | undefined
-  >(undefined);
-  const [customersThisMonthAll, setCustomersThisMonthAll] = useState<
-    number | undefined
-  >(undefined);
-
-  // Fetch global customer stats with 5-min cache
-  useEffect(() => {
-    let cancelled = false;
-    const loadGlobalStats = async () => {
-      if (!user?.id || !currentBusiness?.id) return;
-
-      const cacheKey = `allCustomerStats_${currentBusiness.id}`;
-      const cachedRaw = localStorage.getItem(cacheKey);
-      try {
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as {
-            withBirthdays: number;
-            thisMonth: number;
-            ts: number;
-          };
-          if (Date.now() - cached.ts < 5 * 60 * 1000) {
-            setCustomersWithBirthdaysAll(cached.withBirthdays);
-            setCustomersThisMonthAll(cached.thisMonth);
-            return;
-          }
-        }
-      } catch {}
-
-      const result = await getCustomerStatsAction(user.id, currentBusiness.id);
-
-      if (!cancelled && result.success && result.data) {
-        setCustomersWithBirthdaysAll(result.data.withBirthdays);
-        setCustomersThisMonthAll(result.data.thisMonth);
-
-        try {
-          localStorage.setItem(
-            cacheKey,
-            JSON.stringify({
-              withBirthdays: result.data.withBirthdays,
-              thisMonth: result.data.thisMonth,
-              ts: Date.now(),
-            }),
-          );
-        } catch {}
-      }
-    };
-
-    loadGlobalStats();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, currentBusiness?.id]);
 
   // Use customer data hook for all calculations
   const { validCategories, filteredCustomers, customerStats, getCategoryName } =
@@ -160,8 +116,7 @@ const CustomersClient = ({
       searchTerm,
       selectedCategory,
       totalCount,
-      customersWithBirthdaysAll,
-      customersThisMonthAll,
+      globalStats,
     );
 
   useEffect(() => {
@@ -215,34 +170,29 @@ const CustomersClient = ({
     setNewCustomerDialogOpen(true);
   }, []);
 
-  const findDuplicates = useCallback(() => {
-    // Group customers by normalized name (lowercase, trimmed)
-    const nameMap = new Map<string, Customer[]>();
+  const findDuplicates = useCallback(async () => {
+    if (!currentBusiness?.id) return;
 
-    customers.forEach((customer) => {
-      const normalizedName = customer.fullName.toLowerCase().trim();
-      if (!nameMap.has(normalizedName)) {
-        nameMap.set(normalizedName, []);
+    try {
+      const { getDuplicateCustomersAction } = await import(
+        "@/app/actions/customers"
+      );
+      const result = await getDuplicateCustomersAction(currentBusiness.id);
+
+      if (result.success && result.data) {
+        if (result.data.length === 0) {
+          toast.info("No duplicate customers found");
+          return;
+        }
+        setDuplicateGroups(result.data);
+        setShowDuplicatesDialog(true);
+      } else {
+        throw new Error(result.error);
       }
-      nameMap.get(normalizedName)!.push(customer);
-    });
-
-    // Filter groups with more than 1 customer (duplicates)
-    const duplicates: Customer[][] = [];
-    nameMap.forEach((group) => {
-      if (group.length > 1) {
-        duplicates.push(group);
-      }
-    });
-
-    if (duplicates.length === 0) {
-      toast.info("No duplicate customers found");
-      return;
+    } catch (error: any) {
+      toast.error(error.message || "Failed to scan for duplicates");
     }
-
-    setDuplicateGroups(duplicates);
-    setShowDuplicatesDialog(true);
-  }, [customers]);
+  }, [currentBusiness?.id]);
 
   const handleMergeGroup = (group: Customer[]) => {
     setSelectedDuplicateGroup(group);
@@ -250,8 +200,8 @@ const CustomersClient = ({
   };
 
   const handleMergeComplete = () => {
-    // Reload customers after merge
-    window.location.reload();
+    // 🚀 UI FIX: Background refresh is now handled via React Query in the dialog.
+    // No more full-page reload.
   };
 
   if (businessLoading || !currentBusiness || isLoading || profilesLoading) {
@@ -333,39 +283,44 @@ const CustomersClient = ({
         canDelete={canDelete}
       />
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between p-3 md:p-4 border rounded">
-        <div className="text-xs md:text-sm text-muted-foreground">
-          Showing {(page - 1) * pageSize + 1}–
-          {Math.min(page * pageSize, totalCount)} of {totalCount}
+      {/* Pagination Controls - Only show for the main list tab */}
+      {activeTab === "list" && (
+        <div className="flex items-center justify-between p-3 md:p-4 border rounded">
+          <div className="text-xs md:text-sm text-muted-foreground">
+            Showing {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}–
+            {Math.min(page * pageSize, totalCount)} of {totalCount}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="border rounded px-2 py-1 text-xs md:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1); // Reset to first page when changing page size
+              }}>
+              {[20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size} / page
+                </option>
+              ))}
+            </select>
+            <button
+              className="border rounded px-2 py-1 text-xs md:text-sm disabled:opacity-50"
+              disabled={page === 1 || isLoading}
+              onClick={() => setPage(page - 1)}
+              type="button">
+              Prev
+            </button>
+            <button
+              className="border rounded px-2 py-1 text-xs md:text-sm disabled:opacity-50"
+              disabled={page * pageSize >= totalCount || isLoading}
+              onClick={() => setPage(page + 1)}
+              type="button">
+              Next
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}>
-            {[20, 50, 100].map((size) => (
-              <option key={size} value={size}>
-                {size} / page
-              </option>
-            ))}
-          </select>
-          <button
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            disabled={page === 1 || isLoading}
-            onClick={() => setPage(Math.max(1, page - 1))}
-            type="button">
-            Prev
-          </button>
-          <button
-            className="border rounded px-2 py-1 text-xs md:text-sm"
-            disabled={page * pageSize >= totalCount || isLoading}
-            onClick={() => setPage(page + 1)}
-            type="button">
-            Next
-          </button>
-        </div>
-      </div>
+      )}
 
       <NewCustomerDialog
         open={newCustomerDialogOpen}
@@ -392,7 +347,7 @@ const CustomersClient = ({
 
           <div className="space-y-4">
             {duplicateGroups.map((group, index) => (
-              <Card key={index} className="p-4">
+              <Card key={`duplicate-group-${index}-${group[0]?.id}`} className="p-4">
                 <CardContent className="p-0">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -415,7 +370,10 @@ const CustomersClient = ({
                         <div>
                           <div>{customer.phoneNumber || "No phone"}</div>
                           <div className="text-muted-foreground text-xs">
-                            Created: {customer.createdAt.toLocaleDateString()}
+                            Created:{" "}
+                            {mounted
+                              ? customer.createdAt.toLocaleDateString("en-US")
+                              : "---"}
                           </div>
                         </div>
                         {customer.email && (

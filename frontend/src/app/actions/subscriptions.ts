@@ -38,6 +38,32 @@ export async function getAgencySubscriptionAction() {
     return { success: true, data: { ...agency, package: agency.packageDetails } };
   } catch (error: any) {
     console.error("Error fetching subscription:", error);
+    
+    // 🛡️ JWT FALLBACK: If we can't reach the backend (401/403), return the cached session data
+    // This prevents the "Blind UI" problem where the user sees "No Plan Selected"
+    if (error.message?.includes("401:") || error.message?.includes("403:")) {
+      try {
+        const session = await import("@/auth").then(m => m.auth());
+        const user = session?.user as any;
+        if (user) {
+          console.log("[Subscriptions] Falling back to JWT session data due to 401/403");
+          return { 
+            success: true, 
+            data: { 
+              id: user.agencyId,
+              subscription_status: user.subscriptionStatus,
+              subscription_expiry: user.subscriptionExpiry,
+              trial_end_date: user.trialEndDate,
+              is_onboarded: user.isOnboarded,
+              isStale: true // Flag to tell the UI this is cached data
+            } 
+          };
+        }
+      } catch (fallbackError) {
+        console.error("[Subscriptions] Fallback also failed:", fallbackError);
+      }
+    }
+
     return { success: false, error: error.message };
   }
 }
@@ -110,25 +136,7 @@ export async function upgradeSubscriptionAction(packageId: string, duration: "mo
     // 1. Create a unique reference for this transaction
     const reference = `SUB-${Date.now()}-${userId.substring(0, 8)}`;
 
-    // 2. Create Transaction record in DB via Django API
-    const purchaseId = crypto.randomUUID();
-    await djangoFetch('core/subscriptions/', {
-        method: 'POST',
-        body: JSON.stringify({
-            id: purchaseId,
-            user: userId,
-            agency: agencyId,
-            package: packageId,
-            amount: price,
-            type: "subscription",
-            billing_cycle: duration,
-            status: "pending",
-            pesapal_merchant_reference: reference,
-            description: `Subscription upgrade to ${pkg.name} (${duration})`
-        })
-    });
-
-    // 3. Initiate Pesapal Payment
+    // 2. Initiate Pesapal Payment (Centralized: creates Transaction record and gets redirect URL)
     const pesapalResult = await initiatePesapalPayment({
       amount: price,
       email: sessionUser.email || "billing@gonzasystems.com",
@@ -136,19 +144,18 @@ export async function upgradeSubscriptionAction(packageId: string, duration: "mo
       reference: reference,
       description: `Upgrade to ${pkg.name} (${duration})`,
       firstName: sessionUser.name?.split(' ')[0] || "Client",
-      lastName: sessionUser.name?.split(' ').slice(1).join(' ') || "Admin"
+      lastName: sessionUser.name?.split(' ').slice(1).join(' ') || "Admin",
+      type: "subscription",
+      agency_id: agencyId,
+      package_id: packageId,
+      billing_cycle: duration
     });
 
-    if (!pesapalResult.redirect_url) {
-      throw new Error("Failed to get redirect URL from Pesapal");
+    if (!pesapalResult.success || !pesapalResult.redirect_url) {
+      throw new Error(pesapalResult.error || "Failed to initiate Pesapal payment");
     }
 
-    await djangoFetch(`core/subscriptions/${purchaseId}/`, {
-        method: 'PATCH',
-        body: JSON.stringify({ pesapal_order_tracking_id: pesapalResult.order_tracking_id })
-    });
-
-    // 4. Return the redirect URL to the client
+    // 3. Return the redirect URL to the client
     return { 
       success: true, 
       redirectUrl: pesapalResult.redirect_url,

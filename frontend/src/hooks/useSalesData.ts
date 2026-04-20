@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { clearInventoryCaches } from '@/utils/inventoryCacheUtils';
+import { invalidateDashboardCache } from '@/utils/dashboardCacheUtils';
 import { getSalesAction, deleteSaleAction, getTopCustomersAction } from '@/app/actions/sales';
 import { getCustomerLifetimeStatsAction } from '@/app/actions/customers';
 
@@ -22,7 +23,8 @@ export const useSalesData = (
   sortOrder: string = 'desc',
   pageSize?: number,
   enabled: boolean = true,
-  initialData?: Sale[]
+  initialData?: Sale[],
+  options?: { disableFetch?: boolean }
 ) => {
 
   const queryClient = useQueryClient();
@@ -32,6 +34,7 @@ export const useSalesData = (
 
   // Load from Dexie cache on mount
   useEffect(() => {
+    if (options?.disableFetch) return;
     const loadFromCache = async () => {
       if (currentBusiness?.id) {
         const query = localDb.sales.where('locationId').equals(currentBusiness.id);
@@ -47,11 +50,11 @@ export const useSalesData = (
       }
     };
     loadFromCache();
-  }, [currentBusiness?.id]);
+  }, [currentBusiness?.id, options?.disableFetch]);
 
   const loadSales = useCallback(async (): Promise<Sale[]> => {
     try {
-      if (!userId || !currentBusiness) {
+      if (!userId || !currentBusiness || options?.disableFetch) {
         return [];
       }
 
@@ -79,18 +82,18 @@ export const useSalesData = (
       console.error('Error loading sales:', error);
       return [];
     }
-  }, [userId, currentBusiness, pageSize]);
+  }, [userId, currentBusiness, pageSize, options?.disableFetch]);
 
   // Use a stable initial value to prevent re-renders
   const memoizedInitialData = useMemo(() => {
-    if (!initialData) return undefined;
+    if (!initialData || options?.disableFetch) return undefined;
     return initialData.map(s => ({
       ...s,
       date: new Date(s.date),
       createdAt: new Date(s.createdAt),
       updatedAt: new Date(s.updatedAt || s.createdAt)
     }));
-  }, [initialData]);
+  }, [initialData, options?.disableFetch]);
 
   // React Query caching
   const baseQueryKey = useMemo(() => ['sales', currentBusiness?.id, userId], [currentBusiness?.id, userId]);
@@ -104,8 +107,10 @@ export const useSalesData = (
   } = useQuery({
     queryKey,
     queryFn: loadSales,
-    enabled: enabled && !!userId && !!currentBusiness?.id,
-    staleTime: 30_000,
+    enabled: enabled && !!userId && !!currentBusiness?.id && !options?.disableFetch,
+    // 🚀 PERFORMANCE: Use a longer staleTime if we have initial SSR data
+    // This prevents an immediate background re-fetch of the same 50 items.
+    staleTime: memoizedInitialData ? 5 * 60_000 : 30_000, 
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
     initialData: memoizedInitialData
@@ -117,11 +122,11 @@ export const useSalesData = (
   const { data: topCustomers = [] } = useQuery({
     queryKey: ['top_customers', currentBusiness?.id],
     queryFn: async () => {
-      if (!currentBusiness?.id) return [];
+      if (!currentBusiness?.id || options?.disableFetch) return [];
       const result = await getTopCustomersAction(currentBusiness.id);
       return result.success ? (result.data as TopCustomer[]) : [];
     },
-    enabled: enabled && !!currentBusiness?.id,
+    enabled: enabled && !!currentBusiness?.id && !options?.disableFetch,
     staleTime: 5 * 60_000,
   });
 
@@ -212,6 +217,7 @@ export const useSalesData = (
         description: "The sale record and associated data have been successfully deleted."
       });
 
+      invalidateDashboardCache(currentBusiness.id);
       clearInventoryCaches();
       return true;
     } catch (error) {
@@ -231,18 +237,20 @@ export const useSalesData = (
       return oldData ? [newSale, ...oldData] : [newSale];
     });
     queryClient.invalidateQueries({ queryKey: baseQueryKey });
+    invalidateDashboardCache(currentBusiness?.id);
     clearSoldItemsCache();
     clearInventoryCaches();
-  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache]);
+  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache, currentBusiness?.id]);
 
   const updateSale = useCallback((updatedSale: Sale) => {
     queryClient.setQueryData(queryKey, (oldData: Sale[] | undefined) => {
       return oldData ? oldData.map(s => s.id === updatedSale.id ? updatedSale : s) : [updatedSale];
     });
     queryClient.invalidateQueries({ queryKey: baseQueryKey });
+    invalidateDashboardCache(currentBusiness?.id);
     clearSoldItemsCache();
     clearInventoryCaches();
-  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache]);
+  }, [queryClient, queryKey, baseQueryKey, clearSoldItemsCache, currentBusiness?.id]);
 
   return {
     sales,
