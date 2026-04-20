@@ -29,6 +29,8 @@ const BUSINESS_SIZES = [
   { value: "50+", label: "Over 50 People" },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, signOut, updateSession, loading: authLoading } = useAuth();

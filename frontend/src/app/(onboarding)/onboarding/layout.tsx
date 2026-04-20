@@ -2,6 +2,8 @@ import React from "react";
 import { BusinessProvider } from "@/contexts/BusinessContext";
 import { getInitialAppDataAction } from "@/app/actions/app-init";
 
+export const dynamic = "force-dynamic";
+
 export default async function OnboardingLayout({
   children,
 }: {

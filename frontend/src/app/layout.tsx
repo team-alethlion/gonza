@@ -5,6 +5,8 @@ import "@/app/(agency)/agency/globals.css";
 import { Providers } from "@/components/Providers";
 import { auth } from "@/auth";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Gonza Systems",
   description: "Sales and Inventory Tracking Application",
