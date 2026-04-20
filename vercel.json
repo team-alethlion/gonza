@@ -6,13 +6,13 @@
       "routePrefix": "/",
       "framework": "nextjs"
     },
-    "backend": {
+    "api": {
       "entrypoint": "backend",
-      "routePrefix": "/backend-service"
+      "routePrefix": "/api"
+    },
+    "admin": {
+      "entrypoint": "backend",
+      "routePrefix": "/admin"
     }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/backend-service/api/$1" },
-    { "source": "/admin/(.*)", "destination": "/backend-service/admin/$1" }
-  ]
+  }
 }
