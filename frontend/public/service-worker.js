@@ -6,10 +6,10 @@ const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/lovable-uploads/837f80d7-6ea7-4300-a319-e689320289a8.png",
-  "/lovable-uploads/798d07d7-1db7-498c-92f3-6f6346827d59.png",
-  "/lovable-uploads/bede0452-5ece-46ae-acae-25f8d98fbfd2.png",
-  "/lovable-uploads/5de523b3-1d7b-4772-9dd4-ba050fa3fba3.png",
+  "logo/g_rounded.png",
+  "/logo/gonza_systems_lg.png",
+  "/banners/b4.png",
+  "/banners/b1.png",
   "/icon.png",
 ];
 

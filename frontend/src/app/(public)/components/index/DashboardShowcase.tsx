@@ -140,7 +140,7 @@ const DashboardShowcase = ({ B }: { B: any }) => {
           <div style={{ position: "relative", lineHeight: 0 }}>
             <div className="w-full overflow-hidden rounded-xl shadow-2xl bg-muted/30">
               <Image
-                src="/lovable-uploads/GDG.png"
+                src="/mockups/GDG.png"
                 alt="Gonza Systems — dashboard on desktop and mobile"
                 width={2480}
                 height={2044}

@@ -115,7 +115,7 @@ const WhySection = ({ B }: { B: any }) => {
             </div>
             <Image
               fill
-              src="/lovable-uploads/5de523b3-1d7b-4772-9dd4-ba050fa3fba3.png"
+              src="/banners/b1.png"
               alt="Gonza business dashboard"
               style={{ width: "100%", height: "auto", display: "block" }}
             />

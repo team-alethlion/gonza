@@ -3,7 +3,11 @@
   Cache-Control: public, max-age=31536000, immutable
 
 # Cache images for 1 year
-/lovable-uploads/*
+/banners/*
+  Cache-Control: public, max-age=31536000, immutable
+/logo/*
+  Cache-Control: public, max-age=31536000, immutable
+/mockups/*
   Cache-Control: public, max-age=31536000, immutable
 
 # Cache fonts for 1 year

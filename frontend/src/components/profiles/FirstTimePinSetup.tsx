@@ -95,7 +95,7 @@ export const FirstTimePinSetup: React.FC = () => {
         <DialogHeader>
           <div className="flex justify-center mb-6">
             <Image
-              src="/lovable-uploads/798d07d7-1db7-498c-92f3-6f6346827d59.png"
+              src="/logo/gonza_systems_lg.png"
               alt="Gonza Logo"
               width={48}
               height={48}
