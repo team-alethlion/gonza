@@ -1,15 +1,21 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 🚀 VERCEL SUPPORT: Add backend directory to sys.path
+# Since apps like 'users', 'inventory' etc are symlinked from backend,
+# we need to make sure the actual backend folder is in the path for Vercel.
+sys.path.insert(0, str(BASE_DIR.parent / 'backend'))
 
 # Load .env from project root or admin dir
 load_dotenv(BASE_DIR / '.env')
 load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-gonza-default-key-for-dev-only')
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
