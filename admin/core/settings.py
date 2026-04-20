@@ -15,7 +15,7 @@ load_dotenv(BASE_DIR / '.env')
 load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-gonza-default-key-for-dev-only')
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
