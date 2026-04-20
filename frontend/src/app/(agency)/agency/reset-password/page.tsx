@@ -57,7 +57,7 @@ const ResetPassword = () => {
   const router = useRouter();
 
   const form = useForm<ResetFormData>({
-    resolver: zodResolver(resetSchema),
+    resolver: zodResolver(resetSchema as any),
     defaultValues: {
       password: "",
       confirmPassword: "",
