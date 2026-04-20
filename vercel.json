@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "experimentalServices": {
+    "frontend": {
+      "entrypoint": "frontend",
+      "routePrefix": "/",
+      "framework": "nextjs"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/_/backend"
+    },
+    "admin": {
+      "entrypoint": "admin",
+      "routePrefix": "/_/admin"
+    }
+  }
+}
