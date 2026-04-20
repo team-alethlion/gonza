@@ -145,8 +145,8 @@ SIMPLE_JWT = {
 AUTH_USER_MODEL = 'users.User'
 
 UNFOLD = {
-    "SITE_TITLE": "Gonza Admin",
-    "SITE_HEADER": "Gonza Systems Dashboard",
+    "SITE_TITLE": "Gonza Admin Panel",
+    "SITE_HEADER": "Gonza Systems | Management",
     "SITE_ICON": lambda request: "/static/icon.png", 
     "SITE_FAVICON": lambda request: "/static/favicon.ico",
     "SITE_SYMBOL": "speed", # material symbols name
@@ -157,7 +157,7 @@ UNFOLD = {
         "show_all_applications": True,
     },
     "STYLES": [
-        lambda request: "css/admin.css",
+        lambda request: "/static/css/admin.css",
     ],
 }
 
