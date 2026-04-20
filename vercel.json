@@ -8,13 +8,15 @@
     },
     "backend": {
       "entrypoint": "backend",
-      "routePrefix": "/_/"
+      "routePrefix": "/api"
+    },
+    "admin": {
+      "entrypoint": "backend",
+      "routePrefix": "/admin"
     }
   },
   "redirects": [
-    {
-      "source": "/admin",
-      "destination": "/_/admin"
-    }
+    { "source": "/api", "destination": "/api/" },
+    { "source": "/admin", "destination": "/admin/" }
   ]
 }
