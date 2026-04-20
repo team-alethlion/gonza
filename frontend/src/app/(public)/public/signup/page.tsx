@@ -87,7 +87,7 @@ const SignUp = () => {
   const router = useRouter();
 
   const form = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(signUpSchema as any),
     defaultValues: {
       name: "",
       email: "",
