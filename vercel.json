@@ -6,13 +6,9 @@
       "routePrefix": "/",
       "framework": "nextjs"
     },
-    "api": {
+    "backend": {
       "entrypoint": "backend",
-      "routePrefix": "/api"
-    },
-    "admin": {
-      "entrypoint": "backend",
-      "routePrefix": "/admin"
+      "routePrefix": "/_"
     }
   }
 }
