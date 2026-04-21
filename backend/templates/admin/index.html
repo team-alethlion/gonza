@@ -1,0 +1,120 @@
+{% extends "unfold/layouts/base.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block title %}{% trans "Dashboard" %} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block content %}
+<div class="p-4 lg:p-10 flex flex-col gap-4 lg:gap-10">
+  <!-- Header Section -->
+  <div class="flex flex-col gap-1">
+    <h1 class="text-2xl font-semibold text-neutral-900 dark:text-white">
+      {% trans "Dashboard" %}
+    </h1>
+    <p class="text-sm text-neutral-500 dark:text-neutral-400">
+      Welcome back,
+      <span class="font-medium text-neutral-900 dark:text-white">{{ user.first_name|default:user.email }}</span>.
+    </p>
+  </div>
+
+  <!-- Main Cards Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-8">
+    <!-- Analytics -->
+    <a href="/admin/core_app/agency/" class="group flex flex-col bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-6 flex items-start gap-4">
+        <div class="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 p-3 rounded-md group-hover:bg-primary-600 group-hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-2xl">analytics</span>
+        </div>
+        <div class="flex flex-col">
+          <h3 class="text-base font-semibold text-neutral-900 dark:text-white">
+            {% trans "Agency Management" %}
+          </h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            {% trans "Control agency access, trial status, and global limits." %}
+          </p>
+        </div>
+      </div>
+      <div class="mt-auto px-6 py-3 bg-transparent border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+        <span class="text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">{% trans "View Agencies" %}</span>
+        <span class="material-symbols-outlined text-sm text-neutral-400">chevron_right</span>
+      </div>
+    </a>
+
+    <!-- Inventory -->
+    <a href="/admin/inventory/product/" class="group flex flex-col bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-6 flex items-start gap-4">
+        <div class="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 p-3 rounded-md group-hover:bg-primary-600 group-hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-2xl">inventory_2</span>
+        </div>
+        <div class="flex flex-col">
+          <h3 class="text-base font-semibold text-neutral-900 dark:text-white">
+            {% trans "Global Inventory" %}
+          </h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            {% trans "Monitor products and stock history across all branches." %}
+          </p>
+        </div>
+      </div>
+      <div class="mt-auto px-6 py-3 bg-transparent border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+        <span class="text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">{% trans "View Catalog" %}</span>
+        <span class="material-symbols-outlined text-sm text-neutral-400">chevron_right</span>
+      </div>
+    </a>
+
+    <!-- Users -->
+    <a href="/admin/users/user/" class="group flex flex-col bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <div class="p-6 flex items-start gap-4">
+        <div class="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 p-3 rounded-md group-hover:bg-primary-600 group-hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-2xl">group</span>
+        </div>
+        <div class="flex flex-col">
+          <h3 class="text-base font-semibold text-neutral-900 dark:text-white">
+            {% trans "User Accounts" %}
+          </h3>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            {% trans "Manage administrative access and system permissions." %}
+          </p>
+        </div>
+      </div>
+      <div class="mt-auto px-6 py-3 bg-transparent border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+        <span class="text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">{% trans "Manage Users" %}</span>
+        <span class="material-symbols-outlined text-sm text-neutral-400">chevron_right</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- System Operations Grid -->
+  <div class="flex flex-col gap-4 mt-4">
+    <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">
+      {% trans "System Operations" %}
+    </h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <a href="/admin/sales/sale/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">payments</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "Sales" %}</span>
+      </a>
+      <a href="/admin/finance/transaction/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">account_balance_wallet</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "Ledger" %}</span>
+      </a>
+      <a href="/admin/customers/customer/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">person</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "CRM" %}</span>
+      </a>
+      <a href="/admin/messaging/message/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">chat</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "Logs" %}</span>
+      </a>
+      <a href="/admin/core_app/package/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">deployed_code</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "Plans" %}</span>
+      </a>
+      <a href="/admin/core_app/activityhistory/" class="flex flex-col items-center justify-center p-6 bg-transparent border border-neutral-200 dark:border-neutral-800 rounded-md shadow-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-center group">
+        <span class="material-symbols-outlined mb-2 text-neutral-400 group-hover:text-primary-600">history</span>
+        <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">{% trans "Audit" %}</span>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
