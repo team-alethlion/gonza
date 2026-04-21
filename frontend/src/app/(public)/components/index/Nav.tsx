@@ -36,7 +36,7 @@ const Nav = () => {
               height={214}
               src="/logo/gonza_systems_white.png"
               alt="Gonza Logo"
-              className="h-8 md:h-10"
+              className="h-8 md:h-10 w-auto"
             />
           </Link>
         </div>
