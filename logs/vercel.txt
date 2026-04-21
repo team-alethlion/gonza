@@ -1,0 +1,911 @@
+
+Apr 21 01:26:30.84
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:30.54
+GET
+307
+gonza-pi.vercel.app
+/admin
+[Middleware] CHECK -> Path: /admin, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:06.26
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:06.23
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:06.23
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:06.23
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:06.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.97
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.94
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.resize.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.resize.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.94
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.sort.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.sort.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.93
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.persist.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.persist.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.93
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.anchor.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.anchor.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.41
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:26:05] "GET /_/admin/login/?next=%2F_%2Fadmin%2Flogin%2Fcss%2Fadmin.css HTTP/1.1" 200 -
+Apr 21 01:26:05.36
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.36
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.35
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.35
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.35
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.34
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.32
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.31
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/simplebar/simplebar.js
+[Middleware] CHECK -> Path: /static/unfold/js/simplebar/simplebar.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/app.js
+[Middleware] CHECK -> Path: /static/unfold/js/app.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/chart/chart.js
+[Middleware] CHECK -> Path: /static/unfold/js/chart/chart.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/simplebar/simplebar.css
+[Middleware] CHECK -> Path: /static/unfold/css/simplebar/simplebar.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/htmx/htmx.js
+[Middleware] CHECK -> Path: /static/unfold/js/htmx/htmx.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.07
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/styles.css
+[Middleware] CHECK -> Path: /static/unfold/css/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.05
+GET
+302
+gonza-pi.vercel.app
+/_/admin/login/css/admin.css
+127.0.0.1 - - [21/Apr/2026 01:26:05] "GET /_/admin/login/css/admin.css HTTP/1.1" 302 -
+Apr 21 01:26:05.04
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/material-symbols/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/material-symbols/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:05.02
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/inter/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/inter/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:26:04.61
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:26:04] "GET /_/admin/login/?next=%2F_%2Fadmin%2F HTTP/1.1" 200 -
+Apr 21 01:26:04.23
+GET
+302
+gonza-pi.vercel.app
+/_/admin/
+127.0.0.1 - - [21/Apr/2026 01:26:04] "GET /_/admin/ HTTP/1.1" 302 -
+Apr 21 01:26:03.82
+GET
+301
+gonza-pi.vercel.app
+/_/admin
+127.0.0.1 - - [21/Apr/2026 01:26:03] "GET /_/admin HTTP/1.1" 301 -
+Apr 21 01:25:56.64
+GET
+404
+gonza-pi.vercel.app
+/_/api
+2
+Not Found: /_/api
+Apr 21 01:25:48.87
+GET
+404
+gonza-pi.vercel.app
+/_/
+2
+Not Found: /_/
+Apr 21 01:25:34.86
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.86
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.86
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.85
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.85
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.57
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.56
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.resize.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.resize.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.56
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.sort.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.sort.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.56
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.persist.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.persist.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:34.56
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.anchor.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.anchor.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.99
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:25:34] "GET /_/admin/login/?next=%2F_%2Fadmin%2Flogin%2Fcss%2Fadmin.css HTTP/1.1" 200 -
+Apr 21 01:25:33.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/simplebar/simplebar.js
+[Middleware] CHECK -> Path: /static/unfold/js/simplebar/simplebar.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/app.js
+[Middleware] CHECK -> Path: /static/unfold/js/app.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/chart/chart.js
+[Middleware] CHECK -> Path: /static/unfold/js/chart/chart.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/htmx/htmx.js
+[Middleware] CHECK -> Path: /static/unfold/js/htmx/htmx.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/simplebar/simplebar.css
+[Middleware] CHECK -> Path: /static/unfold/css/simplebar/simplebar.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.63
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/styles.css
+[Middleware] CHECK -> Path: /static/unfold/css/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.63
+GET
+302
+gonza-pi.vercel.app
+/_/admin/login/css/admin.css
+127.0.0.1 - - [21/Apr/2026 01:25:33] "GET /_/admin/login/css/admin.css HTTP/1.1" 302 -
+Apr 21 01:25:33.63
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/material-symbols/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/material-symbols/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/inter/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/inter/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:33.12
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:25:33] "GET /_/admin/login/?next=%2F_%2Fapi HTTP/1.1" 200 -
+Apr 21 01:25:23.07
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:23.07
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:23.07
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:23.07
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:23.07
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.79
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.78
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.resize.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.resize.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.78
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.sort.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.sort.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.78
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.persist.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.persist.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.78
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.anchor.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.anchor.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:22.02
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:25:22] "GET /_/admin/login/?next=%2F_%2Fadmin%2Flogin%2Fcss%2Fadmin.css HTTP/1.1" 200 -
+Apr 21 01:25:21.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.95
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.94
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.93
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/simplebar/simplebar.js
+[Middleware] CHECK -> Path: /static/unfold/js/simplebar/simplebar.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/chart/chart.js
+[Middleware] CHECK -> Path: /static/unfold/js/chart/chart.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/app.js
+[Middleware] CHECK -> Path: /static/unfold/js/app.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/htmx/htmx.js
+[Middleware] CHECK -> Path: /static/unfold/js/htmx/htmx.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/simplebar/simplebar.css
+[Middleware] CHECK -> Path: /static/unfold/css/simplebar/simplebar.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.66
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/styles.css
+[Middleware] CHECK -> Path: /static/unfold/css/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.65
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/material-symbols/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/material-symbols/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.65
+GET
+302
+gonza-pi.vercel.app
+/_/admin/login/css/admin.css
+127.0.0.1 - - [21/Apr/2026 01:25:21] "GET /_/admin/login/css/admin.css HTTP/1.1" 302 -
+Apr 21 01:25:21.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/inter/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/inter/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:25:21.05
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:25:21] "GET /_/admin/login/?next=%2F_%2F HTTP/1.1" 200 -
+Apr 21 01:24:36.61
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.61
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.60
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.60
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.60
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.06
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.persist.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.persist.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.06
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.sort.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.sort.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.06
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.06
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.resize.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.resize.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:36.04
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.anchor.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.anchor.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.30
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.30
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:24:34] "GET /_/admin/login/?next=%2F_%2Fadmin%2Flogin%2Fcss%2Fadmin.css HTTP/1.1" 200 -
+Apr 21 01:24:34.23
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:34.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.89
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/app.js
+[Middleware] CHECK -> Path: /static/unfold/js/app.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.89
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/simplebar/simplebar.js
+[Middleware] CHECK -> Path: /static/unfold/js/simplebar/simplebar.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.89
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/simplebar/simplebar.css
+[Middleware] CHECK -> Path: /static/unfold/css/simplebar/simplebar.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.89
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/chart/chart.js
+[Middleware] CHECK -> Path: /static/unfold/js/chart/chart.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.89
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/htmx/htmx.js
+[Middleware] CHECK -> Path: /static/unfold/js/htmx/htmx.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.88
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/styles.css
+[Middleware] CHECK -> Path: /static/unfold/css/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.88
+GET
+302
+gonza-pi.vercel.app
+/_/admin/login/css/admin.css
+127.0.0.1 - - [21/Apr/2026 01:24:34] "GET /_/admin/login/css/admin.css HTTP/1.1" 302 -
+Apr 21 01:24:33.88
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/material-symbols/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/material-symbols/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.88
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/inter/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/inter/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:24:33.20
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:24:33] "GET /_/admin/login/?next=%2F_%2Fadmin%2F HTTP/1.1" 200 -
+Apr 21 01:23:52.61
+GET
+200
+gonza-e46e3ra72-team-alethlions-projects.vercel.app
+/
+[Middleware] CHECK -> Path: /, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:23:52.61
+GET
+200
+gonza-e46e3ra72-team-alethlions-projects.vercel.app
+/
+[Middleware] CHECK -> Path: /, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:55.22
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:55.19
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:55.18
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:55.18
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:55.11
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:54.86
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.sort.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.sort.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:54.83
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:54.83
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.resize.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.resize.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:54.80
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.persist.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.persist.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:54.68
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/alpine/alpine.anchor.js
+[Middleware] CHECK -> Path: /static/unfold/js/alpine/alpine.anchor.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.79
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.78
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.78
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.78
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.77
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.72
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.70
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.67
+GET
+200
+gonza-pi.vercel.app
+/public/login
+[Middleware] CHECK -> Path: /public/login, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:52.29
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+127.0.0.1 - - [21/Apr/2026 01:19:52] "GET /_/admin/login/?next=%2F_%2Fadmin%2Flogin%2Fcss%2Fadmin.css HTTP/1.1" 200 -
+Apr 21 01:19:51.64
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/simplebar/simplebar.js
+[Middleware] CHECK -> Path: /static/unfold/js/simplebar/simplebar.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.63
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/simplebar/simplebar.css
+[Middleware] CHECK -> Path: /static/unfold/css/simplebar/simplebar.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/chart/chart.js
+[Middleware] CHECK -> Path: /static/unfold/js/chart/chart.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/app.js
+[Middleware] CHECK -> Path: /static/unfold/js/app.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.62
+GET
+302
+gonza-pi.vercel.app
+/_/admin/login/css/admin.css
+127.0.0.1 - - [21/Apr/2026 01:19:52] "GET /_/admin/login/css/admin.css HTTP/1.1" 302 -
+Apr 21 01:19:51.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/js/htmx/htmx.js
+[Middleware] CHECK -> Path: /static/unfold/js/htmx/htmx.js, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/material-symbols/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/material-symbols/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.62
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/css/styles.css
+[Middleware] CHECK -> Path: /static/unfold/css/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:51.60
+GET
+307
+gonza-pi.vercel.app
+/static/unfold/fonts/inter/styles.css
+[Middleware] CHECK -> Path: /static/unfold/fonts/inter/styles.css, User: undefined, Role: undefined, Status: undefined, Onboarded: undefined, Sub: undefined
+Apr 21 01:19:43.58
+GET
+200
+gonza-pi.vercel.app
+/_/admin/login/
+2
+/var/task/_vendor/django/core/handlers/base.py:62: UserWarning: No directory at: /var/task/staticfiles/ mw_instance = middleware(adapted_handler)
+No more logs to show within selected timeline

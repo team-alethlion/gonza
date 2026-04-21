@@ -32,8 +32,8 @@ const Nav = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Link href="/" className="flex items-center">
             <Image
-              width={32}
-              height={32}
+              width={539}
+              height={214}
               src="/logo/gonza_systems_white.png"
               alt="Gonza Logo"
               className="h-8 md:h-10"
