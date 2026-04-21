@@ -22,11 +22,11 @@ const Footer = ({ B }: { B: any }) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Link href="/" className="flex items-center">
             <Image
-              width={32}
-              height={32}
+              width={539}
+              height={214}
               src="/logo/gonza_systems_white.png"
               alt="Gonza Logo"
-              className="h-8 md:h-10"
+              className="h-8 md:h-10 w-auto"
             />
           </Link>
           <p style={{ fontSize: 12, color: B.textDim, marginTop: 4 }}>

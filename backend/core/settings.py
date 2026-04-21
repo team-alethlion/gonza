@@ -65,7 +65,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -102,7 +102,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    BASE_DIR.parent / "admin" / "public",
+    BASE_DIR / "public",
 ]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
