@@ -45,5 +45,6 @@ frontend/public/lovable-uploads/
 hidden
 .hidden
 # Legacy Folder
+admin/
 prev/
 backup/
