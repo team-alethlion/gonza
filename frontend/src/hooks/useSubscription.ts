@@ -5,8 +5,10 @@ import { getAgencySubscriptionAction, activateTrialAction, upgradeSubscriptionAc
 import { getPackagesAction } from "@/app/actions/packages";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useRouter } from "next/navigation";
 
 export const useSubscription = () => {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { updateSession } = useAuth();
 
@@ -35,16 +37,32 @@ export const useSubscription = () => {
         toast.success("Free trial activated successfully!");
         // Fetch fresh subscription data to get the new trialEndDate
         const subResult = await getAgencySubscriptionAction();
+        
         if (subResult.success && subResult.data) {
+          const freshData = subResult.data;
+          const isActuallyOnboarded = freshData.is_onboarded || freshData.isOnboarded;
+          const status = freshData.subscription_status || freshData.subscriptionStatus || "trial";
+          
+          // 🛡️ VERIFICATION CHECK: Only redirect if the backend confirms the trial is active
+          const isVerified = status === "trial" || status === "active";
+
           await updateSession({
-            refreshFromDb: true // Force JWT callback to re-fetch from Django
+            subscriptionStatus: status,
+            subscriptionExpiry: freshData.subscription_expiry || freshData.subscriptionExpiry,
+            trialEndDate: freshData.trial_end_date || freshData.trialEndDate,
+            isOnboarded: isActuallyOnboarded,
           });
+
+          if (isVerified) {
+            const targetPath = isActuallyOnboarded ? "/agency" : "/onboarding";
+            console.log(`[Subscription] Verified. Redirecting to ${targetPath}`);
+            
+            setTimeout(() => {
+              router.push(targetPath);
+            }, 1000);
+          }
         }
         queryClient.invalidateQueries({ queryKey: ["agency-subscription"] });
-        // Redirect to agency (middleware will handle onboarding check if needed)
-        setTimeout(() => {
-          window.location.href = "/agency";
-        }, 1000);
       } else {
         // Cleanly handle both string and object errors from Django
         const errorMsg = typeof data.error === 'string' 
@@ -66,17 +84,31 @@ export const useSubscription = () => {
       } else if (data.success) {
         toast.success("Subscription upgraded successfully!");
         const subResult = await getAgencySubscriptionAction();
+        
         if (subResult.success && subResult.data) {
+          const freshData = subResult.data;
+          const isActuallyOnboarded = freshData.is_onboarded || freshData.isOnboarded;
+          const status = freshData.subscription_status || freshData.subscriptionStatus || "active";
+          
+          const isVerified = status === "active" || status === "trial";
+
           await updateSession({
-            subscriptionStatus: "active",
-            subscriptionExpiry: subResult.data.subscriptionExpiry,
+            subscriptionStatus: status,
+            subscriptionExpiry: freshData.subscription_expiry || freshData.subscriptionExpiry,
+            trialEndDate: freshData.trial_end_date || freshData.trialEndDate,
+            isOnboarded: isActuallyOnboarded,
           });
+
+          if (isVerified) {
+            const targetPath = isActuallyOnboarded ? "/agency" : "/onboarding";
+            console.log(`[Subscription] Upgraded and Verified. Redirecting to ${targetPath}`);
+            
+            setTimeout(() => {
+              router.push(targetPath);
+            }, 1500);
+          }
         }
         queryClient.invalidateQueries({ queryKey: ["agency-subscription"] });
-        // Redirect to agency (middleware will handle onboarding check if needed)
-        setTimeout(() => {
-          window.location.href = "/agency";
-        }, 1500);
       } else {
         toast.error(data.error || "Failed to upgrade subscription");
       }
