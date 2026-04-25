@@ -76,6 +76,11 @@ export const useOnboarding = (currentBusinessId?: string | null) => {
     const isCompleted = onboarding?.completed === true;
     const isFrozen = onboarding?.is_frozen === true || globalStatus?.is_frozen === true;
 
+    // 🛡️ SYNCED STATUS:
+    // This combines the Database check (onboarding hook) with the Session check (user object).
+    // This is critical to prevent the "U-turn" where one is updated but the other is lagging.
+    const isActuallyOnboarded = user?.isOnboarded || isCompleted;
+
     const refetch = useCallback(() => {
         refetchOnboarding();
         refetchGlobal();
@@ -123,5 +128,6 @@ export const useOnboarding = (currentBusinessId?: string | null) => {
         packageId: globalStatus?.package_id,
         saveOnboarding,
         refetch,
+        isActuallyOnboarded,
     };
 };

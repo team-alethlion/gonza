@@ -159,7 +159,7 @@ UNFOLD = {
         "show_all_applications": True,
     },
     "STYLES": [
-        lambda request: "css/admin.css",
+        lambda request: "/static/css/admin.css",
     ],
 }
 

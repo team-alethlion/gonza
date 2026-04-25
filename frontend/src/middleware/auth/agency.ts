@@ -30,12 +30,12 @@ export const agencyProxy = (auth: any, nextUrl: any) => {
 
   /**
    * 🚀 RECOVERY BYPASS: 
-   * If the user is technically 'active' but the cookie date is expired (isSubActive is false), 
-   * we let them through to the /agency layout. 
+   * If the user is technically 'active' or on 'trial' but the cookie date is expired 
+   * (isSubActive/isTrialActive is false), we let them through to the /agency layout. 
    * The Layout's server-side guard (StrictGuard) will then fetch the fresh date from the 
    * database and either sync the session or show the "Re-authentication Required" screen.
    */
-  const needsSync = subStatus === 'active' && !isSubActive;
+  const needsSync = (subStatus === 'active' && !isSubActive) || (subStatus === 'trial' && !isTrialActive);
   
   if (!isTrialActive && !isSubActive && !needsSync) {
     console.log(`[AgencyProxy] ❌ Access Denied: Subscription Expired or Invalid (${subStatus})`);

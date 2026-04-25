@@ -13,7 +13,8 @@ Allow users to connect their existing WhatsApp accounts to the application by sc
 - **Endpoints**:
   - `POST /initialize/`: Creates the instance and returns a QR code.
   - `GET /status/`: Polls the gateway to see if the user has scanned the QR.
-  - `POST /disconnect/`: Logs out the device.
+  - `POST /disconnect/`:
+  -  Logs out the device.
 
 ---
 

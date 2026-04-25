@@ -34,9 +34,9 @@
 - **The Rule**: NEVER assume a problem's cause based on code inspection alone.
 - **The Protocol**: Before making ANY update, you MUST create a diagnostic script (Python for backend, Node.js/Fetch for frontend) to verify the current state of the data.
 - **The Objective**: Proven facts are required. Use scripts to confirm:
-    - **Exact Keys**: What dictionary keys are actually coming from the API?
-    - **Exact Types**: Are values Strings, Numbers, or Objects?
-    - **Links**: Are foreign keys (like `agency_id`) actually populated in the database?
+  - **Exact Keys**: What dictionary keys are actually coming from the API?
+  - **Exact Types**: Are values Strings, Numbers, or Objects?
+  - **Links**: Are foreign keys (like `agency_id`) actually populated in the database?
 - **The Mandate**: If an update is made without a preceding empirical test run that proves the fix is necessary and accurate, it is considered a violation of safety protocols.
 - **The Rationale**: Prevents "useless" or "blind" updates that might address the wrong problem or fail to account for the real data structure.
 
@@ -68,3 +68,9 @@
 - **The Protocol**: For large ViewSets or Components, perform additions sequentially. First, read the file to find the end of the previous method, then append the new method.
 - **The Mandate**: Speed is secondary to integrity. If a change takes 3 turns instead of 1 to ensure that NO existing code is lost, you MUST take the 3 turns.
 - **The Rationale**: Shortcuts that skip structural context frequently lead to "Orphaned Logic" or "Deleted Class Headers", which crashes the entire application. Structural integrity is the project's Tier 1 priority.
+
+## 11. Python Environment Mandate (uv)
+
+- **The Rule**: ALWAYS use the `uv` package manager for all Python-related tasks, including running management commands, installing dependencies, and managing virtual environments.
+- **The Protocol**: Use `uv run python manage.py ...` instead of `python manage.py` or `.venv/bin/python`.
+- **The Rationale**: Ensures consistent environment management and faster execution within the workspace.

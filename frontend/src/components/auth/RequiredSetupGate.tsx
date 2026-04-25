@@ -15,7 +15,7 @@ interface RequiredSetupGateProps {
 export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }) => {
     const { businessLocations, currentBusiness, isLoading: businessLoading, createBusiness } = useBusiness();
     const { profiles, isLoading: profilesLoading } = useProfiles();
-    const { isCompleted: onboardingCompleted, isFrozen, daysRemaining, isLoading: onboardingLoading } = useOnboarding(currentBusiness?.id);
+    const { isActuallyOnboarded, isFrozen, daysRemaining, isLoading: onboardingLoading } = useOnboarding(currentBusiness?.id);
     const { user, loading: authLoading, signOut } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
@@ -29,7 +29,7 @@ export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }
         businessLoading,
         profilesLoading,
         onboardingLoading,
-        onboardingCompleted,
+        isActuallyOnboarded,
         isAutomating,
         locationsCount: businessLocations.length,
         profilesCount: profiles.length,
@@ -60,15 +60,19 @@ export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }
         performAutoSetup();
     }, [businessLoading, profilesLoading, businessLocations.length, user, isAutomating, createBusiness]);
 
-    // Redirect logic
+    // 🔄 SYNCHRONIZED REDIRECT LOGIC
     useEffect(() => {
-        if (!authLoading && !businessLoading && !onboardingLoading && onboardingCompleted === false) {
+        // Only consider redirecting if all loading states are resolved
+        const isFullyLoaded = !authLoading && !businessLoading && !onboardingLoading;
+        
+        if (isFullyLoaded && isActuallyOnboarded === false) {
+            // Only redirect if we are NOT already on the onboarding page
             if (pathname !== '/onboarding') {
-                console.log('[Gate Action]: MANDATORY REDIRECT to /onboarding');
+                console.log('[Gate Action]: MANDATORY REDIRECT to /onboarding (Session says Incomplete)');
                 router.replace('/onboarding');
             }
         }
-    }, [authLoading, businessLoading, onboardingLoading, onboardingCompleted, pathname, router]);
+    }, [authLoading, businessLoading, onboardingLoading, isActuallyOnboarded, pathname, router]);
 
 
     // Primary Loading states
@@ -94,14 +98,14 @@ export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }
     }
 
     // STRICT CHECK: If not completed and not on onboarding page, return null (waiting for redirect effect)
-    if (onboardingCompleted === false && pathname !== '/onboarding') {
+    if (isActuallyOnboarded === false && pathname !== '/onboarding') {
         console.log('[Gate Status]: Blocking render, awaiting redirect to onboarding');
         return null;
     }
 
     // MANDATORY FREEZE CHECK (Only after onboarding is complete)
     // This allows new users to complete onboarding even if their trial is technically 0 (though defaults should prevent this)
-    if (onboardingCompleted && isFrozen) {
+    if (isActuallyOnboarded && isFrozen) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
                 <div className="w-full max-w-md bg-white border border-border/40 shadow-xl rounded-lg p-10 text-center animate-in zoom-in-95 duration-300">
@@ -143,7 +147,7 @@ export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }
     }
 
     // FINAL PASS: Only let through if setup is complete AND onboarding is complete
-    if (onboardingCompleted === true || pathname === '/onboarding') {
+    if (isActuallyOnboarded === true || pathname === '/onboarding') {
         console.log('[Gate Status]: ALLOWING PASSAGE to', pathname);
         return <>{children}</>;
     }

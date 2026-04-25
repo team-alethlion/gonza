@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Lock, LogOut } from 'lucide-react';
 
@@ -17,6 +18,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
   useEffect(() => {
     // 🔍 Log to monitoring service if available
     console.error("[Agency Error Boundary]:", error.message || error);
@@ -80,7 +82,7 @@ export default function Error({
             Log In Again
           </Button>
           <Button
-            onClick={() => window.location.href = "/"}
+            onClick={() => router.push("/")}
             variant="outline"
             size="lg"
           >

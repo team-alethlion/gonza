@@ -187,12 +187,27 @@ export default function OnboardingPage() {
 
       if (res.success) {
         toast.success("Welcome aboard! Your setup is complete.");
-        await updateSession({
+        
+        // 🔄 ASYNC SESSION SYNC
+        // We pass the fresh data directly to ensure the JWT is updated immediately.
+        const updatedSession = await updateSession({
           isOnboarded: true,
           agencyOnboarded: true,
           subscriptionStatus: subStatus,
+          trialEndDate: trialEndDate,
         });
-        router.replace("/agency");
+
+        // 🛡️ VERIFIED NAVIGATION
+        // We only navigate if the session update confirms the onboarding flag is now true.
+        if (updatedSession?.user?.isOnboarded || updatedSession?.isOnboarded) {
+          console.log("[Onboarding] Session verified. Moving to dashboard...");
+          router.push("/agency");
+        } else {
+          // Fallback: If for some reason updateSession didn't reflect it, 
+          // we wait a tiny bit and try navigation anyway as the DB is already updated.
+          console.warn("[Onboarding] Session update lag detected. Forcing navigation...");
+          setTimeout(() => router.push("/agency"), 500);
+        }
       } else {
         toast.error(res.error || "Something went wrong during setup.");
       }
