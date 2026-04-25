@@ -147,7 +147,7 @@ export const RequiredSetupGate: React.FC<RequiredSetupGateProps> = ({ children }
     }
 
     // FINAL PASS: Only let through if setup is complete AND onboarding is complete
-    if (onboardingCompleted === true || pathname === '/onboarding') {
+    if (isActuallyOnboarded === true || pathname === '/onboarding') {
         console.log('[Gate Status]: ALLOWING PASSAGE to', pathname);
         return <>{children}</>;
     }
