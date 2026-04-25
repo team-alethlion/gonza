@@ -63,9 +63,4 @@ The `ProfitLossEngine` implemented in Step 4 is already designed to pick up thes
 
 ---
 
-## 6. Implementation Sequence
-1.  **Backend Logic**: Build the `returns.py` service and test with raw Python scripts.
-2.  **API Layer**: Expose the service via DRF ViewSets.
-3.  **Frontend Dialog**: Build the interactive return modal.
-4.  **Frontend History**: Build the returns list view.
-5.  **PDF Update**: Add a "Credit Note" or "Return Receipt" PDF generator.
+
