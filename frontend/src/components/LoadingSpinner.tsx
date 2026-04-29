@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -25,17 +28,32 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   };
 
   return (
-    <div
-      className={`flex flex-col items-center justify-center space-y-4 ${className}`}>
-      <Image
-        src="/icon.png"
-        alt="Loading"
-        width={sizeMap[size]}
-        height={sizeMap[size]}
-        className={`${sizeClasses[size]} animate-spin`}
-      />
-      <p className="text-muted-foreground text-sm">{message}</p>
-    </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={`flex flex-col items-center justify-center space-y-4 ${className}`}
+    >
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className={sizeClasses[size]}
+      >
+        <Image
+          src="/icon.png"
+          alt="Loading"
+          width={sizeMap[size]}
+          height={sizeMap[size]}
+          className="w-full h-full"
+        />
+      </motion.div>
+      <motion.p 
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        className="text-muted-foreground text-sm font-medium"
+      >
+        {message}
+      </motion.p>
+    </motion.div>
   );
 };
 

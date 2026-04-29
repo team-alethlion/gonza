@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import "@/app/(agency)/agency/globals.css";
 import { Providers } from "@/components/Providers";
 import { auth } from "@/auth";
+import AnimatePresenceWrapper from "@/components/AnimatePresenceWrapper";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <head>
         <meta
           name="viewport"
@@ -31,7 +32,9 @@ export default async function RootLayout({
         <Providers
           initialSession={session || null}
           isUnauthorized={false}>
-          {children}
+          <AnimatePresenceWrapper>
+            {children}
+          </AnimatePresenceWrapper>
           <Toaster />
           <Sonner />
         </Providers>

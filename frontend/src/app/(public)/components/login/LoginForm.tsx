@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,7 +13,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@/components/ui/separator";
@@ -22,22 +22,18 @@ import { toast } from "sonner";
 import { LoginHelpDialog } from "./LoginHelpDialog";
 import { LoginSocial } from "./LoginSocial";
 import { ForgotPasswordButton } from "./ForgotPasswordButton";
+import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
+import { cn } from "@/lib/utils";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
-export function LoginForm() {
+export function LoginForm({ isDark = false }: { isDark?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, user } = useAuth();
   const router = useRouter();
 
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema as any),
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -46,21 +42,22 @@ export function LoginForm() {
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    // Don't redirect if this is a password recovery flow
-    const isRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
+    const isRecovery =
+      typeof window !== "undefined" &&
+      window.location.hash.includes("type=recovery");
 
     if (user && !isRecovery) {
-      console.log("User already authenticated, letting middleware handle routing");
-      // Removing hardcoded /agency redirect to allow strict middleware to work
+      console.log(
+        "User already authenticated, letting middleware handle routing",
+      );
     }
   }, [user, router]);
 
-  const handleSubmit = async (data: LoginFormData) => {
+  const handleSubmit = async (data: LoginFormValues) => {
     setLoading(true);
 
     try {
       await signIn(data.email, data.password);
-      // redirect handled by signIn callback
     } catch (error: any) {
       console.error("Email/password sign in error:", error);
       if (error.message.includes("Invalid login credentials")) {
@@ -76,21 +73,22 @@ export function LoginForm() {
   return (
     <div className="space-y-4">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="space-y-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className={cn(isDark && "text-slate-300")}>Email</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     type="email"
                     placeholder="Enter your email"
-                    className="border-input focus:border-primary"
+                    className={cn(
+                      "border-input focus:border-primary",
+                      isDark && "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                    )}
                   />
                 </FormControl>
                 <FormMessage />
@@ -103,14 +101,17 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className={cn(isDark && "text-slate-300")}>Password</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Input
                       {...field}
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
-                      className="border-input focus:border-primary pr-10"
+                      className={cn(
+                        "border-input focus:border-primary pr-10",
+                        isDark && "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                      )}
                     />
                     <Button
                       type="button"
@@ -133,12 +134,12 @@ export function LoginForm() {
 
           <div className="flex items-center justify-between">
             <LoginHelpDialog />
-            <ForgotPasswordButton form={form} />
+            <ForgotPasswordButton form={form as any} />
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90"
+            className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
             disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </Button>
@@ -146,9 +147,12 @@ export function LoginForm() {
       </Form>
 
       <div className="relative my-4">
-        <Separator />
+        <Separator className={cn(isDark && "bg-white/10")} />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-white px-2 text-sm text-gray-500">OR</span>
+          <span className={cn(
+            "px-2 text-xs uppercase tracking-widest",
+            isDark ? "bg-[#0b1326] text-slate-500" : "bg-white text-gray-500"
+          )}>OR</span>
         </div>
       </div>
 
@@ -157,7 +161,10 @@ export function LoginForm() {
       <Button
         type="button"
         variant="outline"
-        className="w-full border-primary/20 hover:bg-primary/5 mt-4"
+        className={cn(
+          "w-full mt-4",
+          isDark ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-primary/20 hover:bg-primary/5"
+        )}
         onClick={() => router.push("/public/signup")}
         disabled={loading}>
         Create Account

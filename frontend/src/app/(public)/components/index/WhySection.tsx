@@ -5,6 +5,7 @@ import { Zap, TrendingUp, ShieldCheck, Star, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useReveal } from "@/hooks/useReveal";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 const WhySection = ({ B }: { B: any }) => {
   const { ref, visible } = useReveal();
@@ -24,185 +25,131 @@ const WhySection = ({ B }: { B: any }) => {
   return (
     <section
       ref={ref}
-      className="lp-grid-bg"
+      className="lp-grid-bg relative overflow-hidden"
       style={{
         padding: "clamp(64px,8vw,120px) clamp(16px,4vw,48px)",
-        position: "relative",
-        overflow: "hidden",
       }}>
+      {/* Background Decorative Blob */}
       <div
+        className="absolute bottom-[10%] left-[5%] w-[300px] h-[300px] md:w-[450px] md:h-[450px] pointer-events-none opacity-50"
         style={{
-          position: "absolute",
-          bottom: "10%",
-          left: "5%",
-          width: 350,
-          height: 350,
-          background: `radial-gradient(circle, rgba(240,90,43,0.08) 0%, transparent 70%)`,
-          pointerEvents: "none",
+          background: `radial-gradient(circle, rgba(240,90,43,0.12) 0%, transparent 70%)`,
         }}
       />
 
       <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: 80,
-          alignItems: "center",
-        }}>
-        {/* Visual */}
+        className="mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
+        style={{ maxWidth: 1150 }}>
+        
+        {/* Visual / Image Container */}
         <div
-          className={`lp-reveal ${visible ? "visible" : ""}`}
-          style={{ order: 0 }}>
+          className={cn(
+            "lp-reveal transition-all duration-700 order-2 lg:order-1",
+            visible ? "visible translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+          )}>
           <div
-            style={{
-              position: "relative",
-              borderRadius: 20,
-              overflow: "hidden",
-              border: `1px solid ${B.border}`,
-            }}>
-            {/* Decorative top bar */}
+            className="relative rounded-2xl overflow-hidden shadow-2xl border bg-white/5 backdrop-blur-sm"
+            style={{ borderColor: B.border }}>
+            
+            {/* Browser-style decorative top bar */}
             <div
-              style={{
-                background: B.bgSurface,
-                padding: "12px 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                borderBottom: `1px solid ${B.border}`,
-              }}>
+              className="px-4 py-3 flex items-center gap-2 border-b"
+              style={{ background: B.bgSurface, borderColor: B.border }}>
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
               <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: "#ff5f57",
-                }}
-              />
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: "#ffbd2e",
-                }}
-              />
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: "#28c840",
-                }}
-              />
-              <div
-                style={{
-                  flex: 1,
-                  height: 20,
-                  background: B.bgMid,
-                  borderRadius: 6,
-                  border: `1px solid ${B.border}`,
-                  marginLeft: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  paddingLeft: 10,
-                }}>
-                <span style={{ fontSize: 10, color: B.textDim }}>
+                className="flex-1 h-6 rounded-md border flex items-center px-3 ml-2"
+                style={{ background: B.bgMid, borderColor: B.border }}>
+                <span className="text-[10px] truncate" style={{ color: B.textDim }}>
                   gonzasales.com/dashboard
                 </span>
               </div>
             </div>
-            <Image
-              fill
-              src="/banners/b1.png"
-              alt="Gonza business dashboard"
-              style={{ objectFit: "cover", display: "block" }}
-            />
+
+            {/* 🚀 FIXED: Added aspect-ratio to ensure the 'fill' image has a parent height */}
+            <div className="relative aspect-[16/10] sm:aspect-video lg:aspect-[16/11] w-full">
+              <Image
+                fill
+                priority={false}
+                src="/banners/b1.png"
+                alt="Gonza business dashboard"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                className="object-cover object-top"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Text */}
+        {/* Text Content */}
         <div
-          className={`lp-reveal ${visible ? "visible" : ""}`}
-          style={{ transitionDelay: "150ms" }}>
-          <div className="lp-section-label" style={{ marginBottom: 16 }}>
+          className={cn(
+            "lp-reveal transition-all duration-700 delay-150 order-1 lg:order-2",
+            visible ? "visible translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+          )}>
+          <div className="lp-section-label mb-4">
             Why Gonza
           </div>
           <h2
+            className="font-extrabold tracking-tight mb-6"
             style={{
-              fontSize: "clamp(28px,4vw,42px)",
-              fontWeight: 800,
+              fontSize: "clamp(30px, 4vw, 48px)",
               lineHeight: 1.1,
-              letterSpacing: "-0.025em",
               color: B.text,
-              marginBottom: 20,
             }}>
             Focus on growth.
             <br />
-            <span style={{ color: B.textMuted, fontWeight: 400 }}>
+            <span className="font-normal" style={{ color: B.textMuted }}>
               We handle the rest.
             </span>
           </h2>
           <p
+            className="text-base md:text-lg mb-8"
             style={{
-              fontSize: 15,
               color: B.textMuted,
               lineHeight: 1.7,
-              marginBottom: 36,
             }}>
             Stop wrestling with spreadsheets. Gonza automates the tedious parts
             of running a business so you can focus on what actually matters —
             your customers and your growth.
           </p>
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: "0 0 40px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-            }}>
+          
+          <ul className="list-none p-0 m-0 mb-10 flex flex-col gap-5">
             {points.map(({ icon: Icon, label }, i) => (
               <li
                 key={label}
-                className={`lp-reveal ${visible ? "visible" : ""}`}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  transitionDelay: `${220 + i * 80}ms`,
-                }}>
+                className={cn(
+                  "flex items-start gap-4 transition-all duration-500",
+                  visible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+                )}
+                style={{ transitionDelay: `${300 + i * 100}ms` }}>
                 <div
-                  style={{
-                    flexShrink: 0,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    background: `rgba(37,40,97,0.6)`,
-                    border: `1px solid rgba(128,206,215,0.15)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                  className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border shadow-sm"
+                  style={{ 
+                    background: `rgba(37,40,97,0.05)`, 
+                    borderColor: `rgba(128,206,215,0.2)` 
                   }}>
-                  <Icon size={15} color={B.secondary} />
+                  <Icon size={18} className="text-primary" />
                 </div>
                 <span
+                  className="text-sm md:text-base pt-1.5"
                   style={{
-                    fontSize: 14,
                     color: B.textMuted,
                     lineHeight: 1.5,
-                    paddingTop: 7,
                   }}>
                   {label}
                 </span>
               </li>
             ))}
           </ul>
-          <Link href="/signup" className="lp-btn-primary">
-            Start your free trial <ArrowRight size={15} />
-          </Link>
+          
+          <div className="flex flex-wrap gap-4">
+            <Link href="/signup" className="lp-btn-primary inline-flex items-center gap-2">
+              Start your free trial <ArrowRight size={16} />
+            </Link>
+          </div>
         </div>
       </div>
     </section>
