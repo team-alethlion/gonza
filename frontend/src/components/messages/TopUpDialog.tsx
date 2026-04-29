@@ -58,7 +58,7 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({ open, onClose, currency = "UG
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <CreditCard className="w-6 h-6 text-primary" />
             Top Up SMS Credits
           </DialogTitle>
@@ -79,7 +79,7 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({ open, onClose, currency = "UG
               }`}
             >
               {pkg.recommended && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shadow-sm">
                   Best Value
                 </span>
               )}
@@ -88,11 +88,11 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({ open, onClose, currency = "UG
                   <pkg.icon className={`w-5 h-5 ${pkg.color}`} />
                 </div>
                 <div className="space-y-0.5">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{pkg.label}</p>
-                    <p className="text-xl font-black text-gray-900">{pkg.credits}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-tight">{pkg.label}</p>
+                    <p className="text-xl font-bold text-gray-900">{pkg.credits}</p>
                     <p className="text-[10px] text-muted-foreground">Credits</p>
                 </div>
-                <div className="pt-2 border-t w-full">
+                <div className="pt-2 border-t w-full border-gray-100">
                     <p className="text-sm font-bold text-primary">
                         {currency} {pkg.price.toLocaleString()}
                     </p>
@@ -102,23 +102,23 @@ const TopUpDialog: React.FC<TopUpDialogProps> = ({ open, onClose, currency = "UG
           ))}
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-4 border">
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-4">
             <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-600">Selected Package:</span>
+                <span className="text-sm font-medium text-muted-foreground">Selected Package:</span>
                 <span className="text-sm font-bold">{selectedPkg.label} ({selectedPkg.credits} Credits)</span>
             </div>
-            <div className="flex justify-between items-center text-lg font-black">
+            <div className="flex justify-between items-center text-lg font-bold border-t border-slate-200/50 pt-2 mt-2">
                 <span>Total Due:</span>
                 <span className="text-primary">{currency} {selectedPkg.price.toLocaleString()}</span>
             </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={isRedirecting}>Cancel</Button>
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isRedirecting}>Cancel</Button>
           <Button 
             onClick={handlePurchase} 
             disabled={isRedirecting}
-            className="font-bold min-w-[200px]"
+            className="font-bold bg-primary hover:bg-primary/90"
           >
             {isRedirecting ? "Connecting..." : "Proceed to Payment"}
           </Button>
