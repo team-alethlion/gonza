@@ -32,7 +32,7 @@ export function LoginSocial({ loading: parentLoading }: { loading: boolean }) {
     <Button
       type="button"
       variant="outline"
-      className="w-full flex items-center justify-center gap-2 border-gray-300 hover:bg-gray-50"
+      className="w-full flex items-center justify-center gap-2 border-slate-200 bg-white text-slate-900 hover:bg-slate-50 transition-colors font-medium h-11"
       onClick={handleGoogleSignIn}
       disabled={googleLoading || parentLoading}>
       <Image

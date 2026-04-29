@@ -23,8 +23,9 @@ import { LoginHelpDialog } from "./LoginHelpDialog";
 import { LoginSocial } from "./LoginSocial";
 import { ForgotPasswordButton } from "./ForgotPasswordButton";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
+import { cn } from "@/lib/utils";
 
-export function LoginForm() {
+export function LoginForm({ isDark = false }: { isDark?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, user } = useAuth();
@@ -41,7 +42,6 @@ export function LoginForm() {
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    // Don't redirect if this is a password recovery flow
     const isRecovery =
       typeof window !== "undefined" &&
       window.location.hash.includes("type=recovery");
@@ -50,7 +50,6 @@ export function LoginForm() {
       console.log(
         "User already authenticated, letting middleware handle routing",
       );
-      // Removing hardcoded /agency redirect to allow strict middleware to work
     }
   }, [user, router]);
 
@@ -59,7 +58,6 @@ export function LoginForm() {
 
     try {
       await signIn(data.email, data.password);
-      // redirect handled by signIn callback
     } catch (error: any) {
       console.error("Email/password sign in error:", error);
       if (error.message.includes("Invalid login credentials")) {
@@ -81,13 +79,16 @@ export function LoginForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className={cn(isDark && "text-slate-300")}>Email</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
                     type="email"
                     placeholder="Enter your email"
-                    className="border-input focus:border-primary"
+                    className={cn(
+                      "border-input focus:border-primary",
+                      isDark && "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                    )}
                   />
                 </FormControl>
                 <FormMessage />
@@ -100,14 +101,17 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className={cn(isDark && "text-slate-300")}>Password</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Input
                       {...field}
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
-                      className="border-input focus:border-primary pr-10"
+                      className={cn(
+                        "border-input focus:border-primary pr-10",
+                        isDark && "bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                      )}
                     />
                     <Button
                       type="button"
@@ -135,7 +139,7 @@ export function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90"
+            className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
             disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </Button>
@@ -143,9 +147,12 @@ export function LoginForm() {
       </Form>
 
       <div className="relative my-4">
-        <Separator />
+        <Separator className={cn(isDark && "bg-white/10")} />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-white px-2 text-sm text-gray-500">OR</span>
+          <span className={cn(
+            "px-2 text-xs uppercase tracking-widest",
+            isDark ? "bg-[#0b1326] text-slate-500" : "bg-white text-gray-500"
+          )}>OR</span>
         </div>
       </div>
 
@@ -154,7 +161,10 @@ export function LoginForm() {
       <Button
         type="button"
         variant="outline"
-        className="w-full border-primary/20 hover:bg-primary/5 mt-4"
+        className={cn(
+          "w-full mt-4",
+          isDark ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-primary/20 hover:bg-primary/5"
+        )}
         onClick={() => router.push("/public/signup")}
         disabled={loading}>
         Create Account
