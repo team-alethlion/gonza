@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Header from "./Header";
 import MobileNavigation from "./MobileNavigation";
 import FloatingActionButton from "./FloatingActionButton";
@@ -15,6 +15,7 @@ import { PinEntryOverlay } from "./profiles/PinEntryOverlay";
 import { FirstTimePinSetup } from "./profiles/FirstTimePinSetup";
 import { useAuth } from "./auth/AuthProvider";
 import { useUserHeartbeat } from "@/hooks/useUserHeartbeat";
+import ScrollProgressBar from "./ScrollProgressBar";
 
 interface AgencyLayoutProps {
   children: React.ReactNode;
@@ -24,18 +25,27 @@ const AgencyLayout = ({ children }: AgencyLayoutProps) => {
   const isMobile = useIsMobile();
   const { user } = useAuth();
   
+  // 🚀 TRACK CONTENT SCROLL: Ref for the scrollable container
+  const contentRef = useRef<HTMLDivElement>(null);
+  
   // Track user activity
   useUserHeartbeat(user?.id);
 
   return (
     <SidebarProvider>
       <TooltipProvider>
+        {/* Progress bar fixed at top, tracking the contentRef scroll */}
+        <ScrollProgressBar containerRef={contentRef} />
+        
         {isMobile ? (
           // Mobile layout
           <div className="min-h-screen bg-gray-50 w-full">
             <Header />
             <NetworkStatusIndicator />
-            <main className="pt-20 pb-20 min-h-screen">
+            <main 
+              ref={contentRef}
+              className="pt-20 pb-20 min-h-screen overflow-y-auto"
+            >
               <div className="px-2 py-2 max-w-full overflow-x-hidden">
                 <React.Suspense
                   fallback={<LoadingSpinner message="Loading page..." />}>
@@ -50,12 +60,15 @@ const AgencyLayout = ({ children }: AgencyLayoutProps) => {
           </div>
         ) : (
           // Desktop layout
-          <div className="flex min-h-screen w-full">
+          <div className="flex h-screen w-full overflow-hidden">
             <AppSidebar />
-            <div className="flex flex-1 flex-col min-h-screen min-w-0">
+            <div className="flex flex-1 flex-col h-full min-w-0">
               <Header />
               <NetworkStatusIndicator />
-              <main className="flex-1 bg-gray-50 p-6 overflow-auto">
+              <main 
+                ref={contentRef}
+                className="flex-1 bg-gray-50 p-6 overflow-y-auto scroll-smooth"
+              >
                 <div className="w-full">
                   <React.Suspense
                     fallback={<LoadingSpinner message="Loading page..." />}>

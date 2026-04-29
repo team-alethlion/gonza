@@ -9,9 +9,10 @@ import QuickActionButtons from "@/components/dashboard/QuickActionButtons";
 import AccessDenied404 from "@/components/AccessDenied404";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useDashboardActions } from "@/hooks/useDashboardActions";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { Sale, AnalyticsData } from "@/types";
 
 // 🚀 FIXED: Use next/dynamic with ssr: false for components with auto-generated IDs (Radix)
-// This completely bypasses hydration mismatches by skipping server rendering for this complex piece.
 const AnalyticsDashboard = dynamic(
   () => import("@/components/AnalyticsDashboard"),
   { 
@@ -19,7 +20,6 @@ const AnalyticsDashboard = dynamic(
     loading: () => <DashboardSkeleton />
   }
 );
-import { Sale, AnalyticsData } from "@/types";
 
 export default function AgencyDashboardClient({
   initialSales,
@@ -43,10 +43,16 @@ export default function AgencyDashboardClient({
   const { isRefreshing, handleRefresh, handleQuickCreate } =
     useDashboardActions();
 
-  if (profilesLoading || isLoading || settingsLoading) {
+  // 🚀 PERFORMANCE OPTIMIZATION: 
+  // If we have initial SSR data, we skip the secondary full-page 'LoadingSpinner' 
+  // to avoid the "Triple Loading" effect (Skeleton -> Spinner -> Content).
+  // We only show the spinner if we are truly missing data.
+  const isDataReady = !!initialAnalytics || (sales && sales.length > 0);
+
+  if (!isDataReady && (profilesLoading || isLoading || settingsLoading)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -54,7 +60,7 @@ export default function AgencyDashboardClient({
   // If settings aren't fully configured, we show the 404 state with logout
   const hasSettings = settings.businessName && settings.businessPhone;
   
-  if (!hasSettings) {
+  if (!hasSettings && !settingsLoading) {
     return <AccessDenied404 />;
   }
 

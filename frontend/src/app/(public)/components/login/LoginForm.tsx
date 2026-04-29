@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,7 +13,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@/components/ui/separator";
@@ -22,13 +22,7 @@ import { toast } from "sonner";
 import { LoginHelpDialog } from "./LoginHelpDialog";
 import { LoginSocial } from "./LoginSocial";
 import { ForgotPasswordButton } from "./ForgotPasswordButton";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
@@ -36,8 +30,9 @@ export function LoginForm() {
   const { signIn, user } = useAuth();
   const router = useRouter();
 
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema as any),
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: "",
@@ -47,15 +42,19 @@ export function LoginForm() {
   // Redirect if user is already authenticated
   useEffect(() => {
     // Don't redirect if this is a password recovery flow
-    const isRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
+    const isRecovery =
+      typeof window !== "undefined" &&
+      window.location.hash.includes("type=recovery");
 
     if (user && !isRecovery) {
-      console.log("User already authenticated, letting middleware handle routing");
+      console.log(
+        "User already authenticated, letting middleware handle routing",
+      );
       // Removing hardcoded /agency redirect to allow strict middleware to work
     }
   }, [user, router]);
 
-  const handleSubmit = async (data: LoginFormData) => {
+  const handleSubmit = async (data: LoginFormValues) => {
     setLoading(true);
 
     try {
@@ -76,9 +75,7 @@ export function LoginForm() {
   return (
     <div className="space-y-4">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="space-y-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField
             control={form.control}
             name="email"
@@ -133,7 +130,7 @@ export function LoginForm() {
 
           <div className="flex items-center justify-between">
             <LoginHelpDialog />
-            <ForgotPasswordButton form={form} />
+            <ForgotPasswordButton form={form as any} />
           </div>
 
           <Button

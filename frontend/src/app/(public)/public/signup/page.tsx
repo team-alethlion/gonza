@@ -22,12 +22,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Separator } from "@/components/ui/separator";
 import {
-  HelpCircle,
   Mail,
   Phone,
   Eye,
@@ -55,20 +53,7 @@ import {
 } from "@/app/actions/verification";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
-
-const signUpSchema = z
-  .object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Please enter a valid email"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(6, "Please confirm your password"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
-type SignUpFormData = z.infer<typeof signUpSchema>;
+import { signUpSchema, type SignUpFormValues } from "@/lib/validations/auth";
 
 const SignUp = () => {
   const [loading, setLoading] = useState(false);
@@ -80,14 +65,15 @@ const SignUp = () => {
   const [showVerification, setShowVerification] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [verifying, setVerifying] = useState(false);
-  const [formData, setFormData] = useState<SignUpFormData | null>(null);
+  const [formData, setFormData] = useState<SignUpFormValues | null>(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
 
   const { updateSession } = useAuth();
   const router = useRouter();
 
-  const form = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema as any),
+  const form = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
+    mode: "onChange", // 🚀 REAL-TIME VALIDATION
     defaultValues: {
       name: "",
       email: "",
@@ -110,7 +96,7 @@ const SignUp = () => {
   };
 
   // Step 1: Initiate Signup (Send OTP)
-  const handleInitiateSignup = async (data: SignUpFormData) => {
+  const handleInitiateSignup = async (data: SignUpFormValues) => {
     setLoading(true);
     setSignupError(null);
 
@@ -210,7 +196,7 @@ const SignUp = () => {
             alt="Gonzo Systems"
             fill
             className="object-contain"
-            priority // Good for logos at the top of the page
+            priority 
           />
         </div>
       </div>
@@ -324,7 +310,7 @@ const SignUp = () => {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary/90 h-11 text-white font-semibold shadow-lg shadow-primary/20"
-                disabled={loading}>
+                disabled={loading || !form.formState.isValid}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -460,7 +446,7 @@ const SignUp = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleResendCode}
-                  disabled={loading || timeLeft > 540} // Allow resend after 1 minute
+                  disabled={loading || timeLeft > 540} 
                   className="text-xs">
                   Didn&apos;t receive the code? Resend
                 </Button>

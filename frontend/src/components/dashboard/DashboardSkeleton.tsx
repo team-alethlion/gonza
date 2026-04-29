@@ -1,5 +1,5 @@
-import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import React from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const DashboardSkeleton = () => (
   <div className="space-y-4 animate-fade-in">
@@ -13,7 +13,7 @@ const DashboardSkeleton = () => (
         <Skeleton className="h-8 w-16 md:h-9 md:w-24" />
       </div>
     </div>
-    
+
     {/* Quick actions skeleton */}
     <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4 max-w-4xl">
       {[...Array(4)].map((_, i) => (

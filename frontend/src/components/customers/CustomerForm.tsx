@@ -20,14 +20,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogFooter } from "@/components/ui/dialog";
 import { useCustomerCategories } from "@/hooks/useCustomerCategories";
 import { useCustomerDraft } from "@/hooks/useCustomerDraft";
 import { toast } from "sonner";
+import { customerSchema, type CustomerFormValues } from "@/lib/validations/customer";
 
 interface CustomerFormProps {
   initialData?: Customer;
@@ -44,18 +55,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   const { categories } = useCustomerCategories();
   const { hasDraft, saveDraft, loadDraft, clearDraft } = useCustomerDraft();
   const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout>();
-  
-  // Initialize date state with proper timezone handling 
-  const [date, setDate] = React.useState<Date | undefined>(() => {
-    if (initialData?.birthday) return initialData.birthday;
-    return undefined;
-  });
-  
-  // Initialize category selection
-  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string>(
-    initialData?.categoryId || "none"
-  );
-  
+
+  const [tags, setTags] = React.useState<string[]>(initialData?.tags || []);
+  const [tagInput, setTagInput] = React.useState("");
   const [socialMedia, setSocialMedia] = React.useState({
     facebook: initialData?.socialMedia?.facebook || "",
     instagram: initialData?.socialMedia?.instagram || "",
@@ -63,12 +65,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     linkedin: initialData?.socialMedia?.linkedin || "",
     other: initialData?.socialMedia?.other || "",
   });
-  
-  const [tags, setTags] = React.useState<string[]>(initialData?.tags || []);
-  const [tagInput, setTagInput] = React.useState("");
-  const [selectedGender, setSelectedGender] = React.useState(initialData?.gender || "");
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
+  const form = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
     defaultValues: {
       fullName: initialData?.fullName || "",
       email: initialData?.email || "",
@@ -76,9 +75,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       location: initialData?.location || "",
       notes: initialData?.notes || "",
       creditLimit: initialData?.creditLimit || 0,
+      gender: initialData?.gender || "",
+      categoryId: initialData?.categoryId || "none",
+      birthday: initialData?.birthday ? new Date(initialData.birthday) : null,
+      tags: initialData?.tags || [],
     },
   });
 
+  const { watch, setValue, control, handleSubmit } = form;
   const formValues = watch();
 
   // Load draft on mount for new customer
@@ -87,21 +91,21 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       const draft = loadDraft();
       if (draft) {
         const { formData } = draft;
-        if (formData.fullName) setValue("fullName", formData.fullName);
-        if (formData.email) setValue("email", formData.email);
-        if (formData.phoneNumber) setValue("phoneNumber", formData.phoneNumber);
-        if (formData.location) setValue("location", formData.location);
-        if (formData.notes) setValue("notes", formData.notes);
-        if (formData.birthday) setDate(new Date(formData.birthday));
-        if (formData.categoryId) setSelectedCategoryId(formData.categoryId);
-        if (formData.gender) setSelectedGender(formData.gender);
-        if (formData.socialMedia) setSocialMedia(formData.socialMedia);
-        if (formData.tags) setTags(formData.tags);
-        
+        Object.keys(formData).forEach((key) => {
+          if (key === "birthday" && formData[key]) {
+            setValue(key as any, new Date(formData[key]));
+          } else if (key === "socialMedia") {
+            setSocialMedia(formData[key]);
+          } else if (key === "tags") {
+            setTags(formData[key]);
+          } else {
+            setValue(key as any, formData[key]);
+          }
+        });
         toast.info("Restored your unsaved customer details");
       }
     }
-  }, [initialData]);
+  }, [initialData, hasDraft, loadDraft, setValue]);
 
   // Auto-save logic
   React.useEffect(() => {
@@ -109,9 +113,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
 
     const dataToSave = {
       ...formValues,
-      birthday: date?.toISOString(),
-      categoryId: selectedCategoryId,
-      gender: selectedGender,
       socialMedia,
       tags
     };
@@ -120,46 +121,37 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
 
     if (hasData) {
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-      saveDraft(dataToSave, false); // Instant session save
-      autoSaveTimeoutRef.current = setTimeout(() => saveDraft(dataToSave, true), 2000); // Debounced local save
+      saveDraft(dataToSave, false); 
+      autoSaveTimeoutRef.current = setTimeout(() => saveDraft(dataToSave, true), 2000);
     }
 
     return () => {
       if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
     };
-  }, [formValues, date, selectedCategoryId, selectedGender, socialMedia, tags, initialData, isSubmitting, saveDraft]);
+  }, [formValues, socialMedia, tags, initialData, isSubmitting, saveDraft]);
 
   const addTag = () => {
     if (tagInput.trim() !== "" && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
+      const newTags = [...tags, tagInput.trim()];
+      setTags(newTags);
+      setValue("tags", newTags);
       setTagInput("");
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
+    const newTags = tags.filter((tag) => tag !== tagToRemove);
+    setTags(newTags);
+    setValue("tags", newTags);
   };
 
-  const handleSocialMediaChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    platform: string
-  ) => {
-    setSocialMedia({
-      ...socialMedia,
-      [platform]: e.target.value,
-    });
-  };
-
-  const onFormSubmit = async (data: any) => {
+  const onFormSubmit = async (values: CustomerFormValues) => {
     setIsSubmitting(true);
     try {
       const customerData: Partial<Customer> = {
-        ...data,
-        creditLimit: Number(data.creditLimit || 0),
-        gender: selectedGender,
-        birthday: date,
-        categoryId: selectedCategoryId === "none" ? null : selectedCategoryId,
-        socialMedia: Object.keys(socialMedia).length > 0 ? socialMedia : null,
+        ...values,
+        categoryId: values.categoryId === "none" ? null : values.categoryId,
+        socialMedia: Object.values(socialMedia).some(v => v) ? socialMedia : null,
         tags: tags.length > 0 ? tags : null,
       };
       
@@ -167,12 +159,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
       if (success && !initialData) {
         clearDraft();
       }
-      return success;
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const validCategories = categories.filter(category => category.id && category.id.trim() !== '');
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
   const months = [
@@ -182,159 +174,202 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     { value: 9, label: "October" }, { value: 10, label: "November" }, { value: 11, label: "December" },
   ];
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    if (selectedDate) {
-      const year = selectedDate.getFullYear();
-      const month = selectedDate.getMonth();
-      const day = selectedDate.getDate();
-      setDate(new Date(Date.UTC(year, month, day, 12, 0, 0)));
-    } else {
-      setDate(undefined);
-    }
-  };
-
-  const handleYearSelect = (year: string) => {
-    const yearNum = parseInt(year);
-    const newDate = date ? new Date(date) : new Date();
-    setDate(new Date(Date.UTC(yearNum, newDate.getMonth(), newDate.getDate(), 12, 0, 0)));
-  };
-
-  const handleMonthSelect = (month: string) => {
-    const monthNum = parseInt(month);
-    const newDate = date ? new Date(date) : new Date();
-    setDate(new Date(Date.UTC(newDate.getFullYear(), monthNum, newDate.getDate(), 12, 0, 0)));
-  };
-
-  const validCategories = categories.filter(category => category.id && category.id.trim() !== '');
-
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <div className="space-y-6">
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name*</Label>
-            <Input
-              id="fullName"
-              {...register("fullName", { required: "Name is required" })}
-              className={cn(errors.fullName && "border-red-500")}
-            />
-            {errors.fullName && <p className="text-red-500 text-xs">{errors.fullName.message as string}</p>}
-          </div>
+          <FormField
+            control={control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name*</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Customer's full name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Category</SelectItem>
-                {validCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">No Category</SelectItem>
+                    {validCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              {...register("email", {
-                pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email address" },
-              })}
-              className={cn(errors.email && "border-red-500")}
-            />
-            {errors.email && <p className="text-red-500 text-xs">{errors.email.message as string}</p>}
-          </div>
+          <FormField
+            control={control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <FormControl>
+                  <Input {...field} type="email" placeholder="customer@example.com" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input id="phoneNumber" {...register("phoneNumber")} />
-          </div>
+          <FormField
+            control={control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="e.g. +256..." />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" {...register("location")} />
-          </div>
+          <FormField
+            control={control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Location</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="City, Area" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="creditLimit">Credit Limit ({initialData?.branchId ? '' : 'Optional'})</Label>
-            <Input 
-              id="creditLimit" 
-              type="number" 
-              step="0.01"
-              {...register("creditLimit")} 
-              placeholder="0.00"
-            />
-            <p className="text-[10px] text-muted-foreground">Maximum debt allowed for this customer.</p>
-          </div>
+          <FormField
+            control={control}
+            name="creditLimit"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Credit Limit</FormLabel>
+                <FormControl>
+                  <Input {...field} type="number" step="1" placeholder="0" />
+                </FormControl>
+                <FormDescription>Maximum debt allowed.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select value={selectedGender} onValueChange={setSelectedGender}>
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="non-binary">Non-binary</SelectItem>
-                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FormField
+            control={control}
+            name="gender"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gender</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="non-binary">Non-binary</SelectItem>
+                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          <div className="space-y-2">
-            <Label>Birthday</Label>
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-row gap-2">
-                <div className="flex-1">
+          <FormField
+            control={control}
+            name="birthday"
+            render={({ field }) => (
+              <FormItem className="flex flex-col justify-end">
+                <FormLabel className="mb-2">Birthday</FormLabel>
+                <div className="flex gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between">
-                        {date ? date.getDate() : "Day"}
+                      <Button variant="outline" className="flex-1 justify-between px-3">
+                        {field.value ? field.value.getDate() : "Day"}
                         <CalendarIcon className="h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={date}
-                        onSelect={handleDateSelect}
+                        selected={field.value || undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            const newDate = field.value ? new Date(field.value) : new Date();
+                            newDate.setFullYear(newDate.getFullYear());
+                            newDate.setMonth(newDate.getMonth());
+                            newDate.setDate(date.getDate());
+                            field.onChange(newDate);
+                          }
+                        }}
                         initialFocus
-                        captionLayout="buttons"
-                        className="p-3 pointer-events-auto"
-                        classNames={{ caption_label: "hidden", dropdown: "hidden" }}
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-                <div className="flex-1">
-                  <Select value={date ? String(date.getMonth()) : undefined} onValueChange={handleMonthSelect}>
-                    <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+
+                  <Select 
+                    value={field.value ? String(field.value.getMonth()) : undefined} 
+                    onValueChange={(month) => {
+                      const newDate = field.value ? new Date(field.value) : new Date();
+                      newDate.setMonth(parseInt(month));
+                      field.onChange(newDate);
+                    }}
+                  >
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
                     <SelectContent>
-                      {months.map((month) => (
-                        <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
+                      {months.map((m) => (
+                        <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select 
+                    value={field.value ? String(field.value.getFullYear()) : undefined} 
+                    onValueChange={(year) => {
+                      const newDate = field.value ? new Date(field.value) : new Date();
+                      newDate.setFullYear(parseInt(year));
+                      field.onChange(newDate);
+                    }}
+                  >
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Year" /></SelectTrigger>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex-1">
-                  <Select value={date ? String(date.getFullYear()) : undefined} onValueChange={handleYearSelect}>
-                    <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
-                    <SelectContent>
-                      {years.map((year) => (
-                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {date && <div className="text-sm text-muted-foreground">Selected: {format(date, "PPP")}</div>}
-            </div>
-          </div>
+                {field.value && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Formatted: {format(field.value, "PPP")}
+                  </p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="space-y-2">
@@ -350,21 +385,31 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             ))}
           </div>
           <div className="flex gap-2">
-            <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="Add tag" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} />
-            <Button type="button" onClick={addTag} variant="outline">Add</Button>
+            <Input 
+              value={tagInput} 
+              onChange={(e) => setTagInput(e.target.value)} 
+              placeholder="Add tag" 
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag();
+                }
+              }} 
+            />
+            <Button type="button" onClick={addTag} variant="outline" size="sm">Add</Button>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label>Social Media</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {['facebook', 'instagram', 'twitter', 'linkedin'].map((platform) => (
               <div key={platform} className="space-y-1">
-                <Label htmlFor={platform} className="text-xs capitalize">{platform}</Label>
+                <Label htmlFor={platform} className="text-[10px] uppercase text-muted-foreground">{platform}</Label>
                 <Input
                   id={platform}
                   value={(socialMedia as any)[platform]}
-                  onChange={(e) => handleSocialMediaChange(e, platform)}
+                  onChange={(e) => setSocialMedia({ ...socialMedia, [platform]: e.target.value })}
                   placeholder={platform === 'linkedin' ? "Profile URL" : "Username"}
                 />
               </div>
@@ -372,17 +417,26 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="notes">Notes</Label>
-          <Textarea id="notes" {...register("notes")} rows={4} placeholder="Add any notes about this customer..." />
-        </div>
+        <FormField
+          control={control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea {...field} rows={3} placeholder="Add any notes about this customer..." />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <DialogFooter>
-          <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" type="button" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Changes"}</Button>
         </DialogFooter>
-      </div>
-    </form>
+      </form>
+    </Form>
   );
 };
 
