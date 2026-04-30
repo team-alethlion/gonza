@@ -33,6 +33,7 @@ interface InstallmentPaymentInputProps {
   onLinkToCash?: (paymentId: string, accountId: string) => Promise<void>;
   onUpdatePayment?: (paymentId: string, updates: { amount?: number; notes?: string; paymentDate?: Date }) => Promise<void>;
   onDeletePayment?: (paymentId: string) => Promise<void>;
+  error?: string;
 }
 
 const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
@@ -54,6 +55,7 @@ const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
   onLinkToCash,
   onUpdatePayment,
   onDeletePayment,
+  error,
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(paymentDate || new Date());
 
@@ -141,8 +143,13 @@ const InstallmentPaymentInput: React.FC<InstallmentPaymentInputProps> = ({
               onChange={handleAmountPaidChange}
               placeholder="Enter amount paid"
               disabled={isFullyPaid}
-              className="text-base"
+              className={cn("text-base", error ? "border-red-500 focus-visible:ring-red-500" : "")}
             />
+            {error && (
+              <p className="text-xs font-medium text-red-500 mt-1 animate-in fade-in slide-in-from-top-1">
+                {error}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-3">

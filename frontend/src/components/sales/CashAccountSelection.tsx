@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface CashAccount {
   id: string;
@@ -19,6 +20,7 @@ interface CashAccountSelectionProps {
   onCashAccountChange: (accountId: string) => void;
   cashAccounts: CashAccount[];
   paymentStatus: string;
+  error?: string;
 }
 
 const CashAccountSelection: React.FC<CashAccountSelectionProps> = ({
@@ -27,7 +29,8 @@ const CashAccountSelection: React.FC<CashAccountSelectionProps> = ({
   selectedCashAccountId,
   onCashAccountChange,
   cashAccounts,
-  paymentStatus
+  paymentStatus,
+  error
 }) => {
   // Only show cash account selection for Paid and Installment Sale statuses
   const shouldShowCashSelection = paymentStatus === 'Paid' || paymentStatus === 'Installment Sale';
@@ -93,7 +96,7 @@ const CashAccountSelection: React.FC<CashAccountSelectionProps> = ({
               onValueChange={onCashAccountChange}
             >
               <SelectTrigger 
-                className="w-full"
+                className={cn("w-full", error ? "border-red-500 focus:ring-red-500" : "")}
                 data-cash-account-select="true"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -121,7 +124,12 @@ const CashAccountSelection: React.FC<CashAccountSelectionProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {selectedCashAccountId && (
+            {error && (
+              <p className="text-xs font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                {error}
+              </p>
+            )}
+            {selectedCashAccountId && !error && (
               <div className="text-sm text-muted-foreground">
                 {paymentStatus === 'Installment Sale' 
                   ? 'The partial payment amount will be recorded in this account'
