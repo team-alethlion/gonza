@@ -19,6 +19,7 @@ import {
 import { FileDown, ChevronDown } from "lucide-react";
 import LoadingScreen from "../LoadingScreen";
 import {
+  Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
