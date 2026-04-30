@@ -17,6 +17,7 @@ import { formatNumber } from "@/lib/utils";
 import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const EditProduct = () => {
   const params = useParams();
@@ -297,11 +298,7 @@ const EditProduct = () => {
   const canCreate = !id ? hasPermission("inventory", "create") : true;
 
   if (profilesLoading || productsLoading || categoriesLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingScreen message="Loading Product Data..." />;
   }
 
   if (!canEdit || !canCreate) {

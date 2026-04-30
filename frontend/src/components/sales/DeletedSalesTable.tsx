@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { DeletedSale } from '@/hooks/useDeletedSales';
+import LoadingScreen from '../LoadingScreen';
 import { Trash2, User, Clock, Package } from 'lucide-react';
 
 interface DeletedSalesTableProps {
@@ -14,12 +15,7 @@ interface DeletedSalesTableProps {
 
 export const DeletedSalesTable: React.FC<DeletedSalesTableProps> = ({ sales, isLoading, currency = 'UGX' }) => {
     if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-muted-foreground text-sm">Loading deleted sales history...</p>
-            </div>
-        );
+        return <LoadingScreen fullScreen={false} message="Loading deleted sales history..." />;
     }
 
     if (sales.length === 0) {

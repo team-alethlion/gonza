@@ -5,6 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerC
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Download, Printer, Share2, X, Loader2, MessageCircle } from 'lucide-react';
+import LoadingScreen from '../LoadingScreen';
 import { Sale, Customer, BusinessSettings } from '@/types';
 import { generatePaymentReminderPDF } from '@/utils/generatePaymentReminderPDF';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
@@ -225,9 +226,8 @@ const PaymentReminderPreviewDialog: React.FC<PaymentReminderPreviewDialogProps> 
 
             <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden min-h-[600px] relative">
                 {isGenerating ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-white/50 backdrop-blur-sm">
-                        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                        <p className="text-sm font-medium text-gray-600">Generating preview...</p>
+                    <div className="absolute inset-0 z-10">
+                        <LoadingScreen fullScreen={false} message="Generating preview..." />
                     </div>
                 ) : pdfUrl ? (
                     <iframe

@@ -2,6 +2,7 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Send, MessageSquare, Smartphone, AlertCircle, Loader2 } from "lucide-react";
+import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "@/types";
 import { MessageTemplate } from "@/hooks/useMessages";
 import {
@@ -400,7 +401,7 @@ const NewMessageDialog = ({
                   )}
                 >
                   {isSending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <LoadingSpinner inline size="sm" showMessage={false} />
                   ) : (
                     <>
                       <Send className="w-4 h-4 mr-2" />

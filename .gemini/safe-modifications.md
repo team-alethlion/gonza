@@ -47,21 +47,21 @@
 - **The Protocol**: If a modification solves the current task but might break other pages or features, you MUST implement a backward-compatible solution (e.g., optional parameters, fallbacks, or versioned logic).
 - **The Rationale**: Prevents \"greedy fixes\" where a localized improvement results in systemic regressions.
 
-## 8. Next.js Proxy Pattern (Middleware)
+## 9. Next.js Proxy Pattern (Middleware)
 
 - **The Rule**: NEVER create or use a `middleware.ts` file in this project.
 - **The Protocol**: All middleware-level logic (Authentication, Redirects, Proxying) MUST reside in `proxy.ts` (currently located in `frontend/src/proxy.ts`).
 - **The Rationale**: Next.js version 16+ in this project uses the `proxy` convention. Reintroducing `middleware.ts` causes build errors and prevents the application from booting correctly.
 - **The Asset Protection**: Always ensure the `config.matcher` in `proxy.ts` includes strict exclusions for static assets (`icon.png`, `favicon.ico`, etc.) to prevent redundant authentication checks on images.
 
-## 9. Anti-Deletion Protocol
+## 10. Anti-Deletion Protocol
 
 - **The Rule**: NEVER use `...` or any omission placeholders in the `new_string` or `old_string` of a `replace` call. You must provide the EXACT, literal code.
 - **The Rule**: AVOID updating large blocks of code in a single move. If a change spans multiple unrelated functions or sections, split it into sequential, smaller `replace` calls across multiple turns.
 - **The Rule**: AVOID bulk updates that refactor many things at once. Keep every change targeted and reasonable to its specific purpose.
 - **The Rationale**: Omission placeholders and large-scale replaces are the primary causes of accidental code deletion and syntax errors. Smaller, literal updates are safer and easier to verify.
 
-## 10. Zero-Shortcut Mandate (Structural Protection)
+## 11. Zero-Shortcut Mandate (Structural Protection)
 
 - **The Prohibition**: NEVER perform a "surgical" replace that spans across multiple method boundaries if it requires deleting the structural headers (e.g., `class Name:`, `@action`, `def method_name:`) to be "fast".
 - **The Protocol**: If you are adding a new method to a class, you MUST include the existing class header or the preceding method in your `old_string` to anchor the change, but you MUST NOT delete or replace existing structural code.
@@ -69,8 +69,15 @@
 - **The Mandate**: Speed is secondary to integrity. If a change takes 3 turns instead of 1 to ensure that NO existing code is lost, you MUST take the 3 turns.
 - **The Rationale**: Shortcuts that skip structural context frequently lead to "Orphaned Logic" or "Deleted Class Headers", which crashes the entire application. Structural integrity is the project's Tier 1 priority.
 
-## 11. Python Environment Mandate (uv)
+## 12. Python Environment Mandate (uv)
 
 - **The Rule**: ALWAYS use the `uv` package manager for all Python-related tasks, including running management commands, installing dependencies, and managing virtual environments.
 - **The Protocol**: Use `uv run python manage.py ...` instead of `python manage.py` or `.venv/bin/python`.
 - **The Rationale**: Ensures consistent environment management and faster execution within the workspace.
+
+## 13. Reusable Code Protection
+
+- **The Rule**: BEFORE deleting or updating any reusable function, component, or variable, you MUST conduct thorough research to identify all usage sites.
+- **The Preference**: If the impact of an update is uncertain or too broad, prefer creating a NEW specialized function/component rather than modifying the existing one to avoid breaking other parts of the code.
+- **The Protocol**: If modification of shared code is strictly necessary, you MUST explicitly identify and update EVERY location where that code is consumed to ensure total system consistency.
+- **The Rationale**: Prevents "ripple effect" regressions where a localized improvement in one feature causes silent failures in unrelated parts of the application.

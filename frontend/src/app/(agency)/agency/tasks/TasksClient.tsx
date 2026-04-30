@@ -14,6 +14,7 @@ import TaskPageContent from "@/components/tasks/TaskPageContent";
 import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
@@ -94,11 +95,7 @@ const TasksClient = ({
 
   // Only block full page if no data at all
   if (profilesLoading || (isListLoading && tasks.length === 0)) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingScreen message="Loading Tasks..." />;
   }
 
   if (!canView) {

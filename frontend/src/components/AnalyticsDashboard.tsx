@@ -56,6 +56,7 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
 
     const {
       canViewCostPrice,
+      canViewSellingPrice,
       canViewTotalSales,
       canViewTotalGrossProfit,
       canViewTotalExpenses,
@@ -83,12 +84,15 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
       initialAnalytics,
     });
 
-    // Memoize inventory value calculation from consolidated summary
-    const inventoryValue = useMemo(() => {
-      if (!inventoryStats) return 0;
-      if (!canViewCostPrice) return 0;
-      return inventoryStats.totalCostValue || 0;
-    }, [inventoryStats, canViewCostPrice]);
+    // Memoize inventory values from consolidated summary
+    const { inventoryValue, inventoryCost } = useMemo(() => {
+      if (!inventoryStats) return { inventoryValue: 0, inventoryCost: 0 };
+      
+      return {
+        inventoryValue: canViewSellingPrice ? (inventoryStats.totalStockValue || 0) : 0,
+        inventoryCost: canViewCostPrice ? (inventoryStats.totalCostValue || 0) : 0
+      };
+    }, [inventoryStats, canViewSellingPrice, canViewCostPrice]);
 
     // Memoize settings update
     const memoizedSettings = useMemo(() => {
@@ -180,6 +184,7 @@ const AnalyticsDashboard = memo<AnalyticsDashboardProps>(
           currency={settings.currency}
           expenses={expenses}
           inventoryValue={inventoryValue}
+          inventoryCost={inventoryCost}
           canViewProfit={canViewTotalGrossProfit}
           canViewTotalSales={canViewTotalSales}
           canViewTotalExpenses={canViewTotalExpenses}

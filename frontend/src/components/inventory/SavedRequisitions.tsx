@@ -16,6 +16,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
+import LoadingScreen from '../LoadingScreen';
 
 interface SavedRequisitionsProps {
   requisitions: any[];
@@ -146,16 +147,7 @@ const SavedRequisitions = ({
   };
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading requisitions...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <LoadingScreen fullScreen={false} message="Loading requisitions..." />;
   }
 
   if (requisitions.length === 0) {

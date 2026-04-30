@@ -27,6 +27,7 @@ import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useToast } from "@/hooks/use-toast";
 import { useInstallmentPayments } from "@/hooks/useInstallmentPayments";
 import { useFinancialVisibility } from "@/hooks/useFinancialVisibility";
+import LoadingScreen from "@/components/LoadingScreen";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -613,12 +614,7 @@ const SalesTable: React.FC<SalesTableProps> = ({
 
   // Show optimized loading state
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-4">
-        <img src="/icon.png" alt="Loading" className="w-12 h-12 animate-spin" />
-        <p className="text-muted-foreground text-sm">Loading sales...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} message="Loading sales..." />;
   }
 
   return (

@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileDown, ChevronDown } from "lucide-react";
+import LoadingScreen from "../LoadingScreen";
 import {
   Tooltip,
   TooltipContent,
@@ -249,10 +250,7 @@ const TopSellingProductsTable: React.FC<TopSellingProductsTableProps> = ({
                   <TableCell
                     colSpan={8}
                     className="text-center py-12">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <p className="text-muted-foreground text-sm font-medium">Loading top selling products...</p>
-                    </div>
+                    <LoadingScreen fullScreen={false} message="Loading top selling products..." />
                   </TableCell>
                 </TableRow>
               ) : !Array.isArray(products) || products.length === 0 ? (

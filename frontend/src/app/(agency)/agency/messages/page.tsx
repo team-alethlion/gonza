@@ -24,6 +24,7 @@ import UsageHistoryTable from "@/components/messages/UsageHistoryTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
@@ -151,11 +152,7 @@ const Messages = () => {
   );
 
   if (businessLoading || !currentBusiness || isLoading || profilesLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingScreen message="Loading Messages..." />;
   }
 
   return (

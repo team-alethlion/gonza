@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import LoadingScreen from '../LoadingScreen';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductSuggestionsPanelProps {
@@ -99,9 +100,8 @@ const ProductSuggestionsPanel: React.FC<ProductSuggestionsPanelProps> = ({
         </SheetHeader>
 
         {isLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-primary-foreground bg-primary">
-            <div className="h-8 w-8 border-2 border-primary-foreground border-t-transparent animate-spin rounded-full mb-4" />
-            <p className="text-sm">Searching products...</p>
+          <div className="flex-1 bg-primary flex flex-col items-center justify-center">
+            <LoadingScreen fullScreen={false} message="Searching products..." />
           </div>
         ) : suggestions.length > 0 ? (
           <ScrollArea className="flex-1 h-0 bg-primary">

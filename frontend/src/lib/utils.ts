@@ -77,6 +77,50 @@ export function formatLargeNumber(value: number): string {
   return formatNumber(value);
 }
 
+export interface TruncateOptions {
+  enabled?: boolean;
+  minUnit?: 'K' | 'M' | 'B' | 'T';
+  threshold?: number;
+  precision?: number;
+}
+
+/**
+ * Truncates large numbers into human-readable strings (K, M, B, T).
+ * Supports constraints for minimum unit to start truncating and thresholds.
+ */
+export function truncateNumber(value: number | undefined | null, options: TruncateOptions = {}): string {
+  const {
+    enabled = true,
+    minUnit = 'K',
+    threshold = 0,
+    precision = 1
+  } = options;
+
+  const num = value ?? 0;
+
+  if (!enabled || Math.abs(num) < threshold) {
+    return formatNumber(num);
+  }
+
+  const units = [
+    { value: 1e12, symbol: 'T', rank: 4 },
+    { value: 1e9, symbol: 'B', rank: 3 },
+    { value: 1e6, symbol: 'M', rank: 2 },
+    { value: 1e3, symbol: 'K', rank: 1 },
+  ];
+
+  const minRankMap = { 'K': 1, 'M': 2, 'B': 3, 'T': 4 };
+  const minRank = minRankMap[minUnit] || 1;
+
+  for (const unit of units) {
+    if (Math.abs(num) >= unit.value && unit.rank >= minRank) {
+      return (num / unit.value).toFixed(precision).replace(/\.0$/, '') + unit.symbol;
+    }
+  }
+
+  return formatNumber(num);
+}
+
 /**
  * Formats a number input string with thousands separators while preserving decimal points.
  * This allows users to type decimals freely while still getting auto-comma formatting.

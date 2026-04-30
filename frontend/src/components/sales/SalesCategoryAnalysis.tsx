@@ -18,6 +18,7 @@ import { format, isAfter, isBefore, isEqual, startOfDay, endOfDay, startOfWeek, 
 import { cn } from '@/lib/utils';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 import { getSalesCategorySummaryAction } from '@/app/actions/sales';
+import LoadingScreen from '../LoadingScreen';
 import { useQuery } from '@tanstack/react-query';
 import { useBusiness } from '@/contexts/BusinessContext';
 interface SalesCategoryAnalysisProps {
@@ -447,10 +448,7 @@ const SalesCategoryAnalysis: React.FC<SalesCategoryAnalysisProps> = ({
       </CardHeader>
       <CardContent>
         {isAnalyticsLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm text-muted-foreground">Calculating source performance...</p>
-          </div>
+          <LoadingScreen fullScreen={false} message="Calculating source performance..." />
         ) : categoryPerformance.length > 0 ? isMobile ? <div className="space-y-3">
           {categoryPerformance.map((category, index) => <Card key={category.name} className="border border-border bg-card">
             <CardContent className="p-4">
