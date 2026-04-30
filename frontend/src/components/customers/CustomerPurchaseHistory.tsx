@@ -19,6 +19,7 @@ import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import ReceiptDialog from "@/components/sales/ReceiptDialog";
 import LoadingScreen from "../LoadingScreen";
+import { Badge } from "@/components/ui/badge";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
