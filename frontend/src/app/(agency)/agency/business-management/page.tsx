@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useBusiness } from "@/contexts/BusinessContext";
+import LoadingScreen from "@/components/LoadingScreen";
 import { useToast } from "@/hooks/use-toast";
 import { NewBusinessDialog } from "@/components/business/NewBusinessDialog";
 import { ResetBusinessDialog } from "@/components/business/ResetBusinessDialog";
@@ -276,24 +277,10 @@ const BusinessManagement = () => {
     <div className="space-y-4 md:space-y-6 relative">
       {/* Reset Progress Overlay */}
       {isResetting && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 shadow-xl max-w-sm mx-4 w-full">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Resetting Business
-              </h3>
-              <p className="text-sm text-gray-600">
-                Clearing all data for &quot;{getResettingBusinessName()}
-                &quot;...
-                <br />
-                <span className="text-xs text-gray-500 mt-1 block">
-                  Please don&apos;t close this window. This may take a few
-                  moments.
-                </span>
-              </p>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-50">
+          <LoadingScreen 
+            message={`Resetting ${getResettingBusinessName()}... Please wait.`} 
+          />
         </div>
       )}
       <div className={isResetting ? "pointer-events-none opacity-50" : ""}>

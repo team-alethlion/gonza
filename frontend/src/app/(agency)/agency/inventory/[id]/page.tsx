@@ -12,6 +12,7 @@ import { Product } from "@/types";
 import { toast } from "sonner";
 import ProductDetails from "@/components/inventory/ProductDetails";
 import ProductStockHistory from "@/components/inventory/ProductStockHistory";
+import LoadingScreen from "@/components/LoadingScreen";
 import Image from "next/image";
 
 const ProductDetail = () => {
@@ -124,18 +125,7 @@ const ProductDetail = () => {
   }, [handleStockUpdate]);
 
   if (isProductLoading || isRefreshing || !product) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Image
-          width={64}
-          height={64}
-          src="/icon.png"
-          alt="Loading"
-          className="w-16 h-16 animate-spin"
-        />
-        <p className="text-muted-foreground">Loading product data...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} message="Loading product data..." />;
   }
 
   return (

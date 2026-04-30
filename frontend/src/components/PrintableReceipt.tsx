@@ -16,6 +16,7 @@ import { generatePDF } from "@/utils/generatePDF";
 import { directPrint } from "@/utils/directPrint";
 import { format } from "date-fns";
 import { Printer, Download, Loader2 } from "lucide-react";
+import LoadingScreen from "./LoadingScreen";
 import { formatNumber, getBaseUrl } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
@@ -458,12 +459,7 @@ const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
           </h2>
         </div>
         <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Loading business settings...
-            </p>
-          </div>
+          <LoadingScreen fullScreen={false} message="Loading business settings..." />
         </div>
       </div>
     );

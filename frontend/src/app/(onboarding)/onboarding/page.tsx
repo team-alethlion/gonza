@@ -20,6 +20,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import LoadingScreen from "@/components/LoadingScreen";
 import Image from "next/image";
 
 const BUSINESS_SIZES = [
@@ -220,16 +221,7 @@ export default function OnboardingPage() {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          <p className="text-gray-500 font-semibold animate-pulse">
-            Setting up your firm...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Setting up your firm..." />;
   }
 
   const progress = ((currentStep - 1) / 3) * 100;

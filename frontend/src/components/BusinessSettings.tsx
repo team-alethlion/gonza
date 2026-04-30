@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import LoadingScreen from './LoadingScreen';
 import { toast } from 'sonner';
 import { useAuth } from './auth/AuthProvider';
 import BusinessProfileForm from '@/components/settings/BusinessProfileForm';
@@ -40,11 +41,7 @@ const BusinessSettings = () => {
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {settingsLoading ? (
-        <Card>
-          <CardContent className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </CardContent>
-        </Card>
+        <LoadingScreen fullScreen={false} message="Loading Settings..." />
       ) : (
         <>
           <BusinessProfileForm

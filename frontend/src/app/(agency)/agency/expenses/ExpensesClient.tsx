@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useProfiles } from "@/contexts/ProfileContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import LoadingScreen from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import { exportExpensesToCSV } from "@/utils/exportExpensesToCSV";
 import { exportExpensesToPDF } from "@/utils/exportExpensesToPDF";
@@ -109,11 +110,7 @@ const ExpensesClient = ({
   }, [expenses, formatCurrency, settings]);
 
   if (profilesLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingScreen message="Loading Expenses..." />;
   }
 
   if (!hasPermission("expenses", "view")) {

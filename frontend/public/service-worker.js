@@ -1,16 +1,28 @@
 // Cache name includes version to allow easy updates - increment this to trigger updates
-const CACHE_NAME = "gonza-systems-v4";
+const CACHE_NAME = "gonza-systems-v6";
 
 // List of assets to cache for offline use
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
-  "logo/g_rounded.png",
-  "/logo/gonza_systems_lg.png",
-  "/banners/b4.png",
-  "/banners/b1.png",
+  "/favicon.ico",
+  "/apple-icon.png",
   "/icon.png",
+  "/logo/g_rounded.png",
+  "/logo/g_transparent.png",
+  "/logo/g_white_lg.png",
+  "/logo/g_white_sm.png",
+  "/logo/gonza_systems_lg.png",
+  "/logo/gonza_systems_sm.png",
+  "/logo/gonza_systems_white.png",
+  "/logo/sales_tracker_profit.png",
+  "/logo/sales_tracker.png",
+  "/banners/b1.png",
+  "/banners/b2.png",
+  "/banners/b3.png",
+  "/banners/b4.png",
+  "/banners/b5.png",
 ];
 
 // Install event - cache assets

@@ -12,6 +12,8 @@ import {
   Calendar, Edit2, Mail, MapPin, Phone, Trash2, Receipt, CreditCard, 
   FileText, MessageSquare, Cake, Loader2
 } from 'lucide-react';
+import LoadingScreen from '../LoadingScreen';
+import LoadingSpinner from '../LoadingSpinner';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -815,10 +817,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
               <div>
                 <h3 className="font-medium text-gray-500 mb-2">Purchase Summary</h3>
                 {isLoadingLifetimeStats ? (
-                  <div className="flex items-center">
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-gray-500" />
-                    <span>Loading purchase data...</span>
-                  </div>
+                  <LoadingSpinner inline size="xs" message="Loading purchase data..." />
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -936,10 +935,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
             </div>
 
             {isLoadingStatement ? (
-              <div className="flex flex-col items-center justify-center py-24">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-                <p className="text-sm text-gray-500">Calculating ledger...</p>
-              </div>
+              <LoadingScreen fullScreen={false} message="Calculating ledger..." />
             ) : (
               <>
                 <div className="overflow-x-auto">

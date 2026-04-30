@@ -16,6 +16,7 @@ import {
   Mail,
   MessageSquare
 } from 'lucide-react';
+import LoadingScreen from '../LoadingScreen';
 import { 
   getWhatsAppStatusAction, 
   initializeWhatsAppAction, 
@@ -97,12 +98,7 @@ const WhatsAppConnection = () => {
   }, [status, fetchStatus]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Checking Status...</p>
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} message="Checking Status..." />;
   }
 
   return (

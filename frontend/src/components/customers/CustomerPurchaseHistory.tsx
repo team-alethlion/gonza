@@ -18,8 +18,8 @@ import { format } from "date-fns";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
 import ReceiptDialog from "@/components/sales/ReceiptDialog";
+import LoadingScreen from "../LoadingScreen";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface CustomerPurchaseHistoryProps {
@@ -112,11 +112,7 @@ const CustomerPurchaseHistory: React.FC<CustomerPurchaseHistoryProps> = ({
   };
 
   if (isLoading && page === 1) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} message="Loading purchase history..." />;
   }
 
   if (customerSales.length === 0 && !isLoading) {

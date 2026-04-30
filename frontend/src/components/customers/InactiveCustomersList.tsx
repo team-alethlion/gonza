@@ -11,6 +11,7 @@ import { getInactiveCustomersAction } from '@/app/actions/customers';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import WeMissYouDialog from './WeMissYouDialog';
+import LoadingScreen from '../LoadingScreen';
 
 interface InactiveCustomersListProps {
   customers: Customer[];
@@ -104,11 +105,7 @@ const InactiveCustomersList: React.FC<InactiveCustomersListProps> = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="w-full h-64 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
+    return <LoadingScreen fullScreen={false} message="Analyzing inactive customers..." />;
   }
 
   return (

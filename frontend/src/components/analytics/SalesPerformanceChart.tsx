@@ -18,6 +18,7 @@ import { useBusiness } from '@/contexts/BusinessContext';
 import { useFinancialVisibility } from '@/hooks/useFinancialVisibility';
 import { getExpensesForChartAction } from '@/app/actions/expenses';
 import { getPerformanceChartAction } from '@/app/actions/sales';
+import LoadingScreen from '../LoadingScreen';
 
 interface SalesPerformanceChartProps {
   sales: Sale[]; // Keep for compatibility but prefer backend aggregation
@@ -224,8 +225,8 @@ const SalesPerformanceChart: React.FC<SalesPerformanceChartProps> = ({
   return (
     <Card className="mb-6 relative">
       {isLoading && (
-        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-lg">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="absolute inset-0 z-10">
+          <LoadingScreen fullScreen={false} message="Analyzing performance..." />
         </div>
       )}
       <CardHeader>

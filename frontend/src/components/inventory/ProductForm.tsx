@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import LoadingSpinner from "../LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -437,7 +438,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             <div className="flex justify-end gap-3 pt-6 border-t">
               <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
               <Button type="submit" disabled={isSubmitting || compressing}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {isSubmitting ? <LoadingSpinner inline size="xs" showMessage={false} className="mr-2" /> : null}
                 {initialData ? "Update Product" : "Create Product"}
               </Button>
             </div>
