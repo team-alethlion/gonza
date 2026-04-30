@@ -128,7 +128,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
                 cashAccounts={cashAccounts}
                 onLinkToCash={onLinkPaymentToCash}
                 onUpdatePayment={onUpdatePayment}
-                onDeletePayment={deletePayment}
+                onDeletePayment={onDeletePayment}
               />
             </CardContent>
           </Card>
