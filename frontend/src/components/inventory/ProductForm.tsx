@@ -103,17 +103,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
+    mode: "onChange",
     defaultValues: {
       name: initialData?.name || "",
       barcode: initialData?.barcode || "",
       manufacturerBarcode: initialData?.manufacturerBarcode || "",
       description: initialData?.description || "",
       category: initialData?.categoryId || initialData?.category || "",
-      quantity: initialData?.quantity ?? 0,
-      costPrice: initialData?.costPrice,
-      sellingPrice: initialData?.sellingPrice,
+      quantity: initialData?.quantity ?? "" as any,
+      costPrice: initialData?.costPrice ?? "" as any,
+      sellingPrice: initialData?.sellingPrice ?? "" as any,
       supplier: initialData?.supplier || "",
-      minimumStock: initialData?.minimumStock,
+      minimumStock: initialData?.minimumStock ?? "" as any,
       createdAt: initialData?.createdAt ? new Date(initialData.createdAt) : new Date(),
       autoPrintLabel: !initialData,
       printQuantity: 1,
@@ -121,7 +122,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     },
   });
 
-  const { watch, setValue, control, handleSubmit, reset, formState: { errors } } = form;
+  const { watch, setValue, control, handleSubmit, reset, formState: { errors, isValid } } = form;
   const formValues = watch();
 
   // Load draft
@@ -217,7 +218,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{initialData ? "Edit Product" : "New Product"}</CardTitle>
-        <CardDescription>Enter product details. Only name is required.</CardDescription>
+        <CardDescription>Enter product details. Name, selling price, cost price, and stock levels are required.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -346,7 +347,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         <p className="text-xs text-muted-foreground">Click or drag image to upload</p>
                       </div>
                     )}
-                    {compressing && <div className="absolute inset-0 bg-background/50 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+                    {compressing && (
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                        <LoadingSpinner size="sm" showMessage={false} />
+                      </div>
+                    )}
                   </div>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && processImageFile(e.target.files[0])} />
                 </div>
@@ -357,7 +362,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     name="quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Initial Stock</FormLabel>
+                        <FormLabel>Initial Stock*</FormLabel>
                         <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -369,7 +374,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     name="minimumStock"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Min Stock Level</FormLabel>
+                        <FormLabel>Min Stock Level*</FormLabel>
                         <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -383,7 +388,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     name="costPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cost Price ({settings.currency})</FormLabel>
+                        <FormLabel>Cost Price* ({settings.currency})</FormLabel>
                         <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -395,7 +400,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     name="sellingPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Selling Price ({settings.currency})</FormLabel>
+                        <FormLabel>Selling Price* ({settings.currency})</FormLabel>
                         <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -437,7 +442,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
             <div className="flex justify-end gap-3 pt-6 border-t">
               <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting || compressing}>
+              <Button type="submit" disabled={isSubmitting || compressing || !isValid}>
                 {isSubmitting ? <LoadingSpinner inline size="xs" showMessage={false} className="mr-2" /> : null}
                 {initialData ? "Update Product" : "Create Product"}
               </Button>

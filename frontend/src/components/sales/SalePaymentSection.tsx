@@ -41,6 +41,7 @@ interface SalePaymentSectionProps {
   categoryId?: string;
   onCategoryChange?: (value: string) => void;
   initialCategories?: any[];
+  errors: any;
 }
 
 const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
@@ -74,6 +75,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
   categoryId = '',
   onCategoryChange,
   initialCategories = [],
+  errors,
 }) => {
   return (
     <Card className="mb-6">
@@ -106,6 +108,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
             onLinkToCash={onLinkPaymentToCash}
             onUpdatePayment={onUpdatePayment}
             onDeletePayment={onDeletePayment}
+            error={errors.amountPaid}
           />
         )}
 
@@ -125,7 +128,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
                 cashAccounts={cashAccounts}
                 onLinkToCash={onLinkPaymentToCash}
                 onUpdatePayment={onUpdatePayment}
-                onDeletePayment={onDeletePayment}
+                onDeletePayment={deletePayment}
               />
             </CardContent>
           </Card>
@@ -138,6 +141,7 @@ const SalePaymentSection: React.FC<SalePaymentSectionProps> = ({
           onCashAccountChange={onCashAccountChange}
           cashAccounts={cashAccounts}
           paymentStatus={paymentStatus}
+          error={errors.cashAccount}
         />
 
         {onCategoryChange && (

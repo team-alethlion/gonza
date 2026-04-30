@@ -4,7 +4,7 @@
 import React, { memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalyticsData } from '@/types';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, truncateNumber } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TrendingUp, DollarSign, Percent, UserCheck, CreditCard, Package } from 'lucide-react';
 
@@ -14,6 +14,7 @@ interface AnalyticsCardsProps {
   currency: string;
   expenses: number;
   inventoryValue: number;
+  inventoryCost: number;
   canViewProfit?: boolean;
   canViewTotalSales?: boolean;
   canViewTotalExpenses?: boolean;
@@ -27,6 +28,7 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
   currency,
   expenses,
   inventoryValue,
+  inventoryCost,
   canViewProfit = true,
   canViewTotalSales = true,
   canViewTotalExpenses = true,
@@ -43,12 +45,17 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     pendingSalesCount: 0
   };
 
+  const truncateThreshold = isMobile ? 100000 : 1000000;
+  const truncateOptions = { threshold: truncateThreshold, precision: 1 };
+
   const cards = [
     {
       title: "Total Sales",
-      value: canViewTotalSales ? `${currency} ${formatNumber(safeData.totalSales)}` : '•••',
+      value: canViewTotalSales 
+        ? `${currency} ${truncateNumber(safeData.totalSales, truncateOptions)}` 
+        : '•••',
       description: canViewTotalSales
-        ? (analyticsData ? `From ${nonQuoteSalesCount} transactions (excluding quotes)` : "Loading calculations...")
+        ? (analyticsData ? `From ${nonQuoteSalesCount} transactions` : "Loading...")
         : "Requires permission",
       color: "text-sales-primary",
       bgColor: "bg-blue-50",
@@ -57,7 +64,9 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Total Gross Profit",
-      value: canViewProfit ? `${currency} ${formatNumber(safeData.totalProfit)}` : '•••',
+      value: canViewProfit 
+        ? `${currency} ${truncateNumber(safeData.totalProfit, truncateOptions)}` 
+        : '•••',
       description: canViewProfit
         ? (safeData.totalProfit > 0 && safeData.totalSales > 0
           ? `${(safeData.totalProfit / safeData.totalSales * 100).toFixed(1)}% profit margin`
@@ -70,7 +79,9 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Total Expenses",
-      value: canViewTotalExpenses ? `${currency} ${formatNumber(expenses)}` : '•••',
+      value: canViewTotalExpenses 
+        ? `${currency} ${truncateNumber(expenses, truncateOptions)}` 
+        : '•••',
       description: canViewTotalExpenses
         ? (expenses > 0 && safeData.totalSales > 0
           ? `${(expenses / safeData.totalSales * 100).toFixed(1)}% of sales`
@@ -83,8 +94,12 @@ const AnalyticsCards: React.FC<AnalyticsCardsProps> = memo(({
     },
     {
       title: "Inventory Value",
-      value: canViewInventoryValue ? `${currency} ${formatNumber(inventoryValue)}` : '•••',
-      description: canViewInventoryValue ? "Total value of current inventory" : "Requires permission",
+      value: canViewInventoryValue 
+        ? `${currency} ${truncateNumber(inventoryValue, truncateOptions)}` 
+        : '•••',
+      description: canViewInventoryValue 
+        ? `Potential Revenue (Investment: ${currency} ${truncateNumber(inventoryCost, { threshold: 1000000, precision: 1 })})` 
+        : "Requires permission",
       color: "text-green-600",
       bgColor: "bg-green-50",
       icon: <Package className="h-5 w-5 text-green-600" />,

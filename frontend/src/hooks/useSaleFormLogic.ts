@@ -97,7 +97,7 @@ export const useSaleFormLogic = ({
   });
 
   // Form validation
-  const { validateForm } = useFormValidation({
+  const { validateForm, isValid } = useFormValidation({
     formData,
     linkToCash,
     selectedCashAccountId,
@@ -379,6 +379,7 @@ export const useSaleFormLogic = ({
     calculateTaxAmount,
     resolveFinancials,
     validateForm,
+    isValid,
     processPendingPaymentChanges,
 
     // Payment methods

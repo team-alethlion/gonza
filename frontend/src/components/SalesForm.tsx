@@ -131,6 +131,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     calculateTaxAmount,
     resolveFinancials,
     validateForm,
+    isValid,
     processPendingPaymentChanges,
     createInstallmentPayment,
     addPaymentChange,
@@ -147,6 +148,18 @@ const SalesForm: React.FC<SalesFormProps> = ({
     cashAccounts,
     initialCategories,
   }) as any;
+
+  const totalAmount = useMemo(() => calculateTotalAmount(formData.items), [formData.items, calculateTotalAmount]);
+  const taxAmount = useMemo(() => calculateTaxAmount(totalAmount), [totalAmount, calculateTaxAmount]);
+  const grandTotal = useMemo(() => totalAmount + taxAmount, [totalAmount, taxAmount]);
+
+  // 🛡️ DATA INTEGRITY: Real-time validation feedback matching Login page pattern
+  useEffect(() => {
+    if (!formRecentlyCleared) {
+      validateForm(grandTotal, selectedDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, selectedDate, grandTotal, validateForm, formRecentlyCleared]);
 
   const {
     createCashTransactionForSale,
@@ -225,7 +238,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
     saveDraft(formData, selectedDate, true);
 
     const totalHistoryPaid = getModifiedPayments(payments).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-    const { total, subtotal, taxAmount: taxAmt, amountPaid, amountDue } = resolveFinancials(
+    const { total, subtotal: subAmt, taxAmount: taxAmt, amountPaid, amountDue } = resolveFinancials(
       formData.items, 
       formData.taxRate || 0, 
       formData.paymentStatus, 
@@ -248,7 +261,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
       profit: 0,
       total: total,
       totalCost: 0,
-      subtotal: subtotal,
+      subtotal: subAmt,
       discount: 0,
       taxAmount: taxAmt,
       date: new Date(),
@@ -321,10 +334,6 @@ const SalesForm: React.FC<SalesFormProps> = ({
       }
     })();
   }, [initialData, cashAccounts, findCashTransactionForSale, setSelectedCashAccountId, setLinkToCash, setCashTransactionId, selectedCashAccountId]);
-
-  const totalAmount = useMemo(() => calculateTotalAmount(formData.items), [formData.items, calculateTotalAmount]);
-  const taxAmount = useMemo(() => calculateTaxAmount(totalAmount), [totalAmount, calculateTaxAmount]);
-  const grandTotal = useMemo(() => totalAmount + taxAmount, [totalAmount, taxAmount]);
 
   if (!mounted) {
     return (
@@ -415,6 +424,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         categoryId={formData.categoryId || ""}
         onCategoryChange={handleSalesCategoryChange}
         initialCategories={initialCategories}
+        errors={errors}
       />
 
       <SalesFormActions
@@ -438,7 +448,7 @@ const SalesForm: React.FC<SalesFormProps> = ({
         onSMSMessageChange={setSMSMessage}
         customerHasPhone={!!formData.customerContact}
         customerName={formData.customerName}
-        disabled={isSubmitted}
+        disabled={isSubmitted || !isValid}
       />
     </form>
   );

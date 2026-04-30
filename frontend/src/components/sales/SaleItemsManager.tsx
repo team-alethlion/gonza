@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import SaleItems from '@/components/sales/SaleItems';
-import TaxRateInput from '@/components/sales/TaxRateInput';
-import SaleTotals from '@/components/sales/SaleTotals';
-import { SaleItem, FormErrors } from '@/types';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import SaleItems from "@/components/sales/SaleItems";
+import TaxRateInput from "@/components/sales/TaxRateInput";
+import SaleTotals from "@/components/sales/SaleTotals";
+import { SaleItem, FormErrors } from "@/types";
+import { cn } from "@/lib/utils";
+import { AlertCircle } from "lucide-react";
 
 interface SaleItemsManagerProps {
   items: SaleItem[];
@@ -12,7 +15,9 @@ interface SaleItemsManagerProps {
   onUpdateItem: (index: number, updatedItem: SaleItem) => void;
   onRemoveItem: (index: number) => void;
   taxRateInput: string;
-  onTaxRateChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onTaxRateChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => void;
   errors: FormErrors;
   totalAmount: number;
   taxAmount: number;
@@ -68,15 +73,26 @@ const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({
       setTimeout(() => {
         const element = document.getElementById(`sale-item-${changedIndex}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }, 150);
     }
   }, [items]);
 
   return (
-    <Card className="mb-6">
+    <Card
+      className={cn(
+        "mb-6",
+        (errors as any).items ? "border-red-500 shadow-sm shadow-red-100" : "",
+      )}>
       <CardContent className="pt-6 space-y-6">
+        {(errors as any).items && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-medium">{(errors as any).items}</p>
+          </div>
+        )}
+
         <SaleItems
           items={items}
           onAddItem={onAddItem}
